@@ -1,0 +1,161 @@
+CREATE TABLE public.actividad (
+    id bigint NOT NULL,
+    codigo_caeb character varying(10),
+    descripcion character varying(200),
+    tipo_actividad character varying(255)
+);
+
+
+
+CREATE TABLE public.actividad_documento_sector (
+    id bigint NOT NULL,
+    codigo_actividad character varying(10),
+    codigo_documento_sector integer,
+    tipo_documento_sector character varying(10)
+);
+
+
+CREATE TABLE public.cliente (
+    id integer NOT NULL,
+    codigo_cliente character varying(255),
+    codigo_tipo_documento_identidad integer,
+    complemento character varying(255),
+    email character varying(255),
+    nombre_razon_social character varying(255),
+    numero_documento character varying(255)
+);
+
+CREATE TABLE public.cufd (
+    id integer NOT NULL,
+    codigo character varying(255),
+    codigo_control character varying(255),
+    fecha_inicio timestamp without time zone,
+    fecha_vigencia timestamp without time zone,
+    vigente boolean,
+    id_punto_venta integer NOT NULL
+);
+
+CREATE TABLE public.cuis (
+    id integer NOT NULL,
+    codigo character varying(255),
+    fecha_solicitada timestamp without time zone,
+    fecha_vigencia timestamp without time zone,
+    vigente boolean,
+    id_punto_venta integer NOT NULL
+);
+
+
+CREATE TABLE public.empresa (
+    id integer NOT NULL,
+    nit bigint NOT NULL,
+    razon_social character varying(255)
+);
+
+
+CREATE TABLE public.factura_cabecera (
+    id bigint NOT NULL,
+    cafc character varying(255),
+    codigo_cliente character varying(255),
+    codigo_documento_sector integer,
+    codigo_excepcion integer,
+    codigo_metodo_pago integer,
+    codigo_moneda integer,
+    codigo_punto_venta integer,
+    codigo_sucursal integer,
+    codigo_tipo_documento_identidad integer,
+    complemento character varying(255),
+    cuf character varying(255),
+    cufd character varying(255),
+    descuento_adicional numeric(19,2),
+    direccion character varying(255),
+    email_cliente character varying(255),
+    estado character varying(255),
+    fecha_emision timestamp without time zone,
+    leyenda character varying(255),
+    monto_gift_card numeric(19,2),
+    monto_total numeric(19,2),
+    monto_total_moneda numeric(19,2),
+    monto_total_sujeto_iva numeric(19,2),
+    municipio character varying(255),
+    nit_emisor bigint,
+    nombre_razon_social character varying(255),
+    numero_documento character varying(255),
+    numero_factura bigint,
+    numero_tarjeta bigint,
+    razon_social_emisor character varying(255),
+    telefono character varying(255),
+    tipo_cambio numeric(19,2),
+    usuario character varying(255),
+    id_punto_venta integer
+);
+
+
+CREATE TABLE public.factura_detalle (
+    id bigint NOT NULL,
+    actividad_economica character varying(255),
+    cantidad numeric(19,2),
+    codigo_producto character varying(255),
+    codigo_producto_sin integer,
+    descripcion character varying(500),
+    monto_descuento numeric(19,2),
+    numero_imei character varying(255),
+    numero_serie character varying(255),
+    precio_unitario numeric(19,2),
+    sub_total numeric(19,2),
+    unidad_medida integer,
+    id_factura bigint
+);
+
+
+
+CREATE TABLE public.item (
+    id integer NOT NULL,
+    codigo character varying(255),
+    codigo_producto_sin integer,
+    descripcion character varying(500),
+    precio_unitario numeric(19,2),
+    unidad_medida integer
+);
+CREATE TABLE public.leyenda_factura (
+    id bigint NOT NULL,
+    codigo_actividad character varying(20),
+    descripcion_leyenda character varying(255)
+);
+
+
+
+CREATE TABLE public.parametro (
+    id bigint NOT NULL,
+    codigo_clasificador character varying(255) NOT NULL,
+    codigo_tipo_parametro character varying(255) NOT NULL,
+    descripcion character varying(255) NOT NULL
+);
+
+
+
+CREATE TABLE public.producto_servicio (
+    id bigint NOT NULL,
+    codigo_actividad character varying(10),
+    codigo_producto bigint,
+    descripcion_producto character varying(1000)
+);
+
+
+CREATE TABLE public.punto_venta (
+    id integer NOT NULL,
+    codigo integer NOT NULL,
+    nombre character varying(255),
+    id_sucursal integer NOT NULL
+);
+
+
+CREATE TABLE public.sucursal (
+    id integer NOT NULL,
+    codigo integer NOT NULL,
+    departamento character varying(255),
+    direccion character varying(255),
+    municipio character varying(255),
+    nombre character varying(255),
+    telefono character varying(255) DEFAULT '0'::character varying NOT NULL,
+    id_empresa integer NOT NULL
+);
