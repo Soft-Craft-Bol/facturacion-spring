@@ -44,11 +44,20 @@ public class FacturacionService {
         Optional<CufdEntity> cufd = cufdRepository.findActual(puntoVenta.get());
         if (cufd.isEmpty()) throw new ProcessException("Cufd vigente no encontrado");
 
+        // Generar la factura
         FacturaElectronicaCompraVenta factura = this.generaFacturaService.llenarDatos(ventaRequest, cufd.get());
-        byte[] xmlComprimidoZip = this.generaFacturaService.obtenerArchivo(factura);
 
+        // *** Aquí imprimimos el XML sin firmar para depuración ***
+        //this.generaFacturaService.imprimirXmlSinFirmar(factura); // Asegúrate de tener este método en GeneraFacturaService
+
+// *** Aquí imprimimos el XML firmado para depuración ***
+       // this.generaFacturaService.imprimirXmlFirmado(factura);
+
+        // Continuar con el flujo normal
+        byte[] xmlComprimidoZip = this.generaFacturaService.obtenerArchivo(factura);
         RespuestaRecepcion respuestaRecepcion = this.envioFacturaService.enviar(puntoVenta.get(), cufd.get(), xmlComprimidoZip);
 
+        // Construir la respuesta
         FacturaResponse facturaResponse = new FacturaResponse();
         facturaResponse.setCodigoEstado(respuestaRecepcion.getCodigoEstado());
         facturaResponse.setCuf(factura.getCabecera().getCuf());
@@ -56,4 +65,5 @@ public class FacturacionService {
 
         return facturaResponse;
     }
+
 }

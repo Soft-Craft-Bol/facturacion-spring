@@ -130,6 +130,7 @@ public class GeneraFacturaService {
         facturaElectronicaCompraVenta.setCabecera(cabeceraCompraVenta);
         facturaElectronicaCompraVenta.setDetalle(detalleCompraVentaList);
 
+
         String cuf = this.obtenerCUF(facturaElectronicaCompraVenta, cufd);
 
         facturaElectronicaCompraVenta.getCabecera().setCufd(cufd.getCodigo());
@@ -167,6 +168,21 @@ public class GeneraFacturaService {
         return xmlComprimidoZip;
     }
 
+    public void imprimirXmlSinFirmar(FacturaElectronicaCompraVenta factura) throws JAXBException {
+        byte[] xmlBytes = this.getXmlBytes(factura);
+        String xmlString = new String(xmlBytes);
+        System.out.println("XML generado sin firma digital:");
+        System.out.println(xmlString);
+    }
+
+    public void imprimirXmlFirmado(FacturaElectronicaCompraVenta factura) throws Exception {
+        byte[] xmlFirmado = this.firmarArchivo(this.getXmlBytes(factura));
+        String xmlStringFirmado = new String(xmlFirmado);
+        System.out.println("XML generado con firma digital:");
+        System.out.println(xmlStringFirmado);
+    }
+
+
     private byte[] getXmlBytes(FacturaElectronicaCompraVenta facturaObject) throws JAXBException {
         JAXBContext context = JAXBContext.newInstance(FacturaElectronicaCompraVenta.class);
 
@@ -179,8 +195,8 @@ public class GeneraFacturaService {
     }
 
     private byte[] firmarArchivo(byte[] xmlBytes) throws Exception {
-        PrivateKey privateKey = XmlHelper.getPrivateKey(appConfig.getPathFiles() + "/resources/cert/CERT-DEV.pem"); //privateKey.pem
-        X509Certificate cert =  XmlHelper.getX509Certificate(appConfig.getPathFiles() + "/resources/cert/CERT-DEV.crt"); //ende.crt
+        PrivateKey privateKey = XmlHelper.getPrivateKey(appConfig.getPathFiles() + "/resources/cert/clav.pem"); //privateKey.pem
+        X509Certificate cert =  XmlHelper.getX509Certificate(appConfig.getPathFiles() + "/resources/cert/cer.pem"); //ende.crt
 
         return XmlHelper.firmarDsig(xmlBytes, privateKey, cert);
     }
@@ -188,6 +204,7 @@ public class GeneraFacturaService {
     private void validarContraXSD(XmlObject xmlFacturaObj) {
         String schemaFile = appConfig.getPathFiles() + "/resources/xsd/facturaElectronicaCompraVenta.xsd";
 
+        System.out.println(schemaFile + "final");
         if(!XmlHelper.validate(schemaFile, xmlFacturaObj)) {
             throw new ProcessException("El XML no cumple las especificaciones de impuestos.");
         }

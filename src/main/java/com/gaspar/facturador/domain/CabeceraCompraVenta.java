@@ -12,7 +12,6 @@ import javax.xml.bind.annotation.*;
 import javax.xml.datatype.XMLGregorianCalendar;
 import java.math.BigDecimal;
 
-
 @Getter
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(name = "cabecera", propOrder = {
@@ -147,7 +146,7 @@ public class CabeceraCompraVenta {
 
     public static class Builder {
 
-        private CabeceraCompraVenta cabeceraCompraVenta;
+        private final CabeceraCompraVenta cabeceraCompraVenta;
 
         public Builder() {
             cabeceraCompraVenta = new CabeceraCompraVenta();
@@ -166,7 +165,6 @@ public class CabeceraCompraVenta {
         }
 
         public Builder buildCliente(ClienteEntity cliente) {
-
             cabeceraCompraVenta.nombreRazonSocial = cliente.getNombreRazonSocial();
             if (cliente.getComplemento() != null) {
                 cabeceraCompraVenta.codigoTipoDocumentoIdentidad = CodigoTipoDocumentoIdentidadEnum.CI.getValue();
@@ -181,33 +179,29 @@ public class CabeceraCompraVenta {
         }
 
         public Builder buildPago(BigDecimal total) {
-
             cabeceraCompraVenta.codigoMetodoPago = CodigoMetodoPagoEnum.EFECTIVO.getValue();
             cabeceraCompraVenta.numeroTarjeta = null;
             cabeceraCompraVenta.montoTotal = total;
             cabeceraCompraVenta.montoTotalSujetoIva = total;
             cabeceraCompraVenta.codigoMoneda = CodigoMonedaEnum.BOLIVIANO.getValue();
-            cabeceraCompraVenta.tipoCambio = new BigDecimal("1");
+            cabeceraCompraVenta.tipoCambio = BigDecimal.ONE;
             cabeceraCompraVenta.montoTotalMoneda = total;
-            cabeceraCompraVenta.descuentoAdicional = new BigDecimal("0");
+            cabeceraCompraVenta.descuentoAdicional = BigDecimal.ZERO;
 
             return this;
         }
 
         public Builder setUsuario(String usuario) {
-
             cabeceraCompraVenta.usuario = usuario;
             return this;
         }
 
         public Builder setNumeroFactura(long numeroFactura) {
-
             cabeceraCompraVenta.numeroFactura = numeroFactura;
             return this;
         }
 
         public Builder setCuf(String cuf) {
-
             cabeceraCompraVenta.cuf = cuf;
             return this;
         }
@@ -223,12 +217,11 @@ public class CabeceraCompraVenta {
         }
 
         public Builder setNitClienteExcepcion(Boolean permitirNitInvalido) {
-            cabeceraCompraVenta.codigoExcepcion = permitirNitInvalido ? 1 : 0;
+            cabeceraCompraVenta.codigoExcepcion = (permitirNitInvalido != null && permitirNitInvalido) ? 1 : 0;
             return this;
         }
 
         public CabeceraCompraVenta build() {
-
             cabeceraCompraVenta.codigoDocumentoSector = CodigoDocumentoSectorEnum.COMPRA_VENTA.getValue();
             return cabeceraCompraVenta;
         }

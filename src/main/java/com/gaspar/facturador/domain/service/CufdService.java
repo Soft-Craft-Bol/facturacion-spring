@@ -57,7 +57,7 @@ public class CufdService {
         solicitudCufd.setCodigoSistema(this.appConfig.getCodigoSistema());
         solicitudCufd.setNit(puntoVenta.get().getSucursal().getEmpresa().getNit());
         solicitudCufd.setCodigoSucursal(puntoVenta.get().getSucursal().getCodigo());
-        solicitudCufd.setCodigoPuntoVenta(puntoVenta.get().getCodigo());
+        solicitudCufd.setCodigoPuntoVenta(puntoVenta.get()    .getCodigo());
         solicitudCufd.setCuis(cuis.get().getCodigo());
 
         RespuestaCufd respuestaCufd = this.servicioFacturacionCodigos.cufd(solicitudCufd);
