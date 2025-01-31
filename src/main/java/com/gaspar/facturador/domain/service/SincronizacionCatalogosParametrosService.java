@@ -1,5 +1,7 @@
 package com.gaspar.facturador.domain.service;
 
+import bo.gob.impuestos.siat.RespuestaFechaHora;
+import bo.gob.impuestos.siat.RespuestaListaParametricas;
 import bo.gob.impuestos.siat.SolicitudSincronizacion;
 import com.gaspar.facturador.application.rest.exception.ProcessException;
 import com.gaspar.facturador.config.AppConfig;
@@ -10,6 +12,8 @@ import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
 import org.springframework.stereotype.Service;
 
 import java.rmi.RemoteException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
 
@@ -18,37 +22,41 @@ import java.util.Optional;
 public class SincronizacionCatalogosParametrosService {
 
     private final AppConfig appConfig;
+    private final FechaHoraService fechaHoraService;
     private final ActividadService actividadService;
     private final ActividadDocumentoSectorService actividadDocumentoSectorService;
     private final LeyendaService leyendaService;
     private final ProductoServicioService productoServicioService;
     private final ParametroService parametroService;
+    private final MensajeServicioService mensajeServicioService;
     private final IPuntoVentaRepository puntoVentaRepository;
     private final ICuisRepository cuisRepository;
 
     public SincronizacionCatalogosParametrosService(
-        AppConfig appConfig,
-        ActividadService actividadService,
-        ActividadDocumentoSectorService actividadDocumentoSectorService,
-        LeyendaService leyendaService,
-        ProductoServicioService productoServicioService,
-        ParametroService parametroService,
-        IPuntoVentaRepository puntoVentaRepository,
-        ICuisRepository cuisRepository
+            AppConfig appConfig, FechaHoraService fechaHoraService,
+            ActividadService actividadService,
+            ActividadDocumentoSectorService actividadDocumentoSectorService,
+            LeyendaService leyendaService,
+            ProductoServicioService productoServicioService,
+            ParametroService parametroService, MensajeServicioService mensajeServicioService,
+            IPuntoVentaRepository puntoVentaRepository,
+            ICuisRepository cuisRepository
     ) {
         this.appConfig = appConfig;
+        this.fechaHoraService = fechaHoraService;
         this.actividadService = actividadService;
         this.actividadDocumentoSectorService = actividadDocumentoSectorService;
         this.leyendaService = leyendaService;
         this.productoServicioService = productoServicioService;
         this.parametroService = parametroService;
+        this.mensajeServicioService = mensajeServicioService;
         this.puntoVentaRepository = puntoVentaRepository;
         this.cuisRepository = cuisRepository;
     }
 
-    public void sincronizarCatalogos() throws RemoteException {
+    public void sincronizarCatalogos(Long idPuntoVenta) throws RemoteException {
 
-        Optional<PuntoVentaEntity> puntoVenta = this.puntoVentaRepository.findByCodigo(0);
+        Optional<PuntoVentaEntity> puntoVenta = this.puntoVentaRepository.findById(Math.toIntExact(idPuntoVenta));
         if (puntoVenta.isEmpty()) throw new ProcessException("Punto venta no encontrado");
 
         Optional<CuisEntity> cuis = this.cuisRepository.findActual(puntoVenta.get());
@@ -62,9 +70,9 @@ public class SincronizacionCatalogosParametrosService {
         this.productoServicioService.guardarCatalogos(solicitudSincronizacion);
     }
 
-    public boolean sincronizarParametros() throws Exception {
+    public boolean sincronizarParametros(Long idPuntoVenta) throws Exception {
 
-        Optional<PuntoVentaEntity> puntoVenta = puntoVentaRepository.findByCodigo(0);
+        Optional<PuntoVentaEntity> puntoVenta = puntoVentaRepository.findById(Math.toIntExact(idPuntoVenta));
 
         if (puntoVenta.isEmpty()) throw new ProcessException("Punto venta no encontrado");
 
@@ -77,6 +85,48 @@ public class SincronizacionCatalogosParametrosService {
 
         return true;
     }
+
+    public RespuestaFechaHora sincronizarFechaHora(Long idPuntoVenta) throws RemoteException {
+        Optional<PuntoVentaEntity> puntoVenta = puntoVentaRepository.findById(Math.toIntExact(idPuntoVenta));
+        if (puntoVenta.isEmpty()) throw new ProcessException("Punto venta no encontrado");
+
+        Optional<CuisEntity> cuis = cuisRepository.findActual(puntoVenta.get());
+        if (cuis.isEmpty()) throw new ProcessException("CUIS vigente no encontrado");
+
+        // Crear la solicitud con todos los datos
+        SolicitudSincronizacion solicitud = new SolicitudSincronizacion();
+        solicitud.setCodigoAmbiente(appConfig.getCodigoAmbiente());
+        solicitud.setCodigoPuntoVenta(puntoVenta.get().getCodigo());
+        solicitud.setCodigoSistema(appConfig.getCodigoSistema());
+        solicitud.setCodigoSucursal(puntoVenta.get().getSucursal().getCodigo());
+        solicitud.setCuis(cuis.get().getCodigo());
+        solicitud.setNit(puntoVenta.get().getSucursal().getEmpresa().getNit());
+
+        // Llamar al servicio SOAP real
+        return fechaHoraService.obtenerFechaHora(solicitud);
+    }
+    public RespuestaListaParametricas sincronizarMensajesServicios(Long idPuntoVenta) throws RemoteException {
+        Optional<PuntoVentaEntity> puntoVenta = puntoVentaRepository.findById(Math.toIntExact(idPuntoVenta));
+        if (puntoVenta.isEmpty()) throw new ProcessException("Punto venta no encontrado");
+
+        Optional<CuisEntity> cuis = cuisRepository.findActual(puntoVenta.get());
+        if (cuis.isEmpty()) throw new ProcessException("CUIS vigente no encontrado");
+
+        // Crear la solicitud con todos los datos
+        SolicitudSincronizacion solicitud = new SolicitudSincronizacion();
+        solicitud.setCodigoAmbiente(appConfig.getCodigoAmbiente());
+        solicitud.setCodigoPuntoVenta(puntoVenta.get().getCodigo());
+        solicitud.setCodigoSistema(appConfig.getCodigoSistema());
+        solicitud.setCodigoSucursal(puntoVenta.get().getSucursal().getCodigo());
+        solicitud.setCuis(cuis.get().getCodigo());
+        solicitud.setNit(puntoVenta.get().getSucursal().getEmpresa().getNit());
+
+        // Llamar al servicio SOAP real
+        return mensajeServicioService.obtenerMensajesServicios(solicitud);
+    }
+
+
+
 
     private SolicitudSincronizacion obtenerSolicitud(PuntoVentaEntity puntoVenta, CuisEntity cuis) {
 

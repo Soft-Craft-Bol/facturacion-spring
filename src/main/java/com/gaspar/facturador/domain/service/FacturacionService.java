@@ -21,17 +21,21 @@ public class FacturacionService {
 
     private final GeneraFacturaService generaFacturaService;
     private final EnvioFacturaService envioFacturaService;
+    private final AnulacionFacturaService anulacionFacturaService;
+    private final ReversionFacturaService reversionFacturaService;
     private final IPuntoVentaRepository puntoVentaRepository;
     private final ICufdRepository cufdRepository;
 
     public FacturacionService(
-        GeneraFacturaService generaFacturaService,
-        EnvioFacturaService envioFacturaService,
-        IPuntoVentaRepository puntoVentaRepository,
-        ICufdRepository cufdRepository
+            GeneraFacturaService generaFacturaService,
+            EnvioFacturaService envioFacturaService, AnulacionFacturaService anulacionFacturaService, ReversionFacturaService reversionFacturaService,
+            IPuntoVentaRepository puntoVentaRepository,
+            ICufdRepository cufdRepository
     ) {
         this.generaFacturaService = generaFacturaService;
         this.envioFacturaService = envioFacturaService;
+        this.anulacionFacturaService = anulacionFacturaService;
+        this.reversionFacturaService = reversionFacturaService;
         this.puntoVentaRepository = puntoVentaRepository;
         this.cufdRepository = cufdRepository;
     }
@@ -66,4 +70,11 @@ public class FacturacionService {
         return facturaResponse;
     }
 
+    public RespuestaRecepcion anularFactura(Long idPuntoVenta, String cuf, String codigoMotivo) throws Exception {
+        return anulacionFacturaService.anularFactura(idPuntoVenta, cuf, codigoMotivo);
+    }
+
+    public RespuestaRecepcion revertirFactura(Long idPuntoVenta, String cuf, String codigoMotivo) throws Exception {
+        return reversionFacturaService.revertirFactura(idPuntoVenta, cuf, codigoMotivo);
+    }
 }
