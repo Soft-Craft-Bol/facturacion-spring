@@ -23,12 +23,13 @@ public class FacturacionService {
     private final EnvioFacturaService envioFacturaService;
     private final AnulacionFacturaService anulacionFacturaService;
     private final ReversionFacturaService reversionFacturaService;
+    private final RecepcionMasivaService recepcionMasivaService;
     private final IPuntoVentaRepository puntoVentaRepository;
     private final ICufdRepository cufdRepository;
 
     public FacturacionService(
             GeneraFacturaService generaFacturaService,
-            EnvioFacturaService envioFacturaService, AnulacionFacturaService anulacionFacturaService, ReversionFacturaService reversionFacturaService,
+            EnvioFacturaService envioFacturaService, AnulacionFacturaService anulacionFacturaService, ReversionFacturaService reversionFacturaService, RecepcionMasivaService recepcionMasivaService,
             IPuntoVentaRepository puntoVentaRepository,
             ICufdRepository cufdRepository
     ) {
@@ -36,6 +37,7 @@ public class FacturacionService {
         this.envioFacturaService = envioFacturaService;
         this.anulacionFacturaService = anulacionFacturaService;
         this.reversionFacturaService = reversionFacturaService;
+        this.recepcionMasivaService = recepcionMasivaService;
         this.puntoVentaRepository = puntoVentaRepository;
         this.cufdRepository = cufdRepository;
     }
@@ -76,5 +78,19 @@ public class FacturacionService {
 
     public RespuestaRecepcion revertirFactura(Long idPuntoVenta, String cuf, String codigoMotivo) throws Exception {
         return reversionFacturaService.revertirFactura(idPuntoVenta, cuf, codigoMotivo);
+    }
+
+    public RespuestaRecepcion enviarPaqueteFacturas(Long idPuntoVenta, byte[] archivoComprimido, int cantidadFacturas) throws Exception {
+        Optional<PuntoVentaEntity> puntoVenta = puntoVentaRepository.findById(Math.toIntExact(idPuntoVenta));
+        if (puntoVenta.isEmpty()) {
+            throw new ProcessException("Punto de venta no encontrado.");
+        }
+
+        Optional<CufdEntity> cufd = cufdRepository.findActual(puntoVenta.get());
+        if (cufd.isEmpty()) {
+            throw new ProcessException("CUFD vigente no encontrado.");
+        }
+
+        return recepcionMasivaService.enviarPaqueteFacturas(puntoVenta.get(), cufd.get(), archivoComprimido, cantidadFacturas);
     }
 }

@@ -1,13 +1,12 @@
 package com.gaspar.facturador.application.rest.controller;
 
 import bo.gob.impuestos.siat.RespuestaRecepcion;
-import com.gaspar.facturador.application.request.ReversionFacturaRequest;
 import com.gaspar.facturador.application.request.VentaRequest;
 import com.gaspar.facturador.application.response.FacturaResponse;
 import com.gaspar.facturador.domain.service.FacturacionService;
-import com.gaspar.facturador.domain.service.RecepcionMasivaService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
@@ -15,14 +14,13 @@ import javax.validation.Valid;
 
 @RestController
 @RequestMapping("/factura")
+//@PreAuthorize("denyAll()")
 public class FacturacionController {
 
     private final FacturacionService facturacionService;
-    private final RecepcionMasivaService recepcionMasivaService;
 
-    public FacturacionController(FacturacionService facturacionService, RecepcionMasivaService recepcionMasivaService) {
+    public FacturacionController(FacturacionService facturacionService) {
         this.facturacionService = facturacionService;
-        this.recepcionMasivaService = recepcionMasivaService;
     }
 
     @PostMapping("/emitir")
@@ -56,16 +54,13 @@ public class FacturacionController {
     }
 
     @PostMapping("/recepcion-masiva")
-    public ResponseEntity<RespuestaRecepcion> recibirFacturasMasivas(
+    public ResponseEntity<RespuestaRecepcion> enviarPaqueteFacturas(
             @RequestParam Long idPuntoVenta,
-            @RequestParam byte[] archivo,
-            @RequestParam String hashArchivo,
             @RequestParam int cantidadFacturas,
-            @RequestParam String codigoEvento
+            @RequestBody byte[] archivoComprimido
     ) throws Exception {
-        RespuestaRecepcion respuesta = recepcionMasivaService.recibirFacturasMasivas(
-                idPuntoVenta, archivo, hashArchivo, cantidadFacturas, codigoEvento
-        );
+        RespuestaRecepcion respuesta = this.facturacionService.enviarPaqueteFacturas(idPuntoVenta, archivoComprimido, cantidadFacturas);
         return new ResponseEntity<>(respuesta, HttpStatus.OK);
     }
+
 }
