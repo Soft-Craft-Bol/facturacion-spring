@@ -1,6 +1,5 @@
 package com.gaspar.facturador.persistence.entity;
 
-
 import lombok.*;
 
 import javax.persistence.*;
@@ -15,7 +14,6 @@ import java.util.Set;
 @Getter
 @ToString
 @Table(name = "roles")
-
 public class RoleEntity {
 
     @Id

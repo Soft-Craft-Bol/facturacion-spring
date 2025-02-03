@@ -12,7 +12,6 @@ import javax.persistence.*;
 @Getter
 @ToString
 @Table(name = "permissions")
-
 public class PermissionEntity {
 
     @Id

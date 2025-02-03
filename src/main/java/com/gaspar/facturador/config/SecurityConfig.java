@@ -1,109 +1,85 @@
 package com.gaspar.facturador.config;
 
 
+import com.gaspar.facturador.config.filter.JwtTokenValidator;
+import com.gaspar.facturador.domain.service.UserDetailServiceImpl;
+import com.gaspar.facturador.utils.JwtUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
-
 public class SecurityConfig {
 
-//    @Bean
-//    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
-//        return httpSecurity
-//                //Se encarga de validar los usuarios que si existen y de solo dar permiso a ciertos endpoins
-//                .csrf(csrf -> csrf.disable())//.csrf(csrf -> csrf.disable()):
-//                                            //La función flecha toma como argumento un objeto csrf y llama a su método .disable() para desactivar la protección contra ataques CSRF (más sobre esto abajo).
-//                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-//                .httpBasic(Customizer.withDefaults())
-//                .authorizeHttpRequests(http -> {
-//
-//                    //cONFIGURACION DE LOS ENDPOINTS PUBLICOS
-//                    http.requestMatchers(HttpMethod.GET, "/test/test").permitAll();
-//                    //CONFIGURAR LOS ENDPOINTS PRIVADOS
-//                    http.requestMatchers(HttpMethod.GET, "/test/test1").hasAuthority("CREATE");
-//                    //CONIGURAR LOS ENDPOINTS NO ESPECIFICADOS
-//                    http.anyRequest().denyall();
-//                })
-//                .build();
-//    }
+    @Autowired
+    private JwtUtils jwtUtils;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173")); // Origen permitido (tu frontend)
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS")); // Métodos permitidos
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Cache-Control", "Content-Type")); // Headers permitidos
+        configuration.setAllowCredentials(true); // Permitir credenciales (necesario para cookies, headers de autorización, etc.)
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration); // Aplicar a todas las rutas
+        return source;
+    }
+
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity, AuthenticationProvider authenticationProvider) throws Exception {
         return httpSecurity
-                //Se encarga de validar los usuarios que si existen y de solo dar permiso a ciertos endpoins
-                .csrf(csrf -> csrf.disable())//.csrf(csrf -> csrf.disable()):
-                //La función flecha toma como argumento un objeto csrf y llama a su método .disable() para desactivar la protección contra ataques CSRF (más sobre esto abajo).
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .httpBasic(Customizer.withDefaults())
+                .csrf().disable() // Deshabilitar CSRF (no es necesario para APIs stateless)
+                .cors().configurationSource(corsConfigurationSource()) // Aplicar configuración de CORS
+                .and()
+                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS) // Sin sesiones
+                .and()
+                .authorizeRequests()
+                .antMatchers(HttpMethod.POST, "/auth/**").permitAll() // Permitir acceso público a /auth/**
+                .antMatchers(HttpMethod.GET, "/method/get").hasAuthority("READ")
+                .antMatchers(HttpMethod.POST, "/method/post").hasAuthority("CREATE")
+                .antMatchers(HttpMethod.DELETE, "/method/delete").hasAuthority("DELETE")
+                .antMatchers(HttpMethod.PUT, "/method/put").hasAuthority("UPDATE")
+                .anyRequest().denyAll() // Denegar cualquier otra solicitud
+                .and()
+                .addFilterBefore(new JwtTokenValidator(jwtUtils), BasicAuthenticationFilter.class)
                 .build();
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguratio) throws Exception {
-        return authenticationConfiguratio.getAuthenticationManager();
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
     }
 
     @Bean
-    public AuthenticationProvider authenticationProvider () {
+    public AuthenticationProvider authenticationProvider(UserDetailServiceImpl userDetailService) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setPasswordEncoder(passwordEncoder());
-        provider.setUserDetailsService(userDetailsService());
+        provider.setUserDetailsService(userDetailService);
         return provider;
-    }
-
-//    @Bean
-//    public UserDetailsService userDetailsService(){
-//        UserDetails userDetails = User.withUsername("gaspar")
-//                .password("armando1gaspar")
-//                .roles("ADMIN")
-//                .authorities("READ", "CREATE")
-//                .build();
-//        return new InMemoryUserDetailsManager(userDetails);
-//    }
-
-    //Tambien se puede retornar una lista de usuarios
-    @Bean
-    public UserDetailsService userDetailsService () {
-        List<UserDetails> userDetailsList = new ArrayList<>();
-
-        userDetailsList.add(User.withUsername("gaspar")
-                .password("armando1gaspar")
-                .roles("ADMIN")
-                .authorities("READ", "CREATE")
-                .build());
-        userDetailsList.add(User.withUsername("Alfredo")
-                .password("alfredo1gaspar")
-                .roles("USER")
-                .authorities("READ")
-                .build());
-        return new InMemoryUserDetailsManager(userDetailsList);
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return NoOpPasswordEncoder.getInstance(); //Solo usar en modo de pruebas porque no encripta la contraseña
-        //return new BCryptPasswordEncoder();
+        return new BCryptPasswordEncoder();
     }
 }

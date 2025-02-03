@@ -15,19 +15,19 @@ import java.util.Set;
 @Getter
 @ToString
 @Table(name = "users")
-
 public class UserEntity {
-
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     @Column(unique = true)
     private String username;
+
     private String password;
 
     @Column(name = "is_enable")
-    private boolean isEnable;
+    private boolean enabled;  // Corregido
 
     @Column(name = "account_non_expired")
     private boolean accountNonExpired;
@@ -46,4 +46,7 @@ public class UserEntity {
     )
     private Set<RoleEntity> roles = new HashSet<>();
 
+    public boolean isEnabled() { // Agregado para Spring Security
+        return enabled;
+    }
 }
