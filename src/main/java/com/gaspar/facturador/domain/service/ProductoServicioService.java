@@ -2,11 +2,13 @@ package com.gaspar.facturador.domain.service;
 
 import bo.gob.impuestos.siat.*;
 import com.gaspar.facturador.domain.repository.IProductoServicioRepository;
+import com.gaspar.facturador.persistence.entity.ProductoServicioEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.rmi.RemoteException;
+import java.util.List;
 
 
 @Service
@@ -51,4 +53,5 @@ public class ProductoServicioService {
         }
         return mensaje;
     }
+
 }

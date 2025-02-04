@@ -35,4 +35,4 @@ public class ClienteController {
         ClienteEntity savedCliente = clienteRepository.save(cliente);
         return new ResponseEntity<>(savedCliente, HttpStatus.CREATED);
     }
-}
+}   
