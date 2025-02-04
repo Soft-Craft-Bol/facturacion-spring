@@ -54,7 +54,12 @@ public class SecurityConfig {
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS) // Sin sesiones
                 .and()
                 .authorizeRequests()
-                .antMatchers(HttpMethod.POST, "/auth/**").permitAll() // Permitir acceso público a /auth/**
+                .antMatchers(HttpMethod.POST, "/auth/**").permitAll()
+                .antMatchers(HttpMethod.POST, "/codigos/**").permitAll()
+                .antMatchers(HttpMethod.POST, "/factura/**").permitAll()
+                .antMatchers(HttpMethod.GET, "/clientes/**").permitAll()
+                .antMatchers(HttpMethod.POST, "/clientes/**").permitAll()
+                .antMatchers(HttpMethod.GET, "/api/v1/**").permitAll()// Permitir acceso público a /auth/**
                 .antMatchers(HttpMethod.GET, "/method/get").hasAuthority("READ")
                 .antMatchers(HttpMethod.POST, "/method/post").hasAuthority("CREATE")
                 .antMatchers(HttpMethod.DELETE, "/method/delete").hasAuthority("DELETE")
