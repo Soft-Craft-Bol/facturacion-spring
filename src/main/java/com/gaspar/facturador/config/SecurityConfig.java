@@ -60,6 +60,8 @@ public class SecurityConfig {
                 .antMatchers(HttpMethod.GET, "/clientes/**").permitAll()
                 .antMatchers(HttpMethod.POST, "/clientes/**").permitAll()
                 .antMatchers(HttpMethod.GET, "/productos-servicios/**").permitAll()
+                .antMatchers(HttpMethod.POST, "/factura/emitir").permitAll()
+                .antMatchers(HttpMethod.GET, "/items").permitAll()
                 .antMatchers(HttpMethod.GET, "/puntos-venta").permitAll()
                 .antMatchers(HttpMethod.GET, "/api/v1/**").permitAll()// Permitir acceso público a /auth/**
                 .antMatchers(HttpMethod.GET, "/method/get").hasAuthority("READ")
