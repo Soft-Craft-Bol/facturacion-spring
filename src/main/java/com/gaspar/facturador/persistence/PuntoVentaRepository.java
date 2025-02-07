@@ -1,14 +1,11 @@
 package com.gaspar.facturador.persistence;
 
-import com.gaspar.facturador.domain.repository.IPuntoVentaRepository;
+import  com.gaspar.facturador.domain.repository.IPuntoVentaRepository;
 import com.gaspar.facturador.persistence.crud.PuntoVentaCrudRepository;
 import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
-
-
-
 @Repository
 public class PuntoVentaRepository implements IPuntoVentaRepository {
 
@@ -27,4 +24,10 @@ public class PuntoVentaRepository implements IPuntoVentaRepository {
     public Optional<PuntoVentaEntity> findByCodigo(Integer codigo) {
         return this.puntoVentaCrudRepository.findByCodigo(codigo);
     }
+
+    @Override
+    public Iterable<PuntoVentaEntity> findAll() {
+        return puntoVentaCrudRepository.findAll();
+    }
+
 }

@@ -172,7 +172,7 @@ public class CabeceraCompraVenta {
             } else {
                 cabeceraCompraVenta.codigoTipoDocumentoIdentidad = CodigoTipoDocumentoIdentidadEnum.NIT.getValue();
             }
-            cabeceraCompraVenta.numeroDocumento = cliente.getNumeroDocumento();
+            cabeceraCompraVenta.numeroDocumento = cliente.getNumeroDocumento().toString();
             cabeceraCompraVenta.codigoCliente = cliente.getCodigoCliente();
 
             return this;
