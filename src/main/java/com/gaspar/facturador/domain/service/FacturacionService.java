@@ -22,21 +22,20 @@ public class FacturacionService {
     private final GeneraFacturaService generaFacturaService;
     private final EnvioFacturaService envioFacturaService;
     private final AnulacionFacturaService anulacionFacturaService;
-    private final ReversionFacturaService reversionFacturaService;
+    //private final ReversionFacturaService reversionFacturaService;
     private final RecepcionMasivaService recepcionMasivaService;
     private final IPuntoVentaRepository puntoVentaRepository;
     private final ICufdRepository cufdRepository;
 
     public FacturacionService(
             GeneraFacturaService generaFacturaService,
-            EnvioFacturaService envioFacturaService, AnulacionFacturaService anulacionFacturaService, ReversionFacturaService reversionFacturaService, RecepcionMasivaService recepcionMasivaService,
+            EnvioFacturaService envioFacturaService, AnulacionFacturaService anulacionFacturaService, RecepcionMasivaService recepcionMasivaService,
             IPuntoVentaRepository puntoVentaRepository,
             ICufdRepository cufdRepository
     ) {
         this.generaFacturaService = generaFacturaService;
         this.envioFacturaService = envioFacturaService;
         this.anulacionFacturaService = anulacionFacturaService;
-        this.reversionFacturaService = reversionFacturaService;
         this.recepcionMasivaService = recepcionMasivaService;
         this.puntoVentaRepository = puntoVentaRepository;
         this.cufdRepository = cufdRepository;
@@ -76,9 +75,7 @@ public class FacturacionService {
         return anulacionFacturaService.anularFactura(idPuntoVenta, cuf, codigoMotivo);
     }
 
-    public RespuestaRecepcion revertirFactura(Long idPuntoVenta, String cuf, String codigoMotivo) throws Exception {
-        return reversionFacturaService.revertirFactura(idPuntoVenta, cuf, codigoMotivo);
-    }
+
 
     public RespuestaRecepcion enviarPaqueteFacturas(Long idPuntoVenta, byte[] archivoComprimido, int cantidadFacturas) throws Exception {
         Optional<PuntoVentaEntity> puntoVenta = puntoVentaRepository.findById(Math.toIntExact(idPuntoVenta));

@@ -6,7 +6,6 @@ import com.gaspar.facturador.application.response.FacturaResponse;
 import com.gaspar.facturador.domain.service.FacturacionService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
@@ -39,19 +38,19 @@ public class FacturacionController {
         return new ResponseEntity<>(respuesta, HttpStatus.OK);
     }
 
-    @PostMapping("/revertir")
-    public ResponseEntity<RespuestaRecepcion> revertirFactura(
-            @RequestParam Long idPuntoVenta,
-            @RequestParam String cuf,
-            @RequestParam String codigoMotivo
-    ) throws Exception {
-        RespuestaRecepcion respuesta = this.facturacionService.revertirFactura(
-                idPuntoVenta,
-                cuf,
-                codigoMotivo
-        );
-        return new ResponseEntity<>(respuesta, HttpStatus.OK);
-    }
+//    @PostMapping("/revertir")
+//    public ResponseEntity<RespuestaRecepcion> revertirFactura(
+//            @RequestParam Long idPuntoVenta,
+//            @RequestParam String cuf,
+//            @RequestParam String codigoMotivo
+//    ) throws Exception {
+//        RespuestaRecepcion respuesta = this.facturacionService.revertirFactura(
+//                idPuntoVenta,
+//                cuf,
+//                codigoMotivo
+//        );
+//        return new ResponseEntity<>(respuesta, HttpStatus.OK);
+//    }
 
     @PostMapping("/recepcion-masiva")
     public ResponseEntity<RespuestaRecepcion> enviarPaqueteFacturas(
