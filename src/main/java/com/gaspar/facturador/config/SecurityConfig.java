@@ -62,6 +62,10 @@ public class SecurityConfig {
                 .antMatchers(HttpMethod.GET, "/productos-servicios/**").permitAll()
                 .antMatchers(HttpMethod.POST, "/factura/emitir").permitAll()
                 .antMatchers(HttpMethod.GET, "/items").permitAll()
+                .antMatchers(HttpMethod.GET, "/items/**").permitAll()
+                .antMatchers(HttpMethod.POST, "/items").permitAll()
+                .antMatchers(HttpMethod.PUT, "/items/**").permitAll()
+                .antMatchers(HttpMethod.DELETE, "/items/**").permitAll()
                 .antMatchers(HttpMethod.GET, "/puntos-venta").permitAll()
                 .antMatchers(HttpMethod.GET, "/api/v1/**").permitAll()// Permitir acceso público a /auth/**
                 .antMatchers(HttpMethod.GET, "/method/get").hasAuthority("READ")

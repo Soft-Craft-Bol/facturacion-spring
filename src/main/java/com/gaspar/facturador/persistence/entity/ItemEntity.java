@@ -5,6 +5,7 @@ import lombok.Setter;
 
 import javax.persistence.*;
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -16,7 +17,7 @@ public class ItemEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(unique = true)
+    @Column(unique = true, nullable = false)
     private String codigo;
 
     @Column(length = 500)
@@ -30,6 +31,11 @@ public class ItemEntity {
 
     public Integer getId() {
         return id;
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        this.codigo = UUID.randomUUID().toString();
     }
 
     public void setId(Integer id) {
