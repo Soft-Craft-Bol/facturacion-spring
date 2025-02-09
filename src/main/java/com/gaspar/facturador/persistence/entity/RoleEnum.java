@@ -5,5 +5,8 @@ public enum RoleEnum {
     ADMIN,
     USER,
     INVITED,
-    DEVELOPER
+    DEVELOPER,
+    PANADERO,
+    MAESTRO,
+    SECRETARIA
 }

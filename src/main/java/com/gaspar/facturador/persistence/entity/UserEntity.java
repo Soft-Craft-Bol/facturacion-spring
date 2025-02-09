@@ -24,6 +24,12 @@ public class UserEntity {
     @Column(unique = true)
     private String username;
 
+    @Column(name = "first_name")
+    private String firstName;
+
+    @Column(name = "last_name")
+    private String lastName;
+
     private String password;
 
     @Column(name = "is_enable")
@@ -37,6 +43,15 @@ public class UserEntity {
 
     @Column(name = "credentials_non_expired")
     private boolean credentialsNonExpired;
+
+    @Column(name = "email")
+    private String email;
+
+    @Column(name = "telefono")
+    private Long telefono;
+
+    @Column(name = "photo")
+    private String photo;
 
     @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinTable(
