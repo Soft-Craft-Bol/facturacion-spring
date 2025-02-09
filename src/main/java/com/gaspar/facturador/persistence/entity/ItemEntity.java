@@ -5,6 +5,7 @@ import lombok.Setter;
 
 import javax.persistence.*;
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -16,7 +17,7 @@ public class ItemEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(unique = true)
+    @Column(unique = true, nullable = false)
     private String codigo;
 
     @Column(length = 500)
@@ -27,4 +28,64 @@ public class ItemEntity {
     private BigDecimal precioUnitario;
 
     private Integer codigoProductoSin;
+
+    @Column(length = 1024)
+    private String imagen;
+
+    public Integer getId() {
+        return id;
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        this.codigo = UUID.randomUUID().toString();
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public String getCodigo() {
+        return codigo;
+    }
+
+    public void setCodigo(String codigo) {
+        this.codigo = codigo;
+    }
+
+    public String getDescripcion() {
+        return descripcion;
+    }
+
+    public void setDescripcion(String descripcion) {
+        this.descripcion = descripcion;
+    }
+
+    public Integer getUnidadMedida() {
+        return unidadMedida;
+    }
+
+    public void setUnidadMedida(Integer unidadMedida) {
+        this.unidadMedida = unidadMedida;
+    }
+
+    public BigDecimal getPrecioUnitario() {
+        return precioUnitario;
+    }
+
+    public void setPrecioUnitario(BigDecimal precioUnitario) {
+        this.precioUnitario = precioUnitario;
+    }
+
+    public Integer getCodigoProductoSin() {
+        return codigoProductoSin;
+    }
+
+    public void setCodigoProductoSin(Integer codigoProductoSin) {
+        this.codigoProductoSin = codigoProductoSin;
+    }
+
+    public String getImagen() { return imagen; }
+
+    public void setImagen(String imagen) { this.imagen = imagen; }
 }

@@ -8,12 +8,15 @@ import com.gaspar.facturador.persistence.entity.ParametroEntity;
 import com.gaspar.facturador.persistence.mapper.ParametroMapper;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 
 @Repository
 public class ParametroRepository implements IParametroRepository {
 
     private final ParametroMapper parametroMapper;
     private final ParametroCrudRepository parametroCrudRepository;
+
 
     public ParametroRepository(ParametroMapper parametroMapper, ParametroCrudRepository parametroCrudRepository) {
         this.parametroMapper = parametroMapper;
@@ -30,5 +33,9 @@ public class ParametroRepository implements IParametroRepository {
     @Override
     public void deleteAll() {
         this.parametroCrudRepository.deleteAll();
+    }
+
+    public List<ParametroEntity> getDocumentosIdentidad() {
+        return parametroCrudRepository.findByCodigoTipoParametro("TIPO_DOCUMENTO_IDENTIDAD");
     }
 }
