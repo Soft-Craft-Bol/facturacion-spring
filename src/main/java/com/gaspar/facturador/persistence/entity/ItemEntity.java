@@ -29,6 +29,9 @@ public class ItemEntity {
 
     private Integer codigoProductoSin;
 
+    @Column(length = 1024)
+    private String imagen;
+
     public Integer getId() {
         return id;
     }
@@ -81,4 +84,8 @@ public class ItemEntity {
     public void setCodigoProductoSin(Integer codigoProductoSin) {
         this.codigoProductoSin = codigoProductoSin;
     }
+
+    public String getImagen() { return imagen; }
+
+    public void setImagen(String imagen) { this.imagen = imagen; }
 }
