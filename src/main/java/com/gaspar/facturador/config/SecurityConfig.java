@@ -63,6 +63,7 @@ public class SecurityConfig {
                 .antMatchers(HttpMethod.POST, "/factura/emitir").permitAll()
                 .antMatchers(HttpMethod.GET, "/items").permitAll()
                 .antMatchers(HttpMethod.GET, "/items/**").permitAll()
+                .antMatchers(HttpMethod.POST, "/api/v1/items").permitAll()
                 .antMatchers(HttpMethod.POST, "/items").permitAll()
                 .antMatchers(HttpMethod.PUT, "/items/**").permitAll()
                 .antMatchers(HttpMethod.DELETE, "/items/**").permitAll()
