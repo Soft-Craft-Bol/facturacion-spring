@@ -58,6 +58,7 @@ public class FacturacionService {
         Optional<CufdEntity> cufd = cufdRepository.findActual(puntoVenta.get());
         if (cufd.isEmpty()) throw new ProcessException("Cufd vigente no encontrado");
 
+        // Generar la factura
         FacturaElectronicaCompraVenta factura = this.generaFacturaService.llenarDatos(ventaRequest, cufd.get());
 
         // Convertir FacturaElectronicaCompraVenta a FacturaEntity
@@ -117,17 +118,23 @@ public class FacturacionService {
 
         // Guardar la factura y sus detalles
         facturaRepository.save(facturaEntity);
+        // Obtener el XML sin firmar
+        byte[] xmlBytes = this.generaFacturaService.getXmlBytes(factura);
+        String xmlContent = new String(xmlBytes);
 
-
+        // Continuar con el flujo normal
         byte[] xmlComprimidoZip = this.generaFacturaService.obtenerArchivo(factura);
         RespuestaRecepcion respuestaRecepcion = this.envioFacturaService.enviar(puntoVenta.get(), cufd.get(), xmlComprimidoZip);
 
+        // Construir la respuesta
         FacturaResponse facturaResponse = new FacturaResponse();
         facturaResponse.setCodigoEstado(respuestaRecepcion.getCodigoEstado());
         facturaResponse.setCuf(factura.getCabecera().getCuf());
         facturaResponse.setNumeroFactura(factura.getCabecera().getNumeroFactura());
+        facturaResponse.setXmlContent(xmlContent);
 
-       // factura = facturaRepository.save(facturaResponse);
+// In FacturacionService
+       //&& factura = facturaRepository.save(facturaResponse);
 
         return facturaResponse;
     }

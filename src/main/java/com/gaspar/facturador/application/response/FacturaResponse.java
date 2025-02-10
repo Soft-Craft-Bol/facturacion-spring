@@ -11,4 +11,5 @@ public class FacturaResponse {
     private Integer codigoEstado;
     private String cuf;
     private Long numeroFactura;
+    private String xmlContent;
 }
