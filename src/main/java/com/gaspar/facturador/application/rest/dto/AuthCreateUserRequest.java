@@ -10,6 +10,6 @@ public record AuthCreateUserRequest(@NotBlank String username,
                                     @NotBlank String telefono,
                                     @NotBlank String nombre,
                                     @NotBlank String apellido,
-                                    MultipartFile photo,
+                                    String photo,
                                     AuthCreateRoleRequest roleRequest) {
 }

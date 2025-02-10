@@ -22,7 +22,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -44,9 +43,6 @@ public class UserDetailServiceImpl implements UserDetailsService {
 
     @Autowired
     private RoleRepository roleRepository;
-
-    @Autowired
-    private CloudinaryService cloudinaryService;
 
     @Override
     public UserDetails loadUserByUsername(String username) {
@@ -76,16 +72,23 @@ public class UserDetailServiceImpl implements UserDetailsService {
         );
     }
 
-    public AuthResponse createUser(AuthCreateUserRequest createUserRequest, MultipartFile photoFile) {
-        String username = createUserRequest.username();
-        String password = createUserRequest.password();
-        String email = createUserRequest.email();
-        Long telefono = Long.valueOf(createUserRequest.telefono());
-        List<String> rolesRequest = createUserRequest.roleRequest().roleListName();
+
+    public AuthResponse createUser(AuthCreateUserRequest createRoleRequest) {
+        String username = createRoleRequest.username();
+        String password = createRoleRequest.password();
+        String email = createRoleRequest.email();
+        Long telefono = Long.valueOf(createRoleRequest.telefono());
+        List<String> rolesRequest = createRoleRequest.roleRequest().roleListName();
 
         // Convertir los nombres de roles a valores de RoleEnum
         List<RoleEnum> roleEnums = rolesRequest.stream()
-                .map(role -> RoleEnum.valueOf(role.toUpperCase()))
+                .map(role -> {
+                    try {
+                        return RoleEnum.valueOf(role.toUpperCase());
+                    } catch (IllegalArgumentException e) {
+                        throw new IllegalArgumentException("Invalid role name: " + role);
+                    }
+                })
                 .collect(Collectors.toList());
 
         // Obtener los roles desde la base de datos
@@ -95,20 +98,14 @@ public class UserDetailServiceImpl implements UserDetailsService {
             throw new IllegalArgumentException("The roles specified do not exist.");
         }
 
-        // Subir imagen a Cloudinary si se proporciona
-        String photoUrl = null;
-        if (photoFile != null && !photoFile.isEmpty()) {
-            photoUrl = cloudinaryService.uploadImage(photoFile);
-        }
-
         UserEntity userEntity = UserEntity.builder()
                 .username(username)
                 .password(passwordEncoder.encode(password))
                 .email(email)
                 .telefono(telefono)
-                .firstName(createUserRequest.nombre())
-                .lastName(createUserRequest.apellido())
-                .photo(photoUrl)  // Guardamos la URL de Cloudinary
+                .firstName(createRoleRequest.nombre())
+                .lastName(createRoleRequest.apellido())
+                .photo(createRoleRequest.photo())
                 .roles(roleEntityList)
                 .enabled(true)
                 .accountNonLocked(true)
@@ -118,13 +115,21 @@ public class UserDetailServiceImpl implements UserDetailsService {
 
         UserEntity userSaved = userRepository.save(userEntity);
 
+        ArrayList<SimpleGrantedAuthority> authorities = new ArrayList<>();
+
+        userSaved.getRoles().forEach(role -> authorities.add(new SimpleGrantedAuthority("ROLE_".concat(role.getRoleEnum().name()))));
+        userSaved.getRoles().stream()
+                .flatMap(role -> role.getPermissions().stream())
+                .forEach(permission -> authorities.add(new SimpleGrantedAuthority(permission.getName())));
+
         SecurityContext securityContextHolder = SecurityContextHolder.getContext();
-        Authentication authentication = new UsernamePasswordAuthenticationToken(userSaved, null, new ArrayList<>());
+        Authentication authentication = new UsernamePasswordAuthenticationToken(userSaved, null, authorities);
 
         String accessToken = jwtUtils.createToken(authentication);
 
         return new AuthResponse(username, "User created successfully", accessToken, true);
     }
+
 
     public AuthResponse loginUser(AuthLoginRequest authLoginRequest) {
 
