@@ -21,6 +21,7 @@ public class UserController {
         List<UserDTO> users = userDetailService.getAllUsers();
         return ResponseEntity.ok(users);
     }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUserById(@PathVariable Long id) {
         userDetailService.deleteById(id);
@@ -32,4 +33,10 @@ public class UserController {
         return ResponseEntity.ok(updatedUser);
     }
 
+    //Obtener usuarios por id
+    @GetMapping("/{id}")
+    public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
+        UserDTO user = userDetailService.getUserById(id);
+        return ResponseEntity.ok(user);
+    }
 }
