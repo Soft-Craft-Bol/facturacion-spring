@@ -41,8 +41,36 @@ public class FacturacionService {
         this.cufdRepository = cufdRepository;
     }
 
-    public FacturaResponse emitirFactura(VentaRequest ventaRequest) throws Exception {
+//    public FacturaResponse emitirFactura(VentaRequest ventaRequest) throws Exception {
+//
+//        Optional<PuntoVentaEntity> puntoVenta = this.puntoVentaRepository.findById(ventaRequest.getIdPuntoVenta());
+//        if (puntoVenta.isEmpty()) throw new ProcessException("Punto venta no encontrado");
+//
+//        Optional<CufdEntity> cufd = cufdRepository.findActual(puntoVenta.get());
+//        if (cufd.isEmpty()) throw new ProcessException("Cufd vigente no encontrado");
+//
+//        // Generar la factura
+//        FacturaElectronicaCompraVenta factura = this.generaFacturaService.llenarDatos(ventaRequest, cufd.get());
+//
+//        // *** Aquí imprimimos el XML sin firmar para depuración ***
+//        //this.generaFacturaService.imprimirXmlSinFirmar(factura); // Asegúrate de tener este método en GeneraFacturaService
+//// *** Aquí imprimimos el XML firmado para depuración ***
+//       // this.generaFacturaService.imprimirXmlFirmado(factura);
+//
+//        // Continuar con el flujo normal
+//        byte[] xmlComprimidoZip = this.generaFacturaService.obtenerArchivo(factura);
+//        RespuestaRecepcion respuestaRecepcion = this.envioFacturaService.enviar(puntoVenta.get(), cufd.get(), xmlComprimidoZip);
+//
+//        // Construir la respuesta
+//        FacturaResponse facturaResponse = new FacturaResponse();
+//        facturaResponse.setCodigoEstado(respuestaRecepcion.getCodigoEstado());
+//        facturaResponse.setCuf(factura.getCabecera().getCuf());
+//        facturaResponse.setNumeroFactura(factura.getCabecera().getNumeroFactura());
+//
+//        return facturaResponse;
+//    }
 
+    public FacturaResponse emitirFactura(VentaRequest ventaRequest) throws Exception {
         Optional<PuntoVentaEntity> puntoVenta = this.puntoVentaRepository.findById(ventaRequest.getIdPuntoVenta());
         if (puntoVenta.isEmpty()) throw new ProcessException("Punto venta no encontrado");
 
@@ -52,11 +80,9 @@ public class FacturacionService {
         // Generar la factura
         FacturaElectronicaCompraVenta factura = this.generaFacturaService.llenarDatos(ventaRequest, cufd.get());
 
-        // *** Aquí imprimimos el XML sin firmar para depuración ***
-        //this.generaFacturaService.imprimirXmlSinFirmar(factura); // Asegúrate de tener este método en GeneraFacturaService
-
-// *** Aquí imprimimos el XML firmado para depuración ***
-       // this.generaFacturaService.imprimirXmlFirmado(factura);
+        // Obtener el XML sin firmar
+        byte[] xmlBytes = this.generaFacturaService.getXmlBytes(factura);
+        String xmlContent = new String(xmlBytes);
 
         // Continuar con el flujo normal
         byte[] xmlComprimidoZip = this.generaFacturaService.obtenerArchivo(factura);
@@ -67,6 +93,7 @@ public class FacturacionService {
         facturaResponse.setCodigoEstado(respuestaRecepcion.getCodigoEstado());
         facturaResponse.setCuf(factura.getCabecera().getCuf());
         facturaResponse.setNumeroFactura(factura.getCabecera().getNumeroFactura());
+        facturaResponse.setXmlContent(xmlContent);
 
         return facturaResponse;
     }
