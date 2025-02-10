@@ -157,4 +157,8 @@ public class UserDetailServiceImpl implements UserDetailsService {
 
         return new UsernamePasswordAuthenticationToken(username, password, userDetails.getAuthorities());
     }
+
+    public List<UserEntity> getAllUsers(){
+        return userRepository.findAll();
+    }
 }

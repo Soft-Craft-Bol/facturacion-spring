@@ -77,6 +77,7 @@ public class SecurityConfig {
                 .antMatchers(HttpMethod.POST, "/codigos/**").permitAll()
                 .antMatchers(HttpMethod.POST, "/factura/**").permitAll()
                 .antMatchers(HttpMethod.POST, "/sincronizar/**").permitAll()
+                .antMatchers(HttpMethod.GET, "/users").permitAll()
                 .anyRequest().denyAll() // Denegar cualquier otra solicitud
                 .and()
                 .addFilterBefore(new JwtTokenValidator(jwtUtils), BasicAuthenticationFilter.class)
