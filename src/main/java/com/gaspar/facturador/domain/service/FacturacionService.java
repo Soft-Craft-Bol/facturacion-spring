@@ -143,8 +143,6 @@ public class FacturacionService {
         return anulacionFacturaService.anularFactura(idPuntoVenta, cuf, codigoMotivo);
     }
 
-
-
     public RespuestaRecepcion enviarPaqueteFacturas(Long idPuntoVenta, byte[] archivoComprimido, int cantidadFacturas) throws Exception {
         Optional<PuntoVentaEntity> puntoVenta = puntoVentaRepository.findById(Math.toIntExact(idPuntoVenta));
         if (puntoVenta.isEmpty()) {

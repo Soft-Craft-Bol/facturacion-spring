@@ -212,4 +212,24 @@ public class UserDetailServiceImpl implements UserDetailsService {
 
         return updatedUserDTO;
     }
+
+    //Obtener los usuarios por su id
+    public UserDTO getUserById(Long id) {
+        UserEntity userEntity = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        UserDTO userDTO = new UserDTO();
+        userDTO.setId(userEntity.getId());
+        userDTO.setUsername(userEntity.getUsername());
+        userDTO.setFirstName(userEntity.getFirstName());
+        userDTO.setLastName(userEntity.getLastName());
+        userDTO.setEmail(userEntity.getEmail());
+        userDTO.setTelefono(userEntity.getTelefono());
+        userDTO.setPhoto(userEntity.getPhoto());
+        userDTO.setRoles(userEntity.getRoles().stream()
+                .map(role -> role.getRoleEnum().name())
+                .collect(Collectors.toSet()));
+
+        return userDTO;
+    }
 }

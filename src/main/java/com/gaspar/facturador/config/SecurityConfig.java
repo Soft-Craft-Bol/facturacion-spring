@@ -77,7 +77,7 @@ public class SecurityConfig {
                 .antMatchers(HttpMethod.POST, "/codigos/**").permitAll()
                 .antMatchers(HttpMethod.POST, "/factura/**").permitAll()
                 .antMatchers(HttpMethod.POST, "/sincronizar/**").permitAll()
-                .antMatchers(HttpMethod.GET, "/users").permitAll()
+                .antMatchers(HttpMethod.GET, "/users/**").permitAll()
                 .antMatchers(HttpMethod.DELETE,"/users/**").permitAll()
                 .antMatchers(HttpMethod.PUT,"/users/**").permitAll()
                 .anyRequest().denyAll() // Denegar cualquier otra solicitud
