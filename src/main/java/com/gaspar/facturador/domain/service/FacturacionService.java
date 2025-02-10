@@ -9,6 +9,7 @@ import com.gaspar.facturador.domain.repository.ICufdRepository;
 import com.gaspar.facturador.domain.repository.IPuntoVentaRepository;
 import com.gaspar.facturador.domain.service.emision.EnvioFacturaService;
 import com.gaspar.facturador.domain.service.emision.GeneraFacturaService;
+import com.gaspar.facturador.persistence.FacturaRepository;
 import com.gaspar.facturador.persistence.entity.CufdEntity;
 import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
 import org.springframework.stereotype.Service;
@@ -24,12 +25,13 @@ public class FacturacionService {
     private final AnulacionFacturaService anulacionFacturaService;
     //private final ReversionFacturaService reversionFacturaService;
     private final RecepcionMasivaService recepcionMasivaService;
+    private final FacturaRepository facturaRepository;
     private final IPuntoVentaRepository puntoVentaRepository;
     private final ICufdRepository cufdRepository;
 
     public FacturacionService(
             GeneraFacturaService generaFacturaService,
-            EnvioFacturaService envioFacturaService, AnulacionFacturaService anulacionFacturaService, RecepcionMasivaService recepcionMasivaService,
+            EnvioFacturaService envioFacturaService, AnulacionFacturaService anulacionFacturaService, RecepcionMasivaService recepcionMasivaService, FacturaRepository facturaRepository,
             IPuntoVentaRepository puntoVentaRepository,
             ICufdRepository cufdRepository
     ) {
@@ -37,6 +39,7 @@ public class FacturacionService {
         this.envioFacturaService = envioFacturaService;
         this.anulacionFacturaService = anulacionFacturaService;
         this.recepcionMasivaService = recepcionMasivaService;
+        this.facturaRepository = facturaRepository;
         this.puntoVentaRepository = puntoVentaRepository;
         this.cufdRepository = cufdRepository;
     }
@@ -67,6 +70,9 @@ public class FacturacionService {
         facturaResponse.setCodigoEstado(respuestaRecepcion.getCodigoEstado());
         facturaResponse.setCuf(factura.getCabecera().getCuf());
         facturaResponse.setNumeroFactura(factura.getCabecera().getNumeroFactura());
+
+// In FacturacionService
+       //&& factura = facturaRepository.save(facturaResponse);
 
         return facturaResponse;
     }
