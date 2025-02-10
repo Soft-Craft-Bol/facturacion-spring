@@ -35,9 +35,9 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173")); // Origen permitido (tu frontend)
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS")); // Métodos permitidos
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Cache-Control", "Content-Type")); // Headers permitidos
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173")); 
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Cache-Control", "Content-Type"));
         configuration.setAllowCredentials(true); // Permitir credenciales (necesario para cookies, headers de autorización, etc.)
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -74,6 +74,9 @@ public class SecurityConfig {
                 .antMatchers(HttpMethod.POST, "/method/post").hasAuthority("CREATE")
                 .antMatchers(HttpMethod.DELETE, "/method/delete").hasAuthority("DELETE")
                 .antMatchers(HttpMethod.PUT, "/method/put").hasAuthority("UPDATE")
+                .antMatchers(HttpMethod.POST, "/codigos/**").permitAll()
+                .antMatchers(HttpMethod.POST, "/factura/**").permitAll()
+                .antMatchers(HttpMethod.POST, "/sincronizar/**").permitAll()
                 .anyRequest().denyAll() // Denegar cualquier otra solicitud
                 .and()
                 .addFilterBefore(new JwtTokenValidator(jwtUtils), BasicAuthenticationFilter.class)

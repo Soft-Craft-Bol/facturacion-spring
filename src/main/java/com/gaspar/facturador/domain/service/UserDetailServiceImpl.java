@@ -76,6 +76,8 @@ public class UserDetailServiceImpl implements UserDetailsService {
     public AuthResponse createUser(AuthCreateUserRequest createRoleRequest) {
         String username = createRoleRequest.username();
         String password = createRoleRequest.password();
+        String email = createRoleRequest.email();
+        Long telefono = Long.valueOf(createRoleRequest.telefono());
         List<String> rolesRequest = createRoleRequest.roleRequest().roleListName();
 
         // Convertir los nombres de roles a valores de RoleEnum
@@ -99,6 +101,11 @@ public class UserDetailServiceImpl implements UserDetailsService {
         UserEntity userEntity = UserEntity.builder()
                 .username(username)
                 .password(passwordEncoder.encode(password))
+                .email(email)
+                .telefono(telefono)
+                .firstName(createRoleRequest.nombre())
+                .lastName(createRoleRequest.apellido())
+                .photo(createRoleRequest.photo())
                 .roles(roleEntityList)
                 .enabled(true)
                 .accountNonLocked(true)
@@ -122,6 +129,7 @@ public class UserDetailServiceImpl implements UserDetailsService {
 
         return new AuthResponse(username, "User created successfully", accessToken, true);
     }
+
 
     public AuthResponse loginUser(AuthLoginRequest authLoginRequest) {
 
