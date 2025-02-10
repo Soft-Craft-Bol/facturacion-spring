@@ -162,4 +162,7 @@ public class FacturacionService {
     public List<FacturaEntity> getAllFacturas() {
         return facturaRepository.findAll();
     }
+    public void deleteFacturaById(Long id) {
+        facturaRepository.delete(id);
+    }
 }

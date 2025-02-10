@@ -72,4 +72,10 @@ public class FacturacionController {
         return ResponseEntity.ok(facturas);
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteFacturaById(@PathVariable Long id) {
+        facturacionService.deleteFacturaById(id);
+        return ResponseEntity.noContent().build();
+    }
+
 }
