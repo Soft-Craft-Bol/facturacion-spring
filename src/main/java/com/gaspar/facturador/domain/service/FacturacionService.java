@@ -16,6 +16,7 @@ import com.gaspar.facturador.persistence.entity.CufdEntity;
 import com.gaspar.facturador.persistence.entity.FacturaDetalleEntity;
 import com.gaspar.facturador.persistence.entity.FacturaEntity;
 import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -155,5 +156,11 @@ public class FacturacionService {
         }
 
         return recepcionMasivaService.enviarPaqueteFacturas(puntoVenta.get(), cufd.get(), archivoComprimido, cantidadFacturas);
+    }
+    public List<FacturaEntity> getAllFacturas() {
+        return facturaRepository.findAll();
+    }
+    public void deleteFacturaById(Long id) {
+        facturaRepository.delete(id);
     }
 }

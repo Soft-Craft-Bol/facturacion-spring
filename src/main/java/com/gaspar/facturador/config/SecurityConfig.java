@@ -80,6 +80,8 @@ public class SecurityConfig {
                 .antMatchers(HttpMethod.GET, "/users/**").permitAll()
                 .antMatchers(HttpMethod.DELETE,"/users/**").permitAll()
                 .antMatchers(HttpMethod.PUT,"/users/**").permitAll()
+                .antMatchers(HttpMethod.GET,"/factura").permitAll()
+                .antMatchers(HttpMethod.DELETE, "/factura/**").permitAll()
                 .anyRequest().denyAll() // Denegar cualquier otra solicitud
                 .and()
                 .addFilterBefore(new JwtTokenValidator(jwtUtils), BasicAuthenticationFilter.class)

@@ -4,11 +4,14 @@ import bo.gob.impuestos.siat.RespuestaRecepcion;
 import com.gaspar.facturador.application.request.VentaRequest;
 import com.gaspar.facturador.application.response.FacturaResponse;
 import com.gaspar.facturador.domain.service.FacturacionService;
+import com.gaspar.facturador.persistence.FacturaRepository;
+import com.gaspar.facturador.persistence.entity.FacturaEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.List;
 
 
 @RestController
@@ -17,6 +20,7 @@ import javax.validation.Valid;
 public class FacturacionController {
 
     private final FacturacionService facturacionService;
+    private FacturaRepository facturaRepository;
 
     public FacturacionController(FacturacionService facturacionService) {
         this.facturacionService = facturacionService;
@@ -60,6 +64,18 @@ public class FacturacionController {
     ) throws Exception {
         RespuestaRecepcion respuesta = this.facturacionService.enviarPaqueteFacturas(idPuntoVenta, archivoComprimido, cantidadFacturas);
         return new ResponseEntity<>(respuesta, HttpStatus.OK);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<FacturaEntity>> getAllFacturas() {
+        List<FacturaEntity> facturas = facturacionService.getAllFacturas();
+        return ResponseEntity.ok(facturas);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteFacturaById(@PathVariable Long id) {
+        facturacionService.deleteFacturaById(id);
+        return ResponseEntity.noContent().build();
     }
 
 }
