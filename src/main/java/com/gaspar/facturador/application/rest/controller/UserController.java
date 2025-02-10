@@ -1,13 +1,12 @@
 package com.gaspar.facturador.application.rest.controller;
 
 import com.gaspar.facturador.domain.service.UserDetailServiceImpl;
+import com.gaspar.facturador.persistence.dto.UserDTO;
 import com.gaspar.facturador.persistence.entity.UserEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -18,8 +17,19 @@ public class UserController {
     private UserDetailServiceImpl userDetailService;
 
     @GetMapping
-    public ResponseEntity<List<UserEntity>> getAllUser() {
-        List<UserEntity> users = userDetailService.getAllUsers();
+    public ResponseEntity<List<UserDTO>> getAllUsers() {
+        List<UserDTO> users = userDetailService.getAllUsers();
         return ResponseEntity.ok(users);
     }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUserById(@PathVariable Long id) {
+        userDetailService.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+    @PutMapping("/{id}")
+    public ResponseEntity<UserDTO> updateUser(@PathVariable Long id, @RequestBody UserDTO userDTO) {
+        UserDTO updatedUser = userDetailService.updateUser(id, userDTO);
+        return ResponseEntity.ok(updatedUser);
+    }
+
 }

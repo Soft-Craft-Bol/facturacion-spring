@@ -5,6 +5,7 @@ import com.gaspar.facturador.application.rest.dto.AuthLoginRequest;
 import com.gaspar.facturador.application.rest.dto.AuthResponse;
 import com.gaspar.facturador.persistence.crud.RoleRepository;
 import com.gaspar.facturador.persistence.crud.UserRepository;
+import com.gaspar.facturador.persistence.dto.UserDTO;
 import com.gaspar.facturador.persistence.entity.RoleEntity;
 import com.gaspar.facturador.persistence.entity.RoleEnum;
 import com.gaspar.facturador.persistence.entity.UserEntity;
@@ -158,7 +159,57 @@ public class UserDetailServiceImpl implements UserDetailsService {
         return new UsernamePasswordAuthenticationToken(username, password, userDetails.getAuthorities());
     }
 
-    public List<UserEntity> getAllUsers(){
-        return userRepository.findAll();
+    public List<UserDTO> getAllUsers() {
+        return userRepository.findAll().stream()
+                .map(user -> {
+                    UserDTO dto = new UserDTO();
+                    dto.setId(user.getId());
+                    dto.setUsername(user.getUsername());
+                    dto.setFirstName(user.getFirstName());
+                    dto.setLastName(user.getLastName());
+                    dto.setEmail(user.getEmail());
+                    dto.setTelefono(user.getTelefono());
+                    dto.setPhoto(user.getPhoto());
+                    dto.setRoles(user.getRoles().stream()
+                            .map(role -> role.getRoleEnum().name())
+                            .collect(Collectors.toSet()));
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+    public void deleteById(long id){
+        userRepository.deleteById(id);
+    }
+
+    public UserDTO updateUser(Long id, UserDTO userDTO) {
+        UserEntity userEntity = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        userEntity.setUsername(userDTO.getUsername());
+        userEntity.setFirstName(userDTO.getFirstName());
+        userEntity.setLastName(userDTO.getLastName());
+        userEntity.setEmail(userDTO.getEmail());
+        userEntity.setTelefono(userDTO.getTelefono());
+        userEntity.setPhoto(userDTO.getPhoto());
+        userEntity.setRoles(userDTO.getRoles().stream()
+                .map(role -> roleRepository.findByRoleEnum(RoleEnum.valueOf(role))
+                        .orElseThrow(() -> new IllegalArgumentException("Role not found: " + role)))
+                .collect(Collectors.toSet()));
+
+        UserEntity updatedUser = userRepository.save(userEntity);
+
+        UserDTO updatedUserDTO = new UserDTO();
+        updatedUserDTO.setId(updatedUser.getId());
+        updatedUserDTO.setUsername(updatedUser.getUsername());
+        updatedUserDTO.setFirstName(updatedUser.getFirstName());
+        updatedUserDTO.setLastName(updatedUser.getLastName());
+        updatedUserDTO.setEmail(updatedUser.getEmail());
+        updatedUserDTO.setTelefono(updatedUser.getTelefono());
+        updatedUserDTO.setPhoto(updatedUser.getPhoto());
+        updatedUserDTO.setRoles(updatedUser.getRoles().stream()
+                .map(role -> role.getRoleEnum().name())
+                .collect(Collectors.toSet()));
+
+        return updatedUserDTO;
     }
 }
