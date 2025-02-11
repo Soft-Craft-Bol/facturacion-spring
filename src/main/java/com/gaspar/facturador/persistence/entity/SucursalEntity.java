@@ -40,4 +40,7 @@ public class SucursalEntity {
     @ManyToOne
     @JoinColumn(name = "id_empresa", nullable = false)
     private EmpresaEntity empresa;
+
+    @Column(length = 1024)
+    private String image;
 }
