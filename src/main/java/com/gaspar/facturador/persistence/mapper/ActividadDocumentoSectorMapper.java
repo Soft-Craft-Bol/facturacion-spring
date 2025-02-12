@@ -1,6 +1,6 @@
 package com.gaspar.facturador.persistence.mapper;
 
-import bo.gob.impuestos.siat.ActividadesDocumentoSectorDto;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.ActividadesDocumentoSectorDto;
 import com.gaspar.facturador.persistence.entity.ActividadDocumentoSectorEntity;
 import org.mapstruct.Mapper;
 

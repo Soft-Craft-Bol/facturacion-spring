@@ -1,8 +1,8 @@
 package com.gaspar.facturador.domain.helpers;
 
 import com.gaspar.facturador.domain.DatosCUF;
+import jakarta.xml.bind.DatatypeConverter;
 
-import javax.xml.bind.DatatypeConverter;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;

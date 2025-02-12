@@ -1,6 +1,6 @@
 package com.gaspar.facturador.domain.service;
 
-import bo.gob.impuestos.siat.*;
+import bo.gob.impuestos.siat.api.servicio.facturacion.compra.venta.*;
 import com.gaspar.facturador.application.rest.exception.ProcessException;
 import com.gaspar.facturador.config.AppConfig;
 import com.gaspar.facturador.domain.repository.ICufdRepository;
@@ -9,15 +9,19 @@ import com.gaspar.facturador.domain.repository.IPuntoVentaRepository;
 import com.gaspar.facturador.persistence.entity.CufdEntity;
 import com.gaspar.facturador.persistence.entity.CuisEntity;
 import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.rmi.RemoteException;
+import java.util.List;
 import java.util.Optional;
-
-import static org.hibernate.bytecode.enhance.spi.interceptor.BytecodeInterceptorLogging.LOGGER;
+import java.util.stream.Collectors;
 
 @Service
 public class AnulacionFacturaService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AnulacionFacturaService.class);
 
     private final AppConfig appConfig;
     private final ServicioFacturacion servicioFacturacion;
@@ -46,14 +50,14 @@ public class AnulacionFacturaService {
     ) throws RemoteException {
         // Verificar la comunicación con el SIAT
         RespuestaComunicacion respuestaComunicacion = servicioFacturacion.verificarComunicacion();
-        if (!respuestaComunicacion.getTransaccion()) {
+        if (!Boolean.TRUE.equals(respuestaComunicacion.isTransaccion())) {
             throw new ProcessException("No se pudo conectar con los servidores del S.I.N.");
         }
 
         // Obtener el punto de venta
         Optional<PuntoVentaEntity> puntoVenta = puntoVentaRepository.findById(Math.toIntExact(idPuntoVenta));
         if (puntoVenta.isEmpty()) {
-            throw new ProcessException("Punto venta no encontrado");
+            throw new ProcessException("Punto de venta no encontrado");
         }
 
         // Obtener el CUFD vigente desde el repositorio
@@ -85,23 +89,25 @@ public class AnulacionFacturaService {
         solicitudAnulacion.setCufd(cufd.get().getCodigo()); // Asignar el CUFD aquí
 
         // Llamar al servicio de anulación
-        LOGGER.info("Solicitud de anulación: {}");
+        LOGGER.info("Solicitud de anulación: {}", solicitudAnulacion);
         RespuestaRecepcion respuestaRecepcion = servicioFacturacion.anulacionFactura(solicitudAnulacion);
-        LOGGER.info("Respuesta del servicio: {}", respuestaRecepcion.getMensajesList());
+        LOGGER.info("Respuesta del servicio: {}", obtenerMensajeServicio(respuestaRecepcion.getMensajesList()));
 
         // Verificar la respuesta
         if (respuestaRecepcion != null && respuestaRecepcion.getCodigoEstado() != 908) {
-            StringBuilder mensajes = new StringBuilder();
-            if (respuestaRecepcion.getMensajesList() != null) {
-                for (MensajeRecepcion mensaje : respuestaRecepcion.getMensajesList()) {
-                    mensajes.append(mensaje.getDescripcion()).append(". ");
-                }
-            } else {
-                mensajes.append("No se recibieron mensajes de error.");
-            }
-            throw new ProcessException(mensajes.toString());
+            throw new ProcessException(obtenerMensajeServicio(respuestaRecepcion.getMensajesList()));
         }
 
         return respuestaRecepcion;
+    }
+
+    private String obtenerMensajeServicio(List<MensajeRecepcion> mensajeServicioList) {
+        if (mensajeServicioList == null || mensajeServicioList.isEmpty()) {
+            return "No se recibieron mensajes de error.";
+        }
+
+        return mensajeServicioList.stream()
+                .map(MensajeRecepcion::getDescripcion)
+                .collect(Collectors.joining(". ")) + ".";
     }
 }

@@ -1,6 +1,6 @@
 package com.gaspar.facturador.persistence;
 
-import bo.gob.impuestos.siat.ActividadesDto;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.ActividadesDto;
 import com.gaspar.facturador.domain.repository.IActividadRepository;
 import com.gaspar.facturador.persistence.crud.ActividadCrudRepository;
 import com.gaspar.facturador.persistence.mapper.ActividadMapper;

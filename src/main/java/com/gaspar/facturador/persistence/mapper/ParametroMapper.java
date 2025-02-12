@@ -1,6 +1,6 @@
 package com.gaspar.facturador.persistence.mapper;
 
-import bo.gob.impuestos.siat.ParametricasDto;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.ParametricasDto;
 import com.gaspar.facturador.persistence.entity.ParametroEntity;
 import org.mapstruct.Mapper;
 

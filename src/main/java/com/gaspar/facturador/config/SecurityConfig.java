@@ -45,30 +45,32 @@ public class SecurityConfig {
         return source;
     }
 
+
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity, AuthenticationProvider authenticationProvider) throws Exception {
         return httpSecurity
-                .csrf().disable() // Deshabilitar CSRF (no es necesario para APIs stateless)
-                .cors().configurationSource(corsConfigurationSource()) // Aplicar configuración de CORS
-                .and()
-                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS) // Sin sesiones
-                .and()
-                .authorizeRequests()
-                .antMatchers(HttpMethod.POST, "/auth/**").permitAll()
-                .antMatchers(HttpMethod.POST, "/codigos/**").permitAll()
-                .antMatchers(HttpMethod.POST, "/factura/**").permitAll()
-                .antMatchers(HttpMethod.GET, "/clientes/**").permitAll()
-                .antMatchers(HttpMethod.POST, "/clientes/**").permitAll()
-                .antMatchers(HttpMethod.GET, "/api/v1/**").permitAll()// Permitir acceso público a /auth/**
-                .antMatchers(HttpMethod.GET, "/method/get").hasAuthority("READ")
-                .antMatchers(HttpMethod.POST, "/method/post").hasAuthority("CREATE")
-                .antMatchers(HttpMethod.DELETE, "/method/delete").hasAuthority("DELETE")
-                .antMatchers(HttpMethod.PUT, "/method/put").hasAuthority("UPDATE")
-                .anyRequest().denyAll() // Denegar cualquier otra solicitud
-                .and()
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(http -> {
+                    // EndPoints publicos
+                    http.requestMatchers(HttpMethod.POST, "/auth/**").permitAll();
+                    http.requestMatchers(HttpMethod.POST, "/codigos/**").permitAll();
+                    http.requestMatchers(HttpMethod.POST, "/factura/**").permitAll();
+                    http.requestMatchers(HttpMethod.GET, "/clientes/**").permitAll();
+                    http.requestMatchers(HttpMethod.POST, "/sincronizar/**").permitAll();
+                    // EndPoints Privados
+                    http.requestMatchers(HttpMethod.GET, "/method/get").hasAuthority("READ");
+                    http.requestMatchers(HttpMethod.POST, "/method/post").hasAuthority("CREATE");
+                    http.requestMatchers(HttpMethod.DELETE, "/method/delete").hasAuthority("DELETE");
+                    http.requestMatchers(HttpMethod.PUT, "/method/put").hasAuthority("UPDATE");
+
+                    http.anyRequest().denyAll();
+                })
                 .addFilterBefore(new JwtTokenValidator(jwtUtils), BasicAuthenticationFilter.class)
                 .build();
     }
+
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {

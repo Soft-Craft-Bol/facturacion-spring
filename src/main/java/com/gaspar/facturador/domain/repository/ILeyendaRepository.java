@@ -1,6 +1,6 @@
 package com.gaspar.facturador.domain.repository;
 
-import bo.gob.impuestos.siat.ParametricaLeyendasDto;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.ParametricaLeyendasDto;
 import com.gaspar.facturador.persistence.view.LeyendaView;
 
 import java.util.Optional;

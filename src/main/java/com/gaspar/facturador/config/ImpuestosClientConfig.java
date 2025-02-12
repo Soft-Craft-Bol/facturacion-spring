@@ -1,83 +1,77 @@
 package com.gaspar.facturador.config;
 
-import org.apache.axis.AxisFault;
-import org.apache.axis.Message;
-import org.apache.axis.client.Call;
+import bo.gob.impuestos.siat.api.facturacion.codigos.ServicioFacturacionCodigos;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.ServicioFacturacionSincronizacion;
+import bo.gob.impuestos.siat.api.servicio.facturacion.compra.venta.ServicioFacturacion;
+import org.apache.cxf.jaxws.JaxWsProxyFactoryBean;
+import org.apache.cxf.headers.Header;
+import org.apache.cxf.binding.soap.SoapMessage;
+import org.apache.cxf.endpoint.Client;
+import org.apache.cxf.interceptor.Interceptor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import javax.xml.soap.MimeHeaders;
-import java.net.MalformedURLException;
-import java.net.URL;
-
+import javax.xml.namespace.QName;
 
 @Configuration
 public class ImpuestosClientConfig {
 
-    @Value("${app.siat.token}")
+    @Value("${app.siat.token}") // Token de autenticación desde application.properties
     private String token;
 
-    @Bean
-    public bo.gob.impuestos.siat.ServicioFacturacionCodigos servicioFacturacionCodigos() throws AxisFault, MalformedURLException {
-
-        bo.gob.impuestos.siat.FacturacionCodigos.ServicioFacturacionCodigos service = new bo.gob.impuestos.siat.FacturacionCodigos.ServicioFacturacionCodigosLocator() {
+    // Interceptor para agregar la cabecera personalizada (apiKey)
+    private Interceptor<SoapMessage> createHeaderInterceptor() {
+        return new Interceptor<SoapMessage>() {
+            @Override
+            public void handleMessage(SoapMessage message) {
+                // Crear la cabecera SOAP
+                QName qname = new QName("apiKey");
+                Header header = new Header(qname, "TokenApi " + token);
+                message.getHeaders().add(header);
+            }
 
             @Override
-            public Call createCall() {
-                _call = new Call(this) {
-                    @Override
-                    public void setRequestMessage(Message msg)
-                    {
-                        super.setRequestMessage(msg);
-
-                        MimeHeaders mimeHeaders = msg.getMimeHeaders();
-                        mimeHeaders.addHeader("apiKey", "TokenApi " + token);
-                    }
-                };
-                return _call;
+            public void handleFault(SoapMessage message) {
+                // Manejo de errores (opcional)
             }
         };
-        return new bo.gob.impuestos.siat.FacturacionCodigos.ServicioFacturacionCodigosSoapBindingStub(new URL(service.getServicioFacturacionCodigosPortAddress()), service);
     }
 
-    @Bean
-    public bo.gob.impuestos.siat.ServicioFacturacionSincronizacion servicioFacturacionSincronizacion() throws AxisFault, MalformedURLException {
-        bo.gob.impuestos.siat.FacturacionSincronizacion.ServicioFacturacionSincronizacion service = new bo.gob.impuestos.siat.FacturacionSincronizacion.ServicioFacturacionSincronizacionLocator() {
-            @Override
-            public Call createCall() {
-                _call = new Call(this) {
-                    @Override
-                    public void setRequestMessage(Message msg) {
-                        super.setRequestMessage(msg);
+    // Configuración común para los clientes SOAP
+    private <T> T createSoapClient(String serviceUrl, Class<T> serviceClass) {
+        JaxWsProxyFactoryBean factory = new JaxWsProxyFactoryBean();
+        factory.setServiceClass(serviceClass);
+        factory.setAddress(serviceUrl);
 
-                        MimeHeaders mimeHeaders = msg.getMimeHeaders();
-                        mimeHeaders.addHeader("apiKey", "TokenApi " + token);
-                    }
-                };
-                return _call;
-            }
-        };
-        return new bo.gob.impuestos.siat.FacturacionSincronizacion.ServicioFacturacionSincronizacionSoapBindingStub(new URL(service.getServicioFacturacionSincronizacionPortAddress()), service);
+        // Crear el cliente SOAP
+        T client = (T) factory.create();
+
+        // Agregar el interceptor para la cabecera personalizada
+        Client cxfClient = org.apache.cxf.frontend.ClientProxy.getClient(client);
+        cxfClient.getOutInterceptors().add(createHeaderInterceptor());
+
+        return client;
     }
 
+    // Bean para el servicio de códigos
     @Bean
-    public bo.gob.impuestos.siat.ServicioFacturacion servicioFacturacion() throws AxisFault, MalformedURLException {
-        bo.gob.impuestos.siat.ServicioFacturacionCompraVenta.ServicioFacturacion service = new bo.gob.impuestos.siat.ServicioFacturacionCompraVenta.ServicioFacturacionLocator() {
-            @Override
-            public Call createCall() {
-                _call = new Call(this) {
-                    @Override
-                    public void setRequestMessage(Message msg) {
-                        super.setRequestMessage(msg);
+    public ServicioFacturacionCodigos servicioFacturacionCodigos() {
+        String serviceUrl = "https://pilotosiatservicios.impuestos.gob.bo/v2/FacturacionCodigos?wsdl";
+        return createSoapClient(serviceUrl, ServicioFacturacionCodigos.class);
+    }
 
-                        MimeHeaders mimeHeaders = msg.getMimeHeaders();
-                        mimeHeaders.addHeader("apiKey", "TokenApi " + token);
-                    }
-                };
-                return _call;
-            }
-        };
-        return new bo.gob.impuestos.siat.ServicioFacturacionCompraVenta.ServicioFacturacionSoapBindingStub(new URL(service.getServicioFacturacionPortAddress()), service);
+    // Bean para el servicio de compra/venta
+    @Bean
+    public ServicioFacturacion servicioFacturacion() {
+        String serviceUrl = "https://pilotosiatservicios.impuestos.gob.bo/v2/ServicioFacturacionCompraVenta?wsdl";
+        return createSoapClient(serviceUrl, ServicioFacturacion.class);
+    }
+
+    // Bean para el servicio de sincronización
+    @Bean
+    public ServicioFacturacionSincronizacion servicioFacturacionSincronizacion() {
+        String serviceUrl = "https://pilotosiatservicios.impuestos.gob.bo/v2/FacturacionSincronizacion?wsdl";
+        return createSoapClient(serviceUrl, ServicioFacturacionSincronizacion.class);
     }
 }

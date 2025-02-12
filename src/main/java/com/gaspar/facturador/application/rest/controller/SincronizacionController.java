@@ -1,6 +1,6 @@
 package com.gaspar.facturador.application.rest.controller;
 
-import bo.gob.impuestos.siat.RespuestaFechaHora;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.RespuestaFechaHora;
 import com.gaspar.facturador.domain.service.SincronizacionCatalogosParametrosService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

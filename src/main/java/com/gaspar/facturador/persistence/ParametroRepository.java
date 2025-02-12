@@ -1,6 +1,6 @@
 package com.gaspar.facturador.persistence;
 
-import bo.gob.impuestos.siat.ParametricasDto;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.ParametricasDto;
 import com.gaspar.facturador.commons.ParametricaEnum;
 import com.gaspar.facturador.domain.repository.IParametroRepository;
 import com.gaspar.facturador.persistence.crud.ParametroCrudRepository;

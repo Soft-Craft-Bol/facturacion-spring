@@ -1,9 +1,9 @@
 package com.gaspar.facturador.domain;
 
 import com.gaspar.facturador.persistence.entity.ItemEntity;
+import jakarta.xml.bind.annotation.*;
 import lombok.Getter;
 
-import javax.xml.bind.annotation.*;
 import java.math.BigDecimal;
 
 

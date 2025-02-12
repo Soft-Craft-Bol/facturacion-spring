@@ -17,13 +17,13 @@ import com.gaspar.facturador.domain.helpers.XmlHelper;
 import com.gaspar.facturador.domain.repository.*;
 import com.gaspar.facturador.persistence.entity.*;
 import com.gaspar.facturador.persistence.view.LeyendaView;
+import jakarta.xml.bind.JAXBContext;
+import jakarta.xml.bind.JAXBException;
+import jakarta.xml.bind.Marshaller;
 import org.apache.xmlbeans.XmlObject;
 import org.springframework.stereotype.Service;
 import org.w3c.dom.Document;
 
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Marshaller;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.transform.*;
 import javax.xml.transform.dom.DOMSource;

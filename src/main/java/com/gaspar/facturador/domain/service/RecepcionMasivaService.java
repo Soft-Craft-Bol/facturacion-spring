@@ -1,6 +1,6 @@
 package com.gaspar.facturador.domain.service;
 
-import bo.gob.impuestos.siat.*;
+import bo.gob.impuestos.siat.api.servicio.facturacion.compra.venta.*;
 import com.gaspar.facturador.application.rest.exception.ProcessException;
 import com.gaspar.facturador.commons.CodigoDocumentoSectorEnum;
 import com.gaspar.facturador.commons.CodigoModalidadEmisionEnum;
@@ -45,7 +45,7 @@ public class RecepcionMasivaService {
 
         // Verificar comunicación con el SIN
         RespuestaComunicacion respuestaComunicacion = clientSiatFacturacionCompraVenta.verificarComunicacion();
-        if (!respuestaComunicacion.getTransaccion()) {
+        if (!respuestaComunicacion.isTransaccion()) {
             throw new ProcessException("No se pudo conectar con los servidores del S.I.N.");
         }
 

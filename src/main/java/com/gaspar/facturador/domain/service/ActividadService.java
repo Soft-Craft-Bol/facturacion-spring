@@ -1,13 +1,14 @@
 package com.gaspar.facturador.domain.service;
 
-import bo.gob.impuestos.siat.*;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.*;
 import com.gaspar.facturador.domain.repository.IActividadRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.rmi.RemoteException;
-
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class ActividadService {
@@ -18,8 +19,8 @@ public class ActividadService {
     private final IActividadRepository actividadRepository;
 
     public ActividadService(
-        ServicioFacturacionSincronizacion servicioFacturacionSincronizacion,
-        IActividadRepository actividadRepository
+            ServicioFacturacionSincronizacion servicioFacturacionSincronizacion,
+            IActividadRepository actividadRepository
     ) {
         this.servicioFacturacionSincronizacion = servicioFacturacionSincronizacion;
         this.actividadRepository = actividadRepository;
@@ -34,21 +35,21 @@ public class ActividadService {
     }
 
     private RespuestaListaActividades obtenerCatalogos(SolicitudSincronizacion solicitudSincronizacion) throws RemoteException {
-
         RespuestaListaActividades respuestaListaActividades = this.servicioFacturacionSincronizacion.sincronizarActividades(solicitudSincronizacion);
-        if (!respuestaListaActividades.getTransaccion()) {
+
+        if (!Boolean.TRUE.equals(respuestaListaActividades.isTransaccion())) {
             LOGGER.error(this.obtenerMensajeServicio(respuestaListaActividades.getMensajesList()));
         }
         return respuestaListaActividades;
     }
 
-    private String obtenerMensajeServicio(MensajeServicio[] mensajeServicioList) {
-        String mensaje = "";
-        if (mensajeServicioList != null) {
-            for (MensajeServicio mensajeServicio : mensajeServicioList) {
-                mensaje += mensajeServicio.getDescripcion() + ". ";
-            }
+    private String obtenerMensajeServicio(List<MensajeServicio> mensajeServicioList) {
+        if (mensajeServicioList == null || mensajeServicioList.isEmpty()) {
+            return "No se encontraron mensajes de error.";
         }
-        return mensaje;
+
+        return mensajeServicioList.stream()
+                .map(MensajeServicio::getDescripcion)
+                .collect(Collectors.joining(". ")) + ".";
     }
 }

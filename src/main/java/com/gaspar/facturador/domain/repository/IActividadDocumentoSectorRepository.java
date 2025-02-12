@@ -1,8 +1,7 @@
 package com.gaspar.facturador.domain.repository;
 
-import bo.gob.impuestos.siat.ActividadesDocumentoSectorDto;
 
-
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.ActividadesDocumentoSectorDto;
 
 public interface IActividadDocumentoSectorRepository {
 
