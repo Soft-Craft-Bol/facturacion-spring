@@ -171,25 +171,23 @@
 			<plugin>
 				<groupId>com.sun.xml.ws</groupId>
 				<artifactId>jaxws-maven-plugin</artifactId>
-				<version>3.0.0</version>
+				<version>2.3.2</version>
 				<executions>
 					<execution>
-						<id>generate-classes-from-compra-venta</id>
+						<id>generate-classes-from-operaciones</id>
 						<goals>
 							<goal>wsimport</goal>
 						</goals>
 						<configuration>
-							<packageName>bo.gob.impuestos.siat.api.servicio.facturacion.compra.venta</packageName>
 							<wsdlUrls>
-								<wsdlUrl>https://pilotosiatservicios.impuestos.gob.bo/v2/ServicioFacturacionCompraVenta?wsdl</wsdlUrl>
+								<wsdlUrl>https://pilotosiatservicios.impuestos.gob.bo/v2/FacturacionOperaciones?wsdl</wsdlUrl>
 							</wsdlUrls>
-							<sourceDestDir>${project.basedir}/src/main/java</sourceDestDir>
-							<destDir>${project.build.directory}/classes</destDir>
-							<extension>true</extension>
+							<sourceDestDir>${project.build.directory}/generated-sources/wsimport</sourceDestDir>
 						</configuration>
 					</execution>
 				</executions>
 			</plugin>
+
 		</plugins>
 	</build>
 
