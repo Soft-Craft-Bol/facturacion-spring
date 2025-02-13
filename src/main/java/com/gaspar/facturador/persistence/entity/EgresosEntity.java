@@ -20,7 +20,7 @@ import javax.validation.constraints.PositiveOrZero;
 public class EgresosEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    public int id;
+    public long id;
 
     @NotNull
     @Length(max = 1024)
