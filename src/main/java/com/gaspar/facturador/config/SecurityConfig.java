@@ -35,10 +35,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173")); // Origen permitido (tu frontend)
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS")); // Métodos permitidos
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Cache-Control", "Content-Type")); // Headers permitidos
-        configuration.setAllowCredentials(true); // Permitir credenciales (necesario para cookies, headers de autorización, etc.)
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Cache-Control", "Content-Type"));
+        configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration); // Aplicar a todas las rutas
@@ -60,6 +60,12 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.GET, "/clientes/**").permitAll();
                     http.requestMatchers(HttpMethod.POST, "/sincronizar/**").permitAll();
                     http.requestMatchers(HttpMethod.GET, "/users/**").permitAll();
+                    http.requestMatchers(HttpMethod.POST, "/evento-significativo/**").permitAll();
+                    http.requestMatchers(HttpMethod.POST, "/masiva/**").permitAll();
+                    http.requestMatchers(HttpMethod.POST, "/**").permitAll();
+                    http.requestMatchers(HttpMethod.GET, "/**").permitAll();
+                    http.requestMatchers(HttpMethod.DELETE, "/**").permitAll();
+                    http.requestMatchers(HttpMethod.PUT, "/**").permitAll();
 
                     // EndPoints Privados
                     http.requestMatchers(HttpMethod.GET, "/method/get").hasAuthority("READ");
