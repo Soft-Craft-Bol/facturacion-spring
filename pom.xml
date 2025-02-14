@@ -119,7 +119,6 @@
 			<version>4.2.1</version>
 		</dependency>
 		<dependency>
-<<<<<<< HEAD
 			<groupId>jakarta.xml.ws</groupId>
 			<artifactId>jakarta.xml.ws-api</artifactId>
 			<version>4.0.0</version>
@@ -140,13 +139,6 @@
 			<artifactId>jaxb-runtime</artifactId>
 			<version>2.3.5</version>
 		</dependency>
-
-=======
-			<groupId>com.cloudinary</groupId>
-			<artifactId>cloudinary-http44</artifactId>
-			<version>1.34.0</version>
-		</dependency>
->>>>>>> 2dbe4976b57700e9014ea69a93c86bba97cfa94b
 	</dependencies>
 
 	<build>
@@ -192,7 +184,6 @@
 				<version>3.0.0</version>
 				<executions>
 					<execution>
-<<<<<<< HEAD
 						<id>generate-classes-from-sincronizacion</id>
 						<goals>
 							<goal>wsimport</goal>
@@ -268,8 +259,6 @@
 						</configuration>
 					</execution>
 					<execution>
-=======
->>>>>>> 2dbe4976b57700e9014ea69a93c86bba97cfa94b
 						<id>generate-classes-from-compra-venta</id>
 						<goals>
 							<goal>wsimport</goal>
