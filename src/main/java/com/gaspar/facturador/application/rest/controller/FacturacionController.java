@@ -5,11 +5,13 @@ import com.gaspar.facturador.application.request.VentaRequest;
 import com.gaspar.facturador.application.response.FacturaResponse;
 import com.gaspar.facturador.domain.service.FacturacionService;
 import jakarta.validation.Valid;
+import com.gaspar.facturador.persistence.FacturaRepository;
+import com.gaspar.facturador.persistence.entity.FacturaEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
+import java.util.List;
 
 
 @RestController
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 public class FacturacionController {
 
     private final FacturacionService facturacionService;
+    private FacturaRepository facturaRepository;
 
     public FacturacionController(FacturacionService facturacionService) {
         this.facturacionService = facturacionService;
@@ -39,19 +42,15 @@ public class FacturacionController {
         return new ResponseEntity<>(respuesta, HttpStatus.OK);
     }
 
-//    @PostMapping("/revertir")
-//    public ResponseEntity<RespuestaRecepcion> revertirFactura(
-//            @RequestParam Long idPuntoVenta,
-//            @RequestParam String cuf,
-//            @RequestParam String codigoMotivo
-//    ) throws Exception {
-//        RespuestaRecepcion respuesta = this.facturacionService.revertirFactura(
-//                idPuntoVenta,
-//                cuf,
-//                codigoMotivo
-//        );
-//        return new ResponseEntity<>(respuesta, HttpStatus.OK);
-//    }
+    @PostMapping("/reversion-anulacion")
+    public ResponseEntity<RespuestaRecepcion> reversionAnulacionFactura(
+            @RequestParam Long idPuntoVenta,
+            @RequestParam String cuf
+    ) throws Exception {
+        RespuestaRecepcion respuesta = this.facturacionService.reversionAnulacionFactura(idPuntoVenta, cuf);
+        return new ResponseEntity<>(respuesta, HttpStatus.OK);
+    }
+
 
     @PostMapping("/recepcion-masiva")
     public ResponseEntity<RespuestaRecepcion> enviarPaqueteFacturas(
@@ -61,6 +60,18 @@ public class FacturacionController {
     ) throws Exception {
         RespuestaRecepcion respuesta = this.facturacionService.enviarPaqueteFacturas(idPuntoVenta, archivoComprimido, cantidadFacturas);
         return new ResponseEntity<>(respuesta, HttpStatus.OK);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<FacturaEntity>> getAllFacturas() {
+        List<FacturaEntity> facturas = facturacionService.getAllFacturas();
+        return ResponseEntity.ok(facturas);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteFacturaById(@PathVariable Long id) {
+        facturacionService.deleteFacturaById(id);
+        return ResponseEntity.noContent().build();
     }
 
 }

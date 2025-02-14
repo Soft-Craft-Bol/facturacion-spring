@@ -183,7 +183,7 @@ public class GeneraFacturaService {
     }
 
 
-    private byte[] getXmlBytes(FacturaElectronicaCompraVenta facturaObject) throws JAXBException {
+    public byte[] getXmlBytes(FacturaElectronicaCompraVenta facturaObject) throws JAXBException {
         JAXBContext context = JAXBContext.newInstance(FacturaElectronicaCompraVenta.class);
 
         Marshaller marshaller = context.createMarshaller();
@@ -246,4 +246,6 @@ public class GeneraFacturaService {
         byte[] comprimidoByte = Files.readAllBytes(archivoComprimido.toPath());
         return comprimidoByte;
     }
+
+
 }

@@ -31,4 +31,8 @@ public class ClienteRepository implements IClienteRepository {
     public ClienteEntity save(ClienteEntity cliente) {
         return this.clienteCrudRepository.save(cliente);
     }
+    @Override
+    public void deleteById(Integer id){
+            this.clienteCrudRepository.deleteById(id);
+    };
 }

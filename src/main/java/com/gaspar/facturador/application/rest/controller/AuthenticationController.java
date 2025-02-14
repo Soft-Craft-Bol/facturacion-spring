@@ -24,6 +24,7 @@ public class AuthenticationController {
         return new ResponseEntity<>(this.userDetailService.createUser(userRequest), HttpStatus.CREATED);
     }
 
+
     @PostMapping("/log-in")
     public ResponseEntity<AuthResponse> login(@RequestBody @Valid AuthLoginRequest userRequest){
         return new ResponseEntity<>(this.userDetailService.loginUser(userRequest), HttpStatus.OK);

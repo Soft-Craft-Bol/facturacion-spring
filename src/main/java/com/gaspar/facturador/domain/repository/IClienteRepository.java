@@ -12,4 +12,5 @@ public interface IClienteRepository {
     Optional<ClienteEntity> findById(Integer id);
     List<ClienteEntity> findAll();
     ClienteEntity save(ClienteEntity cliente);
+    void deleteById(Integer id);
 }

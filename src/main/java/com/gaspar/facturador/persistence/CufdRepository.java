@@ -25,6 +25,11 @@ public class CufdRepository implements ICufdRepository {
 
     @Override
     public void save(RespuestaCufd respuestaCufd, PuntoVentaEntity puntoVenta) {
+        Optional<CufdEntity> cufdAnterior = this.cufdCrudRepository.findByPuntoVentaAndVigente(puntoVenta, true);
+        cufdAnterior.ifPresent(cufd -> {
+            cufd.setVigente(false);
+            this.cufdCrudRepository.save(cufd); // Guardamos el cambio
+        });
 
         CufdEntity cufd = this.cufdMapper.toCufdEntity(respuestaCufd);
         cufd.setFechaInicio(LocalDateTime.now());
@@ -33,6 +38,7 @@ public class CufdRepository implements ICufdRepository {
 
         this.cufdCrudRepository.save(cufd);
     }
+
 
     @Override
     public Optional<CufdEntity> findActual(PuntoVentaEntity puntoVenta) {

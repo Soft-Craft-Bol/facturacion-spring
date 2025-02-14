@@ -45,7 +45,6 @@ public class SecurityConfig {
         return source;
     }
 
-
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity, AuthenticationProvider authenticationProvider) throws Exception {
         return httpSecurity
@@ -55,10 +54,13 @@ public class SecurityConfig {
                 .authorizeHttpRequests(http -> {
                     // EndPoints publicos
                     http.requestMatchers(HttpMethod.POST, "/auth/**").permitAll();
+                    http.requestMatchers(HttpMethod.GET, "/auth/**").permitAll();
                     http.requestMatchers(HttpMethod.POST, "/codigos/**").permitAll();
                     http.requestMatchers(HttpMethod.POST, "/factura/**").permitAll();
                     http.requestMatchers(HttpMethod.GET, "/clientes/**").permitAll();
                     http.requestMatchers(HttpMethod.POST, "/sincronizar/**").permitAll();
+                    http.requestMatchers(HttpMethod.GET, "/users/**").permitAll();
+
                     // EndPoints Privados
                     http.requestMatchers(HttpMethod.GET, "/method/get").hasAuthority("READ");
                     http.requestMatchers(HttpMethod.POST, "/method/post").hasAuthority("CREATE");
@@ -70,7 +72,6 @@ public class SecurityConfig {
                 .addFilterBefore(new JwtTokenValidator(jwtUtils), BasicAuthenticationFilter.class)
                 .build();
     }
-
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {

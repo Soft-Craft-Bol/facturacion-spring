@@ -7,6 +7,7 @@ import com.gaspar.facturador.persistence.entity.ProductoServicioEntity;
 import com.gaspar.facturador.persistence.mapper.ProductoServicioMapper;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 
@@ -34,5 +35,9 @@ public class ProductoServicioRepository implements IProductoServicioRepository {
     @Override
     public Optional<ProductoServicioEntity> findByCodigoProducto(Long codigoProducto) {
         return this.productoServicioCrudRepository.findByCodigoProducto(codigoProducto);
+    }
+    @Override
+    public List<ProductoServicioEntity> findAll() {
+        return (List<ProductoServicioEntity>) this.productoServicioCrudRepository.findAll();
     }
 }

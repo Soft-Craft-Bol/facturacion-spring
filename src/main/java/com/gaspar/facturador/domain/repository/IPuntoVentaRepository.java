@@ -10,4 +10,7 @@ public interface IPuntoVentaRepository {
     Optional<PuntoVentaEntity> findById(Integer id);
 
     Optional<PuntoVentaEntity> findByCodigo(Integer codigo);
+
+    Iterable<PuntoVentaEntity> findAll();
+
 }

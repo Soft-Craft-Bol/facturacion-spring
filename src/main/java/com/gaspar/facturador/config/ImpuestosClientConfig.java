@@ -2,6 +2,8 @@ package com.gaspar.facturador.config;
 
 import bo.gob.impuestos.siat.api.facturacion.codigos.ServicioFacturacionCodigos;
 import bo.gob.impuestos.siat.api.facturacion.codigos.ServicioFacturacionCodigos_Service;
+import bo.gob.impuestos.siat.api.facturacion.operaciones.ServicioFacturacionOperaciones;
+import bo.gob.impuestos.siat.api.facturacion.operaciones.ServicioFacturacionOperaciones_Service;
 import bo.gob.impuestos.siat.api.facturacion.sincronizacion.ServicioFacturacionSincronizacion;
 import bo.gob.impuestos.siat.api.facturacion.sincronizacion.ServicioFacturacionSincronizacion_Service;
 import bo.gob.impuestos.siat.api.servicio.facturacion.compra.venta.ServicioFacturacion;
@@ -34,6 +36,9 @@ public class ImpuestosClientConfig {
     @Value("${app.siat.facturacion.compra.venta.url}")
     private String facturacionCompraVentaUrl;
 
+    @Value("${app.siat.facturacion.operaciones.url}")
+    private String facturacionOperacionesUrl;
+
     @Bean
     public ServicioFacturacionCodigos servicioFacturacionCodigos() throws MalformedURLException {
         URL url = new URL(facturacionCodigosUrl);
@@ -53,14 +58,11 @@ public class ImpuestosClientConfig {
 
     @Bean
     public ServicioFacturacionSincronizacion servicioFacturacionSincronizacion() throws MalformedURLException {
-        // Crear una instancia del servicio usando la URL proporcionada
         URL url = new URL(facturacionSincronizacionUrl);
         ServicioFacturacionSincronizacion_Service service = new ServicioFacturacionSincronizacion_Service(url);
 
-        // Obtener el puerto (port) para invocar los métodos del servicio
         ServicioFacturacionSincronizacion port = service.getServicioFacturacionSincronizacionPort();
 
-        // Agregar el header "apiKey" con el token
         Map<String, Object> requestContext = ((BindingProvider) port).getRequestContext();
         requestContext.put(BindingProvider.SESSION_MAINTAIN_PROPERTY, true);
 
@@ -75,14 +77,27 @@ public class ImpuestosClientConfig {
     //Facturacion
     @Bean
     public ServicioFacturacion servicioFacturacion() throws MalformedURLException {
-        // Crear una instancia del servicio usando la URL proporcionada
         URL url = new URL(facturacionCompraVentaUrl);
         ServicioFacturacion_Service service = new ServicioFacturacion_Service(url);
-
-        // Obtener el puerto (port) para invocar los métodos del servicio
         ServicioFacturacion port = service.getServicioFacturacionPort();
 
-        // Agregar el header "api       Key" con el token
+        Map<String, Object> requestContext = ((BindingProvider) port).getRequestContext();
+        requestContext.put(BindingProvider.SESSION_MAINTAIN_PROPERTY, true);
+
+        Map<String, List<String>> headers = new HashMap<>();
+        headers.put("apiKey", Collections.singletonList("TokenApi " + token));
+        requestContext.put(MessageContext.HTTP_REQUEST_HEADERS, headers);
+
+        return port;
+    }
+
+    //Operaciones
+    @Bean
+    public ServicioFacturacionOperaciones servicioFacturacionOperaciones() throws MalformedURLException {
+        URL url = new URL(facturacionOperacionesUrl);
+        ServicioFacturacionOperaciones_Service service = new ServicioFacturacionOperaciones_Service(url);
+        ServicioFacturacionOperaciones port = service.getServicioFacturacionOperacionesPort();
+
         Map<String, Object> requestContext = ((BindingProvider) port).getRequestContext();
         requestContext.put(BindingProvider.SESSION_MAINTAIN_PROPERTY, true);
 

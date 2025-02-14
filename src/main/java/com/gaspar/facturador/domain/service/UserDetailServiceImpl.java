@@ -5,6 +5,7 @@ import com.gaspar.facturador.application.rest.dto.AuthLoginRequest;
 import com.gaspar.facturador.application.rest.dto.AuthResponse;
 import com.gaspar.facturador.persistence.crud.RoleRepository;
 import com.gaspar.facturador.persistence.crud.UserRepository;
+import com.gaspar.facturador.persistence.dto.UserDTO;
 import com.gaspar.facturador.persistence.entity.RoleEntity;
 import com.gaspar.facturador.persistence.entity.RoleEnum;
 import com.gaspar.facturador.persistence.entity.UserEntity;
@@ -76,6 +77,8 @@ public class UserDetailServiceImpl implements UserDetailsService {
     public AuthResponse createUser(AuthCreateUserRequest createRoleRequest) {
         String username = createRoleRequest.username();
         String password = createRoleRequest.password();
+        String email = createRoleRequest.email();
+        Long telefono = Long.valueOf(createRoleRequest.telefono());
         List<String> rolesRequest = createRoleRequest.roleRequest().roleListName();
 
         // Convertir los nombres de roles a valores de RoleEnum
@@ -99,6 +102,11 @@ public class UserDetailServiceImpl implements UserDetailsService {
         UserEntity userEntity = UserEntity.builder()
                 .username(username)
                 .password(passwordEncoder.encode(password))
+                .email(email)
+                .telefono(telefono)
+                .firstName(createRoleRequest.nombre())
+                .lastName(createRoleRequest.apellido())
+                .photo(createRoleRequest.photo())
                 .roles(roleEntityList)
                 .enabled(true)
                 .accountNonLocked(true)
@@ -122,6 +130,7 @@ public class UserDetailServiceImpl implements UserDetailsService {
 
         return new AuthResponse(username, "User created successfully", accessToken, true);
     }
+
 
     public AuthResponse loginUser(AuthLoginRequest authLoginRequest) {
 
@@ -148,5 +157,79 @@ public class UserDetailServiceImpl implements UserDetailsService {
         }
 
         return new UsernamePasswordAuthenticationToken(username, password, userDetails.getAuthorities());
+    }
+
+    public List<UserDTO> getAllUsers() {
+        return userRepository.findAll().stream()
+                .map(user -> {
+                    UserDTO dto = new UserDTO();
+                    dto.setId(user.getId());
+                    dto.setUsername(user.getUsername());
+                    dto.setFirstName(user.getFirstName());
+                    dto.setLastName(user.getLastName());
+                    dto.setEmail(user.getEmail());
+                    dto.setTelefono(user.getTelefono());
+                    dto.setPhoto(user.getPhoto());
+                    dto.setRoles(user.getRoles().stream()
+                            .map(role -> role.getRoleEnum().name())
+                            .collect(Collectors.toSet()));
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+    public void deleteById(long id){
+        userRepository.deleteById(id);
+    }
+
+    public UserDTO updateUser(Long id, UserDTO userDTO) {
+        UserEntity userEntity = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        userEntity.setUsername(userDTO.getUsername());
+        userEntity.setFirstName(userDTO.getFirstName());
+        userEntity.setLastName(userDTO.getLastName());
+        userEntity.setEmail(userDTO.getEmail());
+        userEntity.setTelefono(userDTO.getTelefono());
+        userEntity.setPhoto(userDTO.getPhoto());
+        userEntity.setRoles(userDTO.getRoles().stream()
+                .map(role -> roleRepository.findByRoleEnum(RoleEnum.valueOf(role))
+                        .orElseThrow(() -> new IllegalArgumentException("Role not found: " + role)))
+                .collect(Collectors.toSet()));
+
+        UserEntity updatedUser = userRepository.save(userEntity);
+
+        UserDTO updatedUserDTO = new UserDTO();
+        updatedUserDTO.setId(updatedUser.getId());
+        updatedUserDTO.setUsername(updatedUser.getUsername());
+        updatedUserDTO.setFirstName(updatedUser.getFirstName());
+        updatedUserDTO.setLastName(updatedUser.getLastName());
+        updatedUserDTO.setEmail(updatedUser.getEmail());
+        updatedUserDTO.setTelefono(updatedUser.getTelefono());
+        updatedUserDTO.setPhoto(updatedUser.getPhoto());
+        updatedUserDTO.setRoles(updatedUser.getRoles().stream()
+                .map(role -> role.getRoleEnum().name())
+                .collect(Collectors.toSet()));
+
+        return updatedUserDTO;
+    }
+
+    //Obtener los usuarios por su id
+    public UserDTO getUserById(Long id) {
+        UserEntity userEntity = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        UserDTO userDTO = new UserDTO();
+        userDTO.setId(userEntity.getId());
+        userDTO.setUsername(userEntity.getUsername());
+        userDTO.setFirstName(userEntity.getFirstName());
+        userDTO.setLastName(userEntity.getLastName());
+        userDTO.setEmail(userEntity.getEmail());
+        userDTO.setTelefono(userEntity.getTelefono());
+        userDTO.setPhoto(userEntity.getPhoto());
+        userDTO.setRoles(userEntity.getRoles().stream()
+                .map(role -> role.getRoleEnum().name())
+                .collect(Collectors.toSet()));
+
+        return userDTO;
     }
 }

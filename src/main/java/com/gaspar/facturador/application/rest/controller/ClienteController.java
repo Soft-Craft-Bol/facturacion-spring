@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/clientes")
@@ -35,4 +36,14 @@ public class ClienteController {
         ClienteEntity savedCliente = clienteRepository.save(cliente);
         return new ResponseEntity<>(savedCliente, HttpStatus.CREATED);
     }
-}
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<Void> deleteCliente(@PathVariable Integer id) {
+        Optional<ClienteEntity> cliente = clienteRepository.findById(id);
+        if (cliente.isPresent()) {
+            clienteRepository.deleteById(id);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+}   
