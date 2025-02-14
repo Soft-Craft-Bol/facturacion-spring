@@ -4,6 +4,7 @@ import bo.gob.impuestos.siat.api.servicio.facturacion.compra.venta.RespuestaRece
 import com.gaspar.facturador.application.request.VentaRequest;
 import com.gaspar.facturador.application.response.FacturaResponse;
 import com.gaspar.facturador.domain.service.FacturacionService;
+import com.gaspar.facturador.persistence.dto.FacturaDTO;
 import jakarta.validation.Valid;
 import com.gaspar.facturador.persistence.FacturaRepository;
 import com.gaspar.facturador.persistence.entity.FacturaEntity;
@@ -12,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Optional;
 
 
 @RestController
@@ -63,11 +65,10 @@ public class FacturacionController {
     }
 
     @GetMapping
-    public ResponseEntity<List<FacturaEntity>> getAllFacturas() {
-        List<FacturaEntity> facturas = facturacionService.getAllFacturas();
+    public ResponseEntity<List<FacturaDTO>> getAllFacturas() {
+        List<FacturaDTO> facturas = facturacionService.getAllFacturas();
         return ResponseEntity.ok(facturas);
     }
-
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteFacturaById(@PathVariable Long id) {
         facturacionService.deleteFacturaById(id);
