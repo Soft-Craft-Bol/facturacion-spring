@@ -3,24 +3,22 @@ package com.gaspar.facturador.application.rest.controller;
 import bo.gob.impuestos.siat.api.servicio.facturacion.compra.venta.RespuestaRecepcion;
 import com.gaspar.facturador.application.request.VentaRequest;
 import com.gaspar.facturador.application.response.FacturaResponse;
+import com.gaspar.facturador.application.rest.dto.AnulacionRequest;
+import com.gaspar.facturador.application.rest.dto.ReversionAnulacionRequest;
 import com.gaspar.facturador.domain.service.FacturacionService;
-import jakarta.validation.Valid;
-import com.gaspar.facturador.persistence.FacturaRepository;
 import com.gaspar.facturador.persistence.entity.FacturaEntity;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import java.util.List;
 
+import java.util.List;
 
 @RestController
 @RequestMapping("/factura")
-//@PreAuthorize("denyAll()")
 public class FacturacionController {
 
     private final FacturacionService facturacionService;
-    private FacturaRepository facturaRepository;
 
     public FacturacionController(FacturacionService facturacionService) {
         this.facturacionService = facturacionService;
@@ -33,24 +31,23 @@ public class FacturacionController {
     }
 
     @PostMapping("/anular")
-    public ResponseEntity<RespuestaRecepcion> anularFactura(
-            @RequestParam Long idPuntoVenta,
-            @RequestParam String cuf,
-            @RequestParam String codigoMotivo
-    ) throws Exception {
-        RespuestaRecepcion respuesta = this.facturacionService.anularFactura(idPuntoVenta, cuf, codigoMotivo);
+    public ResponseEntity<RespuestaRecepcion> anularFactura(@Valid @RequestBody AnulacionRequest anulacionRequest) throws Exception {
+        RespuestaRecepcion respuesta = this.facturacionService.anularFactura(
+                anulacionRequest.getIdPuntoVenta(),
+                anulacionRequest.getCuf(),
+                anulacionRequest.getCodigoMotivo()
+        );
         return new ResponseEntity<>(respuesta, HttpStatus.OK);
     }
 
     @PostMapping("/reversion-anulacion")
-    public ResponseEntity<RespuestaRecepcion> reversionAnulacionFactura(
-            @RequestParam Long idPuntoVenta,
-            @RequestParam String cuf
-    ) throws Exception {
-        RespuestaRecepcion respuesta = this.facturacionService.reversionAnulacionFactura(idPuntoVenta, cuf);
+    public ResponseEntity<RespuestaRecepcion> reversionAnulacionFactura(@Valid @RequestBody ReversionAnulacionRequest reversionAnulacionRequest) throws Exception {
+        RespuestaRecepcion respuesta = this.facturacionService.reversionAnulacionFactura(
+                reversionAnulacionRequest.getIdPuntoVenta(),
+                reversionAnulacionRequest.getCuf()
+        );
         return new ResponseEntity<>(respuesta, HttpStatus.OK);
     }
-
 
     @PostMapping("/recepcion-masiva")
     public ResponseEntity<RespuestaRecepcion> enviarPaqueteFacturas(
@@ -73,5 +70,4 @@ public class FacturacionController {
         facturacionService.deleteFacturaById(id);
         return ResponseEntity.noContent().build();
     }
-
 }
