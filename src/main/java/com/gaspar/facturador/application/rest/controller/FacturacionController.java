@@ -6,16 +6,18 @@ import com.gaspar.facturador.application.response.FacturaResponse;
 import com.gaspar.facturador.application.rest.dto.AnulacionRequest;
 import com.gaspar.facturador.application.rest.dto.ReversionAnulacionRequest;
 import com.gaspar.facturador.domain.service.FacturacionService;
-import com.gaspar.facturador.persistence.entity.FacturaEntity;
+import com.gaspar.facturador.persistence.dto.FacturaDTO;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/factura")
+//@PreAuthorize("denyAll()")
 public class FacturacionController {
 
     private final FacturacionService facturacionService;
@@ -60,11 +62,10 @@ public class FacturacionController {
     }
 
     @GetMapping
-    public ResponseEntity<List<FacturaEntity>> getAllFacturas() {
-        List<FacturaEntity> facturas = facturacionService.getAllFacturas();
+    public ResponseEntity<List<FacturaDTO>> getAllFacturas() {
+        List<FacturaDTO> facturas = facturacionService.getAllFacturas();
         return ResponseEntity.ok(facturas);
     }
-
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteFacturaById(@PathVariable Long id) {
         facturacionService.deleteFacturaById(id);

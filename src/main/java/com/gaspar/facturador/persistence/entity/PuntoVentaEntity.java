@@ -18,6 +18,7 @@ public class PuntoVentaEntity {
     private Integer id;
 
     @NotNull
+    @Column(unique = true)
     private Integer codigo;
 
     @NotEmpty

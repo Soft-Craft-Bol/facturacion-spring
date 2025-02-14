@@ -12,16 +12,19 @@ import com.gaspar.facturador.domain.repository.IPuntoVentaRepository;
 import com.gaspar.facturador.domain.service.emision.EnvioFacturaService;
 import com.gaspar.facturador.domain.service.emision.GeneraFacturaService;
 import com.gaspar.facturador.persistence.FacturaRepository;
+import com.gaspar.facturador.persistence.dto.FacturaDetalleDTO;
 import com.gaspar.facturador.persistence.entity.CufdEntity;
 import com.gaspar.facturador.persistence.entity.FacturaDetalleEntity;
 import com.gaspar.facturador.persistence.entity.FacturaEntity;
 import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.gaspar.facturador.persistence.dto.FacturaDTO;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -162,10 +165,35 @@ public class FacturacionService {
 
         return recepcionMasivaService.enviarPaqueteFacturas(puntoVenta.get(), cufd.get(), archivoComprimido, cantidadFacturas);
     }
-    public List<FacturaEntity> getAllFacturas() {
-        return facturaRepository.findAll();
-    }
+//    public List<FacturaEntity> getAllFacturas() {
+//        return facturaRepository.findAll();
+//    }
     public void deleteFacturaById(Long id) {
         facturaRepository.delete(id);
     }
+    public List<FacturaDTO> getAllFacturas() {
+        return facturaRepository.findAll().stream().map(this::convertToDTO).collect(Collectors.toList());
+    }
+
+    public Optional<FacturaDTO> getFacturaById(Long id) {
+        return facturaRepository.findById(id).map(this::convertToDTO);
+    }
+
+    private FacturaDTO convertToDTO(FacturaEntity factura) {
+        List<FacturaDetalleDTO> detalles = factura.getDetalleList().stream()
+                .map(detalle -> new FacturaDetalleDTO(detalle.getDescripcion(), detalle.getSubTotal()))
+                .collect(Collectors.toList());
+
+        return new FacturaDTO(
+                factura.getId(),
+                factura.getCodigoCliente(),
+                factura.getNombreRazonSocial(),
+                factura.getCuf(),
+                factura.getFechaEmision(),
+                factura.getEstado(),
+                detalles
+        );
+    }
+
+
 }
