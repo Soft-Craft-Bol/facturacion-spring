@@ -1,6 +1,6 @@
 package com.gaspar.facturador.domain.service;
 
-import bo.gob.impuestos.siat.RespuestaRecepcion;
+import bo.gob.impuestos.siat.api.servicio.facturacion.compra.venta.RespuestaRecepcion;
 import com.gaspar.facturador.application.request.VentaRequest;
 import com.gaspar.facturador.application.response.FacturaResponse;
 import com.gaspar.facturador.application.rest.exception.ProcessException;
@@ -30,7 +30,7 @@ public class FacturacionService {
     private final GeneraFacturaService generaFacturaService;
     private final EnvioFacturaService envioFacturaService;
     private final AnulacionFacturaService anulacionFacturaService;
-    //private final ReversionFacturaService reversionFacturaService;
+    private final ReversionFacturaService reversionFacturaService;
     private final RecepcionMasivaService recepcionMasivaService;
     private final FacturaRepository facturaRepository;
     private final IPuntoVentaRepository puntoVentaRepository;
@@ -38,13 +38,14 @@ public class FacturacionService {
 
     public FacturacionService(
             GeneraFacturaService generaFacturaService,
-            EnvioFacturaService envioFacturaService, AnulacionFacturaService anulacionFacturaService, RecepcionMasivaService recepcionMasivaService, FacturaRepository facturaRepository,
+            EnvioFacturaService envioFacturaService, AnulacionFacturaService anulacionFacturaService, ReversionFacturaService reversionFacturaService, RecepcionMasivaService recepcionMasivaService, FacturaRepository facturaRepository,
             IPuntoVentaRepository puntoVentaRepository,
             ICufdRepository cufdRepository
     ) {
         this.generaFacturaService = generaFacturaService;
         this.envioFacturaService = envioFacturaService;
         this.anulacionFacturaService = anulacionFacturaService;
+        this.reversionFacturaService = reversionFacturaService;
         this.recepcionMasivaService = recepcionMasivaService;
         this.facturaRepository = facturaRepository;
         this.puntoVentaRepository = puntoVentaRepository;
@@ -142,6 +143,10 @@ public class FacturacionService {
 
     public RespuestaRecepcion anularFactura(Long idPuntoVenta, String cuf, String codigoMotivo) throws Exception {
         return anulacionFacturaService.anularFactura(idPuntoVenta, cuf, codigoMotivo);
+    }
+
+    public RespuestaRecepcion reversionAnulacionFactura(Long idPuntoVenta, String cuf) throws Exception {
+        return reversionFacturaService.reversionAnulacionFactura(idPuntoVenta, cuf);
     }
 
     public RespuestaRecepcion enviarPaqueteFacturas(Long idPuntoVenta, byte[] archivoComprimido, int cantidadFacturas) throws Exception {

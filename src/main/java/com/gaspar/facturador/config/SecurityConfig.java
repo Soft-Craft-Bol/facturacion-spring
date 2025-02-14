@@ -35,10 +35,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173")); 
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Cache-Control", "Content-Type"));
-        configuration.setAllowCredentials(true); // Permitir credenciales (necesario para cookies, headers de autorización, etc.)
+        configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration); // Aplicar a todas las rutas
@@ -48,20 +48,33 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity, AuthenticationProvider authenticationProvider) throws Exception {
         return httpSecurity
-                .csrf().disable() // Deshabilitar CSRF (no es necesario para APIs stateless)
-                .cors().configurationSource(corsConfigurationSource()) // Aplicar configuración de CORS
-                .and()
-                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS) // Sin sesiones
-                .and()
-                .authorizeRequests()
-                .antMatchers(HttpMethod.POST, "/auth/**").permitAll()
-                .antMatchers(HttpMethod.POST, "/codigos/**").permitAll()
-                .antMatchers(HttpMethod.POST, "/**").permitAll()
-                .antMatchers(HttpMethod.GET, "/**").permitAll()
-                .antMatchers(HttpMethod.DELETE, "/**").permitAll()
-                .antMatchers(HttpMethod.PUT, "/**").permitAll()
-                .anyRequest().denyAll() // Denegar cualquier otra solicitud
-                .and()
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(http -> {
+                    // EndPoints publicos
+                    http.requestMatchers(HttpMethod.POST, "/auth/**").permitAll();
+                    http.requestMatchers(HttpMethod.GET, "/auth/**").permitAll();
+                    http.requestMatchers(HttpMethod.POST, "/codigos/**").permitAll();
+                    http.requestMatchers(HttpMethod.POST, "/factura/**").permitAll();
+                    http.requestMatchers(HttpMethod.GET, "/clientes/**").permitAll();
+                    http.requestMatchers(HttpMethod.POST, "/sincronizar/**").permitAll();
+                    http.requestMatchers(HttpMethod.GET, "/users/**").permitAll();
+                    http.requestMatchers(HttpMethod.POST, "/evento-significativo/**").permitAll();
+                    http.requestMatchers(HttpMethod.POST, "/masiva/**").permitAll();
+                    http.requestMatchers(HttpMethod.POST, "/**").permitAll();
+                    http.requestMatchers(HttpMethod.GET, "/**").permitAll();
+                    http.requestMatchers(HttpMethod.DELETE, "/**").permitAll();
+                    http.requestMatchers(HttpMethod.PUT, "/**").permitAll();
+
+                    // EndPoints Privados
+                    http.requestMatchers(HttpMethod.GET, "/method/get").hasAuthority("READ");
+                    http.requestMatchers(HttpMethod.POST, "/method/post").hasAuthority("CREATE");
+                    http.requestMatchers(HttpMethod.DELETE, "/method/delete").hasAuthority("DELETE");
+                    http.requestMatchers(HttpMethod.PUT, "/method/put").hasAuthority("UPDATE");
+
+                    http.anyRequest().denyAll();
+                })
                 .addFilterBefore(new JwtTokenValidator(jwtUtils), BasicAuthenticationFilter.class)
                 .build();
     }

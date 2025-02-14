@@ -1,6 +1,6 @@
 package com.gaspar.facturador.domain.repository;
 
-import bo.gob.impuestos.siat.ProductosDto;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.ProductosDto;
 import com.gaspar.facturador.persistence.entity.ProductoServicioEntity;
 
 import java.util.List;

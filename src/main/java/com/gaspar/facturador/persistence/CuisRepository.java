@@ -1,6 +1,6 @@
 package com.gaspar.facturador.persistence;
 
-import bo.gob.impuestos.siat.RespuestaCuis;
+import bo.gob.impuestos.siat.api.facturacion.codigos.RespuestaCuis;
 import com.gaspar.facturador.domain.repository.ICuisRepository;
 import com.gaspar.facturador.persistence.crud.CuisCrudRepository;
 import com.gaspar.facturador.persistence.entity.CuisEntity;

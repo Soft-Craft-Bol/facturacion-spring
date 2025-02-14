@@ -1,6 +1,7 @@
 package com.gaspar.facturador.domain.repository;
 
-import bo.gob.impuestos.siat.RespuestaFechaHora;
+
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.RespuestaFechaHora;
 
 public interface IFechaHoraRepository {
     void save(RespuestaFechaHora respuestaFechaHora);

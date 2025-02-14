@@ -1,6 +1,7 @@
 package com.gaspar.facturador.application.rest.dto;
 
-import javax.validation.constraints.Size;
+import jakarta.validation.constraints.Size;
+
 import java.util.List;
 
 public record AuthCreateRoleRequest(

@@ -3,8 +3,8 @@ package com.gaspar.facturador.persistence.entity;
 import com.gaspar.facturador.persistence.entity.enums.TipoProovedor;
 import org.hibernate.validator.constraints.Length;
 
-import javax.persistence.*;
-import javax.validation.constraints.NotNull;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 
 @Entity
 @Table(name = "proovedores")

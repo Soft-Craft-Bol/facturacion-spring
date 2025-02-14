@@ -1,16 +1,25 @@
 package com.gaspar.facturador.config;
 
-import org.apache.axis.AxisFault;
-import org.apache.axis.Message;
-import org.apache.axis.client.Call;
+import bo.gob.impuestos.siat.api.facturacion.codigos.ServicioFacturacionCodigos;
+import bo.gob.impuestos.siat.api.facturacion.codigos.ServicioFacturacionCodigos_Service;
+import bo.gob.impuestos.siat.api.facturacion.operaciones.ServicioFacturacionOperaciones;
+import bo.gob.impuestos.siat.api.facturacion.operaciones.ServicioFacturacionOperaciones_Service;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.ServicioFacturacionSincronizacion;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.ServicioFacturacionSincronizacion_Service;
+import bo.gob.impuestos.siat.api.servicio.facturacion.compra.venta.ServicioFacturacion;
+import bo.gob.impuestos.siat.api.servicio.facturacion.compra.venta.ServicioFacturacion_Service;
+import jakarta.xml.ws.BindingProvider;
+import jakarta.xml.ws.handler.MessageContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import javax.xml.soap.MimeHeaders;
 import java.net.MalformedURLException;
 import java.net.URL;
-
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Configuration
 public class ImpuestosClientConfig {
@@ -18,66 +27,86 @@ public class ImpuestosClientConfig {
     @Value("${app.siat.token}")
     private String token;
 
+    @Value("${app.siat.facturacion.codigos.url}")
+    private String facturacionCodigosUrl;
+
+    @Value("${app.siat.facturacion.sincronizacion.url}")
+    private String facturacionSincronizacionUrl;
+
+    @Value("${app.siat.facturacion.compra.venta.url}")
+    private String facturacionCompraVentaUrl;
+
+    @Value("${app.siat.facturacion.operaciones.url}")
+    private String facturacionOperacionesUrl;
+
     @Bean
-    public bo.gob.impuestos.siat.ServicioFacturacionCodigos servicioFacturacionCodigos() throws AxisFault, MalformedURLException {
+    public ServicioFacturacionCodigos servicioFacturacionCodigos() throws MalformedURLException {
+        URL url = new URL(facturacionCodigosUrl);
+        ServicioFacturacionCodigos_Service service = new ServicioFacturacionCodigos_Service(url);
 
-        bo.gob.impuestos.siat.FacturacionCodigos.ServicioFacturacionCodigos service = new bo.gob.impuestos.siat.FacturacionCodigos.ServicioFacturacionCodigosLocator() {
+        ServicioFacturacionCodigos port = service.getServicioFacturacionCodigosPort();
 
-            @Override
-            public Call createCall() {
-                _call = new Call(this) {
-                    @Override
-                    public void setRequestMessage(Message msg)
-                    {
-                        super.setRequestMessage(msg);
+        Map<String, Object> requestContext = ((BindingProvider) port).getRequestContext();
+        requestContext.put(BindingProvider.SESSION_MAINTAIN_PROPERTY, true);
 
-                        MimeHeaders mimeHeaders = msg.getMimeHeaders();
-                        mimeHeaders.addHeader("apiKey", "TokenApi " + token);
-                    }
-                };
-                return _call;
-            }
-        };
-        return new bo.gob.impuestos.siat.FacturacionCodigos.ServicioFacturacionCodigosSoapBindingStub(new URL(service.getServicioFacturacionCodigosPortAddress()), service);
+        Map<String, List<String>> headers = new HashMap<>();
+        headers.put("apiKey", Collections.singletonList("TokenApi " + token));
+        requestContext.put(MessageContext.HTTP_REQUEST_HEADERS, headers);
+
+        return port;
     }
 
     @Bean
-    public bo.gob.impuestos.siat.ServicioFacturacionSincronizacion servicioFacturacionSincronizacion() throws AxisFault, MalformedURLException {
-        bo.gob.impuestos.siat.FacturacionSincronizacion.ServicioFacturacionSincronizacion service = new bo.gob.impuestos.siat.FacturacionSincronizacion.ServicioFacturacionSincronizacionLocator() {
-            @Override
-            public Call createCall() {
-                _call = new Call(this) {
-                    @Override
-                    public void setRequestMessage(Message msg) {
-                        super.setRequestMessage(msg);
+    public ServicioFacturacionSincronizacion servicioFacturacionSincronizacion() throws MalformedURLException {
+        URL url = new URL(facturacionSincronizacionUrl);
+        ServicioFacturacionSincronizacion_Service service = new ServicioFacturacionSincronizacion_Service(url);
 
-                        MimeHeaders mimeHeaders = msg.getMimeHeaders();
-                        mimeHeaders.addHeader("apiKey", "TokenApi " + token);
-                    }
-                };
-                return _call;
-            }
-        };
-        return new bo.gob.impuestos.siat.FacturacionSincronizacion.ServicioFacturacionSincronizacionSoapBindingStub(new URL(service.getServicioFacturacionSincronizacionPortAddress()), service);
+        ServicioFacturacionSincronizacion port = service.getServicioFacturacionSincronizacionPort();
+
+        Map<String, Object> requestContext = ((BindingProvider) port).getRequestContext();
+        requestContext.put(BindingProvider.SESSION_MAINTAIN_PROPERTY, true);
+
+        // Configurar los encabezados HTTP correctamente
+        Map<String, List<String>> headers = new HashMap<>();
+        headers.put("apiKey", Collections.singletonList("TokenApi " + token));
+        requestContext.put(MessageContext.HTTP_REQUEST_HEADERS, headers);
+
+        return port;
     }
 
+    //Facturacion
     @Bean
-    public bo.gob.impuestos.siat.ServicioFacturacion servicioFacturacion() throws AxisFault, MalformedURLException {
-        bo.gob.impuestos.siat.ServicioFacturacionCompraVenta.ServicioFacturacion service = new bo.gob.impuestos.siat.ServicioFacturacionCompraVenta.ServicioFacturacionLocator() {
-            @Override
-            public Call createCall() {
-                _call = new Call(this) {
-                    @Override
-                    public void setRequestMessage(Message msg) {
-                        super.setRequestMessage(msg);
+    public ServicioFacturacion servicioFacturacion() throws MalformedURLException {
+        URL url = new URL(facturacionCompraVentaUrl);
+        ServicioFacturacion_Service service = new ServicioFacturacion_Service(url);
+        ServicioFacturacion port = service.getServicioFacturacionPort();
 
-                        MimeHeaders mimeHeaders = msg.getMimeHeaders();
-                        mimeHeaders.addHeader("apiKey", "TokenApi " + token);
-                    }
-                };
-                return _call;
-            }
-        };
-        return new bo.gob.impuestos.siat.ServicioFacturacionCompraVenta.ServicioFacturacionSoapBindingStub(new URL(service.getServicioFacturacionPortAddress()), service);
+        Map<String, Object> requestContext = ((BindingProvider) port).getRequestContext();
+        requestContext.put(BindingProvider.SESSION_MAINTAIN_PROPERTY, true);
+
+        Map<String, List<String>> headers = new HashMap<>();
+        headers.put("apiKey", Collections.singletonList("TokenApi " + token));
+        requestContext.put(MessageContext.HTTP_REQUEST_HEADERS, headers);
+
+        return port;
     }
+
+    //Operaciones
+    @Bean
+    public ServicioFacturacionOperaciones servicioFacturacionOperaciones() throws MalformedURLException {
+        URL url = new URL(facturacionOperacionesUrl);
+        ServicioFacturacionOperaciones_Service service = new ServicioFacturacionOperaciones_Service(url);
+        ServicioFacturacionOperaciones port = service.getServicioFacturacionOperacionesPort();
+
+        Map<String, Object> requestContext = ((BindingProvider) port).getRequestContext();
+        requestContext.put(BindingProvider.SESSION_MAINTAIN_PROPERTY, true);
+
+        Map<String, List<String>> headers = new HashMap<>();
+        headers.put("apiKey", Collections.singletonList("TokenApi " + token));
+        requestContext.put(MessageContext.HTTP_REQUEST_HEADERS, headers);
+
+        return port;
+    }
+
+
 }

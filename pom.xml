@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.7.4</version>
+		<version>3.4.1</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.gaspar</groupId>
@@ -14,7 +14,7 @@
 	<name>facturador</name>
 	<description>API Facturación Electrónica</description>
 	<properties>
-		<java.version>11</java.version>
+		<java.version>17</java.version>
 	</properties>
 
 	<dependencies>
@@ -50,12 +50,6 @@
 			<groupId>javax.xml.rpc</groupId>
 			<artifactId>javax.xml.rpc-api</artifactId>
 			<version>1.1.2</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.apache.axis</groupId>
-			<artifactId>axis</artifactId>
-			<version>1.4</version>
 		</dependency>
 
 		<dependency>
@@ -125,10 +119,34 @@
 			<version>4.2.1</version>
 		</dependency>
 		<dependency>
+<<<<<<< HEAD
+			<groupId>jakarta.xml.ws</groupId>
+			<artifactId>jakarta.xml.ws-api</artifactId>
+			<version>4.0.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.sun.xml.ws</groupId>
+			<artifactId>jaxws-rt</artifactId>
+			<version>4.0.1</version>
+		</dependency>
+
+		<dependency>
+			<groupId>javax.xml.bind</groupId>
+			<artifactId>jaxb-api</artifactId>
+			<version>2.3.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.glassfish.jaxb</groupId>
+			<artifactId>jaxb-runtime</artifactId>
+			<version>2.3.5</version>
+		</dependency>
+
+=======
 			<groupId>com.cloudinary</groupId>
 			<artifactId>cloudinary-http44</artifactId>
 			<version>1.34.0</version>
 		</dependency>
+>>>>>>> 2dbe4976b57700e9014ea69a93c86bba97cfa94b
 	</dependencies>
 
 	<build>
@@ -174,6 +192,84 @@
 				<version>3.0.0</version>
 				<executions>
 					<execution>
+<<<<<<< HEAD
+						<id>generate-classes-from-sincronizacion</id>
+						<goals>
+							<goal>wsimport</goal>
+						</goals>
+						<configuration>
+							<packageName>bo.gob.impuestos.siat.api.facturacion.sincronizacion</packageName>
+							<wsdlUrls>
+								<wsdlUrl>https://pilotosiatservicios.impuestos.gob.bo/v2/FacturacionSincronizacion?wsdl</wsdlUrl>
+							</wsdlUrls>
+							<sourceDestDir>${project.basedir}/src/main/java</sourceDestDir>
+							<destDir>${project.build.directory}/classes</destDir>
+							<extension>true</extension>
+						</configuration>
+					</execution>
+					<execution>
+						<id>generate-classes-from-operaciones</id>
+						<goals>
+							<goal>wsimport</goal>
+						</goals>
+						<configuration>
+							<packageName>bo.gob.impuestos.siat.api.facturacion.operaciones</packageName>
+							<wsdlUrls>
+								<wsdlUrl>https://pilotosiatservicios.impuestos.gob.bo/v2/FacturacionOperaciones?wsdl</wsdlUrl>
+							</wsdlUrls>
+							<sourceDestDir>${project.basedir}/src/main/java</sourceDestDir>
+							<destDir>${project.build.directory}/classes</destDir>
+							<extension>true</extension>
+						</configuration>
+					</execution>
+					<execution>
+						<id>generate-classes-from-compras</id>
+						<goals>
+							<goal>wsimport</goal>
+						</goals>
+						<configuration>
+							<packageName>bo.gob.impuestos.siat.api.servicio.recepcion.compras</packageName>
+							<wsdlUrls>
+								<wsdlUrl>https://pilotosiatservicios.impuestos.gob.bo/v2/ServicioRecepcionCompras?wsdl</wsdlUrl>
+							</wsdlUrls>
+							<sourceDestDir>${project.basedir}/src/main/java</sourceDestDir>
+							<destDir>${project.build.directory}/classes</destDir>
+							<extension>true</extension>
+						</configuration>
+					</execution>
+					<execution>
+						<id>generate-classes-from-codigos</id>
+						<goals>
+							<goal>wsimport</goal>
+						</goals>
+						<configuration>
+							<packageName>bo.gob.impuestos.siat.api.facturacion.codigos</packageName>
+							<wsdlUrls>
+								<wsdlUrl>https://pilotosiatservicios.impuestos.gob.bo/v2/FacturacionCodigos?wsdl</wsdlUrl>
+							</wsdlUrls>
+							<sourceDestDir>${project.basedir}/src/main/java</sourceDestDir>
+							<destDir>${project.build.directory}/classes</destDir>
+							<extension>true</extension>
+						</configuration>
+					</execution>
+					<execution>
+						<id>generate-classes-from-documento-ajuste</id>
+						<goals>
+							<goal>wsimport</goal>
+						</goals>
+						<configuration>
+							<packageName>bo.gob.impuestos.siat.api.servicio.facturacion.documento.ajuste</packageName>
+							<wsdlUrls>
+								<wsdlUrl>https://pilotosiatservicios.impuestos.gob.bo/v2/ServicioFacturacionDocumentoAjuste?wsdl</wsdlUrl>
+							</wsdlUrls>
+							<sourceDestDir>${project.basedir}/src/main/java</sourceDestDir>
+							<destDir>${project.build.directory}/classes</destDir>
+							<extension>true</extension>
+						</configuration>
+					</execution>
+					<execution>
+=======
+>>>>>>> 2dbe4976b57700e9014ea69a93c86bba97cfa94b
 						<id>generate-classes-from-compra-venta</id>
 						<goals>
 							<goal>wsimport</goal>

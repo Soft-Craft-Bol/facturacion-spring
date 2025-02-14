@@ -6,10 +6,10 @@ import com.gaspar.facturador.commons.CodigoMonedaEnum;
 import com.gaspar.facturador.commons.CodigoTipoDocumentoIdentidadEnum;
 import com.gaspar.facturador.persistence.entity.ClienteEntity;
 import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
+import jakarta.xml.bind.annotation.*;
 import lombok.Getter;
 
-import javax.xml.bind.annotation.*;
-import javax.xml.datatype.XMLGregorianCalendar;
+import javax.xml.datatype.*;
 import java.math.BigDecimal;
 
 @Getter

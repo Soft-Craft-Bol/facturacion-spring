@@ -1,6 +1,6 @@
 package com.gaspar.facturador.domain.service;
 
-import bo.gob.impuestos.siat.*;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.*;
 import com.gaspar.facturador.commons.ParametricaEnum;
 import com.gaspar.facturador.domain.repository.IParametroRepository;
 import org.slf4j.Logger;
@@ -8,7 +8,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.rmi.RemoteException;
-
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class ParametroService {
@@ -30,10 +31,7 @@ public class ParametroService {
         }
     }
 
-    private void obtenerParametros(
-            SolicitudSincronizacion solicitudSincronizacion,
-            ParametricaEnum parametro
-    ) throws RemoteException {
+    private void obtenerParametros(SolicitudSincronizacion solicitudSincronizacion, ParametricaEnum parametro) throws RemoteException {
         RespuestaListaParametricas respuestaParametros = null;
 
         switch (parametro) {
@@ -75,23 +73,27 @@ public class ParametroService {
                 break;
         }
 
-        if (!respuestaParametros.getTransaccion()) {
-            LOGGER.error(this.obtenerMensajeServicio(respuestaParametros.getMensajesList()));
+        if (Boolean.FALSE.equals(respuestaParametros.isTransaccion())) {
+            String mensajeError = obtenerMensajeServicio(respuestaParametros.getMensajesList());
+            LOGGER.error("Error en la sincronización de parámetros ({}): {}", parametro, mensajeError);
         }
 
-        for (ParametricasDto parametricasDto : respuestaParametros.getListaCodigos()) {
-            parametroRepository.save(parametricasDto, parametro);
+        List<ParametricasDto> listaCodigos = respuestaParametros.getListaCodigos();
+        if (listaCodigos != null) {
+            for (ParametricasDto parametricasDto : listaCodigos) {
+                parametroRepository.save(parametricasDto, parametro);
+            }
         }
     }
 
-    private String  obtenerMensajeServicio(MensajeServicio[] mensajeServicioList) {
-        String mensaje = "";
-        if (mensajeServicioList != null) {
-            for (MensajeServicio mensajeServicio : mensajeServicioList) {
-                mensaje += mensajeServicio.getDescripcion() + ". ";
-            }
+    private String obtenerMensajeServicio(List<MensajeServicio> mensajeServicioList) {
+        if (mensajeServicioList == null || mensajeServicioList.isEmpty()) {
+            return "No se recibieron mensajes de error.";
         }
-        return mensaje;
+
+        return mensajeServicioList.stream()
+                .map(MensajeServicio::getDescripcion)
+                .collect(Collectors.joining(". "));
     }
 
 

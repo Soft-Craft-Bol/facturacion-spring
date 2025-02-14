@@ -1,19 +1,19 @@
 package com.gaspar.facturador.domain.service;
 
-import bo.gob.impuestos.siat.RespuestaFechaHora;
-import bo.gob.impuestos.siat.RespuestaListaParametricas;
-import bo.gob.impuestos.siat.SolicitudSincronizacion;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.RespuestaFechaHora;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.RespuestaListaParametricas;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.SolicitudSincronizacion;
 import com.gaspar.facturador.application.rest.exception.ProcessException;
 import com.gaspar.facturador.config.AppConfig;
 import com.gaspar.facturador.domain.repository.ICuisRepository;
 import com.gaspar.facturador.domain.repository.IPuntoVentaRepository;
 import com.gaspar.facturador.persistence.entity.CuisEntity;
 import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
+import jakarta.xml.bind.JAXBElement;
 import org.springframework.stereotype.Service;
 
+import javax.xml.namespace.QName;
 import java.rmi.RemoteException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
 
@@ -96,7 +96,12 @@ public class SincronizacionCatalogosParametrosService {
         // Crear la solicitud con todos los datos
         SolicitudSincronizacion solicitud = new SolicitudSincronizacion();
         solicitud.setCodigoAmbiente(appConfig.getCodigoAmbiente());
-        solicitud.setCodigoPuntoVenta(puntoVenta.get().getCodigo());
+        JAXBElement<Integer> codigoPuntoVentaElement = new JAXBElement<>(
+                new QName("codigoPuntoVenta"),
+                Integer.class,
+                puntoVenta.get().getCodigo()
+        );
+        solicitud.setCodigoPuntoVenta(codigoPuntoVentaElement);
         solicitud.setCodigoSistema(appConfig.getCodigoSistema());
         solicitud.setCodigoSucursal(puntoVenta.get().getSucursal().getCodigo());
         solicitud.setCuis(cuis.get().getCodigo());
@@ -115,7 +120,12 @@ public class SincronizacionCatalogosParametrosService {
         // Crear la solicitud con todos los datos
         SolicitudSincronizacion solicitud = new SolicitudSincronizacion();
         solicitud.setCodigoAmbiente(appConfig.getCodigoAmbiente());
-        solicitud.setCodigoPuntoVenta(puntoVenta.get().getCodigo());
+        JAXBElement<Integer> codigoPuntoVentaElement = new JAXBElement<>(
+                new QName("codigoPuntoVenta"),
+                Integer.class,
+                puntoVenta.get().getCodigo()
+        );
+        solicitud.setCodigoPuntoVenta(codigoPuntoVentaElement);
         solicitud.setCodigoSistema(appConfig.getCodigoSistema());
         solicitud.setCodigoSucursal(puntoVenta.get().getSucursal().getCodigo());
         solicitud.setCuis(cuis.get().getCodigo());
@@ -132,7 +142,12 @@ public class SincronizacionCatalogosParametrosService {
 
         SolicitudSincronizacion solicitudSincronizacion = new SolicitudSincronizacion();
         solicitudSincronizacion.setCodigoAmbiente(this.appConfig.getCodigoAmbiente());
-        solicitudSincronizacion.setCodigoPuntoVenta(puntoVenta.getCodigo());
+        JAXBElement<Integer> codigoPuntoVentaElement = new JAXBElement<>(
+                new QName("codigoPuntoVenta"),
+                Integer.class,
+                puntoVenta.getCodigo()
+        );
+        solicitudSincronizacion.setCodigoPuntoVenta(codigoPuntoVentaElement);
         solicitudSincronizacion.setCodigoSistema(this.appConfig.getCodigoSistema());
         solicitudSincronizacion.setCodigoSucursal(puntoVenta.getSucursal().getCodigo());
         solicitudSincronizacion.setCuis(cuis.getCodigo());

@@ -1,6 +1,6 @@
 package com.gaspar.facturador.persistence.mapper;
 
-import bo.gob.impuestos.siat.RespuestaCuis;
+import bo.gob.impuestos.siat.api.facturacion.codigos.RespuestaCuis;
 import com.gaspar.facturador.persistence.entity.CuisEntity;
 import org.mapstruct.Mapper;
 

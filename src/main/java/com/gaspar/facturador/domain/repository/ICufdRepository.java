@@ -1,6 +1,6 @@
 package com.gaspar.facturador.domain.repository;
 
-import bo.gob.impuestos.siat.RespuestaCufd;
+import bo.gob.impuestos.siat.api.facturacion.codigos.RespuestaCufd;
 import com.gaspar.facturador.persistence.entity.CufdEntity;
 import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
 

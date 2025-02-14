@@ -1,13 +1,15 @@
 package com.gaspar.facturador.domain.service;
 
-import bo.gob.impuestos.siat.RespuestaListaParametricas;
-import bo.gob.impuestos.siat.ServicioFacturacionSincronizacion;
-import bo.gob.impuestos.siat.SolicitudSincronizacion;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.RespuestaListaParametricas;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.ServicioFacturacionSincronizacion;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.SolicitudSincronizacion;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.MensajeServicio;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.rmi.RemoteException;
+import java.util.List;
 
 @Service
 public class EventosSignificativosService {
@@ -25,12 +27,17 @@ public class EventosSignificativosService {
 
         RespuestaListaParametricas respuesta = servicioFacturacionSincronizacion.sincronizarParametricaEventosSignificativos(solicitudSincronizacion);
 
-        if (Boolean.FALSE.equals(respuesta.getTransaccion())) {
-            LOGGER.error("Error al sincronizar eventos significativos: {}", (Object) respuesta.getMensajesList());
-            throw new RemoteException("Error en sincronización: " + respuesta.getMensajesList());
+        if (Boolean.FALSE.equals(respuesta.isTransaccion())) {
+            List<MensajeServicio> mensajesList = respuesta.getMensajesList();
+
+            // Convertir la lista a un array antes de usarla si es necesario
+            MensajeServicio[] mensajesArray = mensajesList.toArray(new MensajeServicio[0]);
+
+            LOGGER.error("Error al sincronizar eventos significativos: {}", (Object) mensajesArray);
+            throw new RemoteException("Error en sincronización: " + mensajesList);
         }
 
-        LOGGER.info("Eventos significativos sincronizados correctamente: {}", (Object) respuesta.getListaCodigos());
+        LOGGER.info("Eventos significativos sincronizados correctamente: {}", respuesta.getListaCodigos());
 
         return respuesta;
     }

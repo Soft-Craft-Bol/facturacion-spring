@@ -1,6 +1,6 @@
 package com.gaspar.facturador.persistence;
 
-import bo.gob.impuestos.siat.ParametricaLeyendasDto;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.ParametricaLeyendasDto;
 import com.gaspar.facturador.domain.repository.ILeyendaRepository;
 import com.gaspar.facturador.persistence.crud.LeyendaFacturaCrudRepository;
 import com.gaspar.facturador.persistence.mapper.LeyendaMapper;

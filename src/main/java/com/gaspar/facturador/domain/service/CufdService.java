@@ -1,9 +1,9 @@
 package com.gaspar.facturador.domain.service;
 
-import bo.gob.impuestos.siat.MensajeServicio;
-import bo.gob.impuestos.siat.RespuestaCufd;
-import bo.gob.impuestos.siat.ServicioFacturacionCodigos;
-import bo.gob.impuestos.siat.SolicitudCufd;
+import bo.gob.impuestos.siat.api.facturacion.codigos.MensajeServicio;
+import bo.gob.impuestos.siat.api.facturacion.codigos.RespuestaCufd;
+import bo.gob.impuestos.siat.api.facturacion.codigos.ServicioFacturacionCodigos;
+import bo.gob.impuestos.siat.api.facturacion.codigos.SolicitudCufd;
 import com.gaspar.facturador.application.rest.exception.ProcessException;
 import com.gaspar.facturador.config.AppConfig;
 import com.gaspar.facturador.domain.repository.ICufdRepository;
@@ -11,8 +11,10 @@ import com.gaspar.facturador.domain.repository.ICuisRepository;
 import com.gaspar.facturador.domain.repository.IPuntoVentaRepository;
 import com.gaspar.facturador.persistence.entity.CuisEntity;
 import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
+import jakarta.xml.bind.JAXBElement;
 import org.springframework.stereotype.Service;
 
+import javax.xml.namespace.QName;
 import java.rmi.RemoteException;
 import java.util.Optional;
 
@@ -57,12 +59,18 @@ public class CufdService {
         solicitudCufd.setCodigoSistema(this.appConfig.getCodigoSistema());
         solicitudCufd.setNit(puntoVenta.get().getSucursal().getEmpresa().getNit());
         solicitudCufd.setCodigoSucursal(puntoVenta.get().getSucursal().getCodigo());
-        solicitudCufd.setCodigoPuntoVenta(puntoVenta.get()    .getCodigo());
+        JAXBElement<Integer> codigoPuntoVentaElement = new JAXBElement<>(
+                new QName("codigoPuntoVenta"),
+                Integer.class,
+                puntoVenta.get().getCodigo()
+        );
+        solicitudCufd.setCodigoPuntoVenta(codigoPuntoVentaElement);
+        //solicitudCufd.setCodigoPuntoVenta(puntoVenta.get().getCodigo());
         solicitudCufd.setCuis(cuis.get().getCodigo());
 
         RespuestaCufd respuestaCufd = this.servicioFacturacionCodigos.cufd(solicitudCufd);
 
-        if(!respuestaCufd.getTransaccion() && respuestaCufd.getMensajesList() != null) {
+        if(!respuestaCufd.isTransaccion() && respuestaCufd.getMensajesList() != null) {
             String mensajes = "";
             for (MensajeServicio mensajeServicio : respuestaCufd.getMensajesList()) {
                 mensajes += mensajeServicio.getDescripcion() + ". ";

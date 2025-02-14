@@ -1,6 +1,6 @@
 package com.gaspar.facturador.persistence;
 
-import bo.gob.impuestos.siat.ProductosDto;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.ProductosDto;
 import com.gaspar.facturador.domain.repository.IProductoServicioRepository;
 import com.gaspar.facturador.persistence.crud.ProductoServicioCrudRepository;
 import com.gaspar.facturador.persistence.entity.ProductoServicioEntity;

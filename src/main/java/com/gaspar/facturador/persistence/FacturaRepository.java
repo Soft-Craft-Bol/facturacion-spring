@@ -5,9 +5,9 @@ import com.gaspar.facturador.persistence.crud.FacturaCrudRepository;
 import com.gaspar.facturador.persistence.crud.FacturaDetalleCrudRepository;
 import com.gaspar.facturador.persistence.entity.FacturaDetalleEntity;
 import com.gaspar.facturador.persistence.entity.FacturaEntity;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Repository;
 
-import javax.transaction.Transactional;
 import java.util.List;
 import java.util.Optional;
 
