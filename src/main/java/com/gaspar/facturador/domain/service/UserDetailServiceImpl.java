@@ -127,8 +127,10 @@ public class UserDetailServiceImpl implements UserDetailsService {
         Authentication authentication = new UsernamePasswordAuthenticationToken(userSaved, null, authorities);
 
         String accessToken = jwtUtils.createToken(authentication);
+        // incluir foto en la respuesta
+        String photo = userSaved.getPhoto();
 
-        return new AuthResponse(username, "User created successfully", accessToken, true);
+        return new AuthResponse(username, "User created successfully", accessToken, true, photo);
     }
 
 
@@ -141,7 +143,13 @@ public class UserDetailServiceImpl implements UserDetailsService {
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         String accessToken = jwtUtils.createToken(authentication);
-        AuthResponse authResponse = new AuthResponse(username, "User loged succesfully", accessToken, true);
+
+        // incluir foto en la respuesta
+        UserEntity userEntity = userRepository.findUserEntityByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("El usuario " + username + " no existe."));
+        String photo = userEntity.getPhoto();
+
+        AuthResponse authResponse = new AuthResponse(username, "User loged succesfully", accessToken, true, photo);
         return authResponse;
     }
 

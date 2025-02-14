@@ -4,6 +4,6 @@ public record AuthResponse(
         String username,
         String message,
         String jwt,
-        Boolean status
-) {
+        Boolean status,
+        String photo) {
 }
