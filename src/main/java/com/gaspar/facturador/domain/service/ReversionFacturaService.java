@@ -6,8 +6,10 @@ import com.gaspar.facturador.config.AppConfig;
 import com.gaspar.facturador.domain.repository.ICufdRepository;
 import com.gaspar.facturador.domain.repository.ICuisRepository;
 import com.gaspar.facturador.domain.repository.IPuntoVentaRepository;
+import com.gaspar.facturador.persistence.FacturaRepository;
 import com.gaspar.facturador.persistence.entity.CufdEntity;
 import com.gaspar.facturador.persistence.entity.CuisEntity;
+import com.gaspar.facturador.persistence.entity.FacturaEntity;
 import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,19 +30,21 @@ public class ReversionFacturaService {
     private final IPuntoVentaRepository puntoVentaRepository;
     private final ICufdRepository cufdRepository;
     private final ICuisRepository cuisRepository;
+    private final FacturaRepository facturaRepository;
 
     public ReversionFacturaService(
             AppConfig appConfig,
             ServicioFacturacion servicioFacturacion,
             IPuntoVentaRepository puntoVentaRepository,
             ICufdRepository cufdRepository,
-            ICuisRepository cuisRepository
+            ICuisRepository cuisRepository, FacturaRepository facturaRepository
     ) {
         this.appConfig = appConfig;
         this.servicioFacturacion = servicioFacturacion;
         this.puntoVentaRepository = puntoVentaRepository;
         this.cufdRepository = cufdRepository;
         this.cuisRepository = cuisRepository;
+        this.facturaRepository = facturaRepository;
     }
 
     public RespuestaRecepcion reversionAnulacionFactura(
@@ -92,8 +96,15 @@ public class ReversionFacturaService {
         LOGGER.info("Respuesta del servicio: {}", obtenerMensajeServicio(respuestaRecepcion.getMensajesList()));
 
         // Verificar la respuesta
-        if (respuestaRecepcion != null && respuestaRecepcion.getCodigoEstado() != 908) {
+        if (respuestaRecepcion != null && respuestaRecepcion.getCodigoEstado() != 907) {
             throw new ProcessException(obtenerMensajeServicio(respuestaRecepcion.getMensajesList()));
+        }
+
+        Optional<FacturaEntity> facturaOpt = facturaRepository.findByCuf(cuf);
+        if (facturaOpt.isPresent()) {
+            facturaRepository.updateEstado(facturaOpt.get().getId(), "REVERTIDA");
+        } else {
+            throw new ProcessException("Factura no encontrada con el CUF proporcionado.");
         }
 
         return respuestaRecepcion;
