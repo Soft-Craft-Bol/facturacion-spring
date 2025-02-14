@@ -1,77 +1,97 @@
 package com.gaspar.facturador.config;
 
 import bo.gob.impuestos.siat.api.facturacion.codigos.ServicioFacturacionCodigos;
+import bo.gob.impuestos.siat.api.facturacion.codigos.ServicioFacturacionCodigos_Service;
 import bo.gob.impuestos.siat.api.facturacion.sincronizacion.ServicioFacturacionSincronizacion;
+import bo.gob.impuestos.siat.api.facturacion.sincronizacion.ServicioFacturacionSincronizacion_Service;
 import bo.gob.impuestos.siat.api.servicio.facturacion.compra.venta.ServicioFacturacion;
-import org.apache.cxf.jaxws.JaxWsProxyFactoryBean;
-import org.apache.cxf.headers.Header;
-import org.apache.cxf.binding.soap.SoapMessage;
-import org.apache.cxf.endpoint.Client;
-import org.apache.cxf.interceptor.Interceptor;
+import bo.gob.impuestos.siat.api.servicio.facturacion.compra.venta.ServicioFacturacion_Service;
+import jakarta.xml.ws.BindingProvider;
+import jakarta.xml.ws.handler.MessageContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import javax.xml.namespace.QName;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Configuration
 public class ImpuestosClientConfig {
 
-    @Value("${app.siat.token}") // Token de autenticación desde application.properties
+    @Value("${app.siat.token}")
     private String token;
 
-    // Interceptor para agregar la cabecera personalizada (apiKey)
-    private Interceptor<SoapMessage> createHeaderInterceptor() {
-        return new Interceptor<SoapMessage>() {
-            @Override
-            public void handleMessage(SoapMessage message) {
-                // Crear la cabecera SOAP
-                QName qname = new QName("apiKey");
-                Header header = new Header(qname, "TokenApi " + token);
-                message.getHeaders().add(header);
-            }
+    @Value("${app.siat.facturacion.codigos.url}")
+    private String facturacionCodigosUrl;
 
-            @Override
-            public void handleFault(SoapMessage message) {
-                // Manejo de errores (opcional)
-            }
-        };
-    }
+    @Value("${app.siat.facturacion.sincronizacion.url}")
+    private String facturacionSincronizacionUrl;
 
-    // Configuración común para los clientes SOAP
-    private <T> T createSoapClient(String serviceUrl, Class<T> serviceClass) {
-        JaxWsProxyFactoryBean factory = new JaxWsProxyFactoryBean();
-        factory.setServiceClass(serviceClass);
-        factory.setAddress(serviceUrl);
+    @Value("${app.siat.facturacion.compra.venta.url}")
+    private String facturacionCompraVentaUrl;
 
-        // Crear el cliente SOAP
-        T client = (T) factory.create();
-
-        // Agregar el interceptor para la cabecera personalizada
-        Client cxfClient = org.apache.cxf.frontend.ClientProxy.getClient(client);
-        cxfClient.getOutInterceptors().add(createHeaderInterceptor());
-
-        return client;
-    }
-
-    // Bean para el servicio de códigos
     @Bean
-    public ServicioFacturacionCodigos servicioFacturacionCodigos() {
-        String serviceUrl = "https://pilotosiatservicios.impuestos.gob.bo/v2/FacturacionCodigos?wsdl";
-        return createSoapClient(serviceUrl, ServicioFacturacionCodigos.class);
+    public ServicioFacturacionCodigos servicioFacturacionCodigos() throws MalformedURLException {
+        URL url = new URL(facturacionCodigosUrl);
+        ServicioFacturacionCodigos_Service service = new ServicioFacturacionCodigos_Service(url);
+
+        ServicioFacturacionCodigos port = service.getServicioFacturacionCodigosPort();
+
+        Map<String, Object> requestContext = ((BindingProvider) port).getRequestContext();
+        requestContext.put(BindingProvider.SESSION_MAINTAIN_PROPERTY, true);
+
+        Map<String, List<String>> headers = new HashMap<>();
+        headers.put("apiKey", Collections.singletonList("TokenApi " + token));
+        requestContext.put(MessageContext.HTTP_REQUEST_HEADERS, headers);
+
+        return port;
     }
 
-    // Bean para el servicio de compra/venta
     @Bean
-    public ServicioFacturacion servicioFacturacion() {
-        String serviceUrl = "https://pilotosiatservicios.impuestos.gob.bo/v2/ServicioFacturacionCompraVenta?wsdl";
-        return createSoapClient(serviceUrl, ServicioFacturacion.class);
+    public ServicioFacturacionSincronizacion servicioFacturacionSincronizacion() throws MalformedURLException {
+        // Crear una instancia del servicio usando la URL proporcionada
+        URL url = new URL(facturacionSincronizacionUrl);
+        ServicioFacturacionSincronizacion_Service service = new ServicioFacturacionSincronizacion_Service(url);
+
+        // Obtener el puerto (port) para invocar los métodos del servicio
+        ServicioFacturacionSincronizacion port = service.getServicioFacturacionSincronizacionPort();
+
+        // Agregar el header "apiKey" con el token
+        Map<String, Object> requestContext = ((BindingProvider) port).getRequestContext();
+        requestContext.put(BindingProvider.SESSION_MAINTAIN_PROPERTY, true);
+
+        // Configurar los encabezados HTTP correctamente
+        Map<String, List<String>> headers = new HashMap<>();
+        headers.put("apiKey", Collections.singletonList("TokenApi " + token));
+        requestContext.put(MessageContext.HTTP_REQUEST_HEADERS, headers);
+
+        return port;
     }
 
-    // Bean para el servicio de sincronización
+    //Facturacion
     @Bean
-    public ServicioFacturacionSincronizacion servicioFacturacionSincronizacion() {
-        String serviceUrl = "https://pilotosiatservicios.impuestos.gob.bo/v2/FacturacionSincronizacion?wsdl";
-        return createSoapClient(serviceUrl, ServicioFacturacionSincronizacion.class);
+    public ServicioFacturacion servicioFacturacion() throws MalformedURLException {
+        // Crear una instancia del servicio usando la URL proporcionada
+        URL url = new URL(facturacionCompraVentaUrl);
+        ServicioFacturacion_Service service = new ServicioFacturacion_Service(url);
+
+        // Obtener el puerto (port) para invocar los métodos del servicio
+        ServicioFacturacion port = service.getServicioFacturacionPort();
+
+        // Agregar el header "api       Key" con el token
+        Map<String, Object> requestContext = ((BindingProvider) port).getRequestContext();
+        requestContext.put(BindingProvider.SESSION_MAINTAIN_PROPERTY, true);
+
+        Map<String, List<String>> headers = new HashMap<>();
+        headers.put("apiKey", Collections.singletonList("TokenApi " + token));
+        requestContext.put(MessageContext.HTTP_REQUEST_HEADERS, headers);
+
+        return port;
     }
+
+
 }
