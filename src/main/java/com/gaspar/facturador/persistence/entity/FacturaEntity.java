@@ -57,6 +57,8 @@ public class FacturaEntity {
 
     private String estado;
     private String emailCliente;
+    @Column(columnDefinition = "TEXT")
+    private String xmlContent;
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
