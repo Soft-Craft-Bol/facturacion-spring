@@ -2,6 +2,9 @@ package com.gaspar.facturador.domain.service;
 
 import bo.gob.impuestos.siat.api.servicio.facturacion.compra.venta.*;
 import com.gaspar.facturador.application.rest.exception.ProcessException;
+import com.gaspar.facturador.commons.CodigoDocumentoSectorEnum;
+import com.gaspar.facturador.commons.CodigoModalidadEmisionEnum;
+import com.gaspar.facturador.commons.CodigoTipoDocumentoFiscalEnum;
 import com.gaspar.facturador.config.AppConfig;
 import com.gaspar.facturador.domain.helpers.Utils;
 import com.gaspar.facturador.domain.repository.ICufdRepository;
@@ -41,9 +44,11 @@ public class EnvioPaquetesService {
     }
 
     public RespuestaRecepcion enviarPaqueteFacturas(
-            Long idPuntoVenta,
-            byte[] archivoComprimido,
-            int cantidadFacturas
+            PuntoVentaEntity puntoVenta,
+            CufdEntity cufd,
+            byte[] comprimidoByte,
+            long cantidadFacturas,
+            long codigoEvento
     ) throws RemoteException {
         // Verificar la comunicación con el SIAT
         RespuestaComunicacion respuestaComunicacion = servicioFacturacion.verificarComunicacion();
@@ -51,48 +56,41 @@ public class EnvioPaquetesService {
             throw new ProcessException("No se pudo conectar con los servidores del S.I.N.");
         }
 
-        // Obtener el punto de venta
-        Optional<PuntoVentaEntity> puntoVenta = puntoVentaRepository.findById(Math.toIntExact(idPuntoVenta));
-        if (puntoVenta.isEmpty()) {
-            throw new ProcessException("Punto de venta no encontrado");
+        Optional<CuisEntity> cuis = cuisRepository.findActual(puntoVenta);
+        if (cuis.isEmpty()) throw new ProcessException("Cuis vigente no encontrado.");
+
+        // Verificar que el archivo no esté vacío
+        if (comprimidoByte == null || comprimidoByte.length == 0) {
+            throw new ProcessException("El archivo comprimido está vacío.");
         }
 
-        // Obtener el CUFD vigente
-        Optional<CufdEntity> cufd = cufdRepository.findActual(puntoVenta.get());
-        if (cufd.isEmpty()) {
-            throw new ProcessException("CUFD vigente no encontrado");
-        }
-
-        // Obtener el CUIS vigente
-        Optional<CuisEntity> cuis = cuisRepository.findActual(puntoVenta.get());
-        if (cuis.isEmpty()) {
-            throw new ProcessException("CUIS vigente no encontrado");
-        }
+        // Calcular el hash del archivo
+        String sha2 = Utils.obtenerSHA2(comprimidoByte);
+        System.out.println("Hash generado: " + sha2);  // Depuración
 
         // Crear la solicitud de recepción masiva
-        SolicitudRecepcionMasiva solicitudRecepcionMasiva = new SolicitudRecepcionMasiva();
-        solicitudRecepcionMasiva.setCodigoAmbiente(appConfig.getCodigoAmbiente());
-        solicitudRecepcionMasiva.setCodigoPuntoVenta(puntoVenta.get().getCodigo());
-        solicitudRecepcionMasiva.setCodigoSistema(appConfig.getCodigoSistema());
-        solicitudRecepcionMasiva.setCodigoSucursal(puntoVenta.get().getSucursal().getCodigo());
-        solicitudRecepcionMasiva.setNit(puntoVenta.get().getSucursal().getEmpresa().getNit());
-        solicitudRecepcionMasiva.setCuis(cuis.get().getCodigo());
-        solicitudRecepcionMasiva.setCufd(cufd.get().getCodigo());
-        solicitudRecepcionMasiva.setCodigoDocumentoSector(1); // Código de documento sector (1 para compra/venta)
-        solicitudRecepcionMasiva.setCodigoEmision(2); // Código de emisión (2 para electrónica en línea)
-        solicitudRecepcionMasiva.setCodigoModalidad(1); // Código de modalidad (1 para electrónica en línea)
-        solicitudRecepcionMasiva.setTipoFacturaDocumento(1); // Tipo de factura (1 para factura con derecho a crédito fiscal)
-        solicitudRecepcionMasiva.setArchivo(archivoComprimido);
-        solicitudRecepcionMasiva.setCantidadFacturas(cantidadFacturas);
+        SolicitudRecepcionPaquete solicitudRecepcionPaquete = new SolicitudRecepcionPaquete();
+        solicitudRecepcionPaquete.setCodigoAmbiente(appConfig.getCodigoAmbiente());
+        solicitudRecepcionPaquete.setCodigoPuntoVenta(puntoVenta.getCodigo());
+        solicitudRecepcionPaquete.setCodigoSistema(appConfig.getCodigoSistema());
+        solicitudRecepcionPaquete.setCodigoSucursal(puntoVenta.getSucursal().getCodigo());
+        solicitudRecepcionPaquete.setNit(puntoVenta.getSucursal().getEmpresa().getNit());
+        solicitudRecepcionPaquete.setCuis(cuis.get().getCodigo());
+        solicitudRecepcionPaquete.setCufd(cufd.getCodigo());
+        solicitudRecepcionPaquete.setCodigoDocumentoSector(CodigoDocumentoSectorEnum.COMPRA_VENTA.getValue());
+        solicitudRecepcionPaquete.setCodigoEmision(2);  // Código de emisión en línea
+        solicitudRecepcionPaquete.setCodigoModalidad(appConfig.getCodigoModalidad());
+        solicitudRecepcionPaquete.setTipoFacturaDocumento(CodigoTipoDocumentoFiscalEnum.FACTURA_CON_DERECHO_CREDITO_FISCAL.getValue());
+        solicitudRecepcionPaquete.setArchivo(comprimidoByte);
+        solicitudRecepcionPaquete.setCantidadFacturas((int) cantidadFacturas);
+        solicitudRecepcionPaquete.setCodigoEvento(codigoEvento);
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS");
-        solicitudRecepcionMasiva.setFechaEnvio(LocalDateTime.now().format(formatter));
-
-        String hashArchivo = Utils.obtenerSHA2(archivoComprimido);
-        solicitudRecepcionMasiva.setHashArchivo(hashArchivo);
+        solicitudRecepcionPaquete.setFechaEnvio(LocalDateTime.now().format(formatter));
+        solicitudRecepcionPaquete.setHashArchivo(sha2);
 
         // Enviar el paquete de facturas
-        RespuestaRecepcion respuestaRecepcion = servicioFacturacion.recepcionMasivaFactura(solicitudRecepcionMasiva);
+        RespuestaRecepcion respuestaRecepcion = servicioFacturacion.recepcionPaqueteFactura(solicitudRecepcionPaquete);
 
         // Verificar la respuesta
         if (respuestaRecepcion != null && respuestaRecepcion.getCodigoEstado() != 908) {

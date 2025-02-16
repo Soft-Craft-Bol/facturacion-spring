@@ -65,7 +65,7 @@ public interface ServicioFacturacion {
     /**
      * 
      * @param solicitudServicioReversionAnulacionFactura
-     * @return
+     * @
      *     returns bo.gob.impuestos.siat.api.servicio.facturacion.compra.venta.RespuestaRecepcion
      */
     @WebMethod
