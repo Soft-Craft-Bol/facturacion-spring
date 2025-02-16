@@ -4,16 +4,12 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.ToString;
 
 import java.util.List;
 
-
-@ToString
 @Getter
 @Setter
-public class VentaRequest {
-
+public class EnvioPaqueteVentaRequest {
     @NotBlank
     private String usuario;
 
@@ -27,9 +23,4 @@ public class VentaRequest {
 
     @NotNull
     private List<VentaDetalleRequest> detalle;
-
-    private Integer cantidadFacturas;
-
-    private Long codigoEvento;
-
 }

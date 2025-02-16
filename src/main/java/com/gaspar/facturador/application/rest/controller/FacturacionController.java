@@ -3,6 +3,7 @@ package com.gaspar.facturador.application.rest.controller;
 import bo.gob.impuestos.siat.api.servicio.facturacion.compra.venta.RespuestaRecepcion;
 import com.gaspar.facturador.application.request.VentaRequest;
 import com.gaspar.facturador.application.response.FacturaResponse;
+import com.gaspar.facturador.application.response.PaquetesResponse;
 import com.gaspar.facturador.application.rest.dto.AnulacionRequest;
 import com.gaspar.facturador.application.rest.dto.ReversionAnulacionRequest;
 import com.gaspar.facturador.domain.service.FacturacionService;
@@ -32,6 +33,13 @@ public class FacturacionController {
         return new ResponseEntity<>(facturaResponse, HttpStatus.CREATED);
     }
 
+    @PostMapping("/enviar-paquete")
+    public ResponseEntity<PaquetesResponse> enviarPaqueteFacturas(@Valid @RequestBody VentaRequest ventaRequest) throws Exception {
+        PaquetesResponse paquetesResponse = this.facturacionService.recibirPaquetes(ventaRequest);
+        return new ResponseEntity<>(paquetesResponse, HttpStatus.OK);
+    }
+
+
     @PostMapping("/anular")
     public ResponseEntity<RespuestaRecepcion> anularFactura(@Valid @RequestBody AnulacionRequest anulacionRequest) throws Exception {
         RespuestaRecepcion respuesta = this.facturacionService.anularFactura(
@@ -51,15 +59,6 @@ public class FacturacionController {
         return new ResponseEntity<>(respuesta, HttpStatus.OK);
     }
 
-    @PostMapping("/recepcion-masiva")
-    public ResponseEntity<RespuestaRecepcion> enviarPaqueteFacturas(
-            @RequestParam Long idPuntoVenta,
-            @RequestParam int cantidadFacturas,
-            @RequestBody byte[] archivoComprimido
-    ) throws Exception {
-        RespuestaRecepcion respuesta = this.facturacionService.enviarPaqueteFacturas(idPuntoVenta, archivoComprimido, cantidadFacturas);
-        return new ResponseEntity<>(respuesta, HttpStatus.OK);
-    }
 
     @GetMapping
     public ResponseEntity<List<FacturaDTO>> getAllFacturas() {

@@ -3,6 +3,7 @@ package com.gaspar.facturador.domain.service;
 import bo.gob.impuestos.siat.api.servicio.facturacion.compra.venta.RespuestaRecepcion;
 import com.gaspar.facturador.application.request.VentaRequest;
 import com.gaspar.facturador.application.response.FacturaResponse;
+import com.gaspar.facturador.application.response.PaquetesResponse;
 import com.gaspar.facturador.application.rest.exception.ProcessException;
 import com.gaspar.facturador.domain.DetalleCompraVenta;
 import com.gaspar.facturador.domain.FacturaElectronicaCompraVenta;
@@ -32,24 +33,24 @@ public class FacturacionService {
 
     private final GeneraFacturaService generaFacturaService;
     private final EnvioFacturaService envioFacturaService;
+    private final EnvioPaquetesService envioPaquetesService;
     private final AnulacionFacturaService anulacionFacturaService;
     private final ReversionFacturaService reversionFacturaService;
-    private final RecepcionMasivaService recepcionMasivaService;
     private final FacturaRepository facturaRepository;
     private final IPuntoVentaRepository puntoVentaRepository;
     private final ICufdRepository cufdRepository;
 
     public FacturacionService(
             GeneraFacturaService generaFacturaService,
-            EnvioFacturaService envioFacturaService, AnulacionFacturaService anulacionFacturaService, ReversionFacturaService reversionFacturaService, RecepcionMasivaService recepcionMasivaService, FacturaRepository facturaRepository,
+            EnvioFacturaService envioFacturaService, EnvioPaquetesService envioPaquetesService, AnulacionFacturaService anulacionFacturaService, ReversionFacturaService reversionFacturaService, FacturaRepository facturaRepository,
             IPuntoVentaRepository puntoVentaRepository,
             ICufdRepository cufdRepository
     ) {
         this.generaFacturaService = generaFacturaService;
         this.envioFacturaService = envioFacturaService;
+        this.envioPaquetesService = envioPaquetesService;
         this.anulacionFacturaService = anulacionFacturaService;
         this.reversionFacturaService = reversionFacturaService;
-        this.recepcionMasivaService = recepcionMasivaService;
         this.facturaRepository = facturaRepository;
         this.puntoVentaRepository = puntoVentaRepository;
         this.cufdRepository = cufdRepository;
@@ -144,6 +145,42 @@ public class FacturacionService {
         return facturaResponse;
     }
 
+    public PaquetesResponse recibirPaquetes(VentaRequest ventaRequest) throws Exception {
+
+        Optional<PuntoVentaEntity> puntoVenta = this.puntoVentaRepository.findById(ventaRequest.getIdPuntoVenta());
+        if (puntoVenta.isEmpty()) throw new ProcessException("Punto venta no encontrado");
+
+        Optional<CufdEntity> cufd = cufdRepository.findActual(puntoVenta.get());
+        if (cufd.isEmpty()) throw new ProcessException("Cufd vigente no encontrado");
+
+
+        FacturaElectronicaCompraVenta factura = this.generaFacturaService.llenarDatos(ventaRequest, cufd.get());
+
+        byte[] xmlBytes = this.generaFacturaService.getXmlBytes(factura);
+        String xmlContent = new String(xmlBytes);
+        System.out.println(xmlContent);  // Imprime el XML para verificar su contenido
+
+        byte[] xmlComprimidoZip = this.generaFacturaService.obtenerArchivo(factura);
+
+
+        RespuestaRecepcion respuestaRecepcion = this.envioPaquetesService.enviarPaqueteFacturas(
+                puntoVenta.get(),
+                cufd.get(),
+                xmlComprimidoZip,
+                ventaRequest.getCantidadFacturas(),
+                ventaRequest.getCodigoEvento()
+        );
+        // Construir respuesta
+        PaquetesResponse paquetesResponse = new PaquetesResponse();
+        paquetesResponse.setCodigoEstado(respuestaRecepcion.getCodigoEstado());
+        paquetesResponse.setCuf(factura.getCabecera().getCuf());
+        paquetesResponse.setNumeroFactura(factura.getCabecera().getNumeroFactura());
+        paquetesResponse.setCodigoRecepcion(respuestaRecepcion.getCodigoRecepcion());
+        paquetesResponse.setMensaje("Envío de paquetes fue enviado correctamente");
+
+        return paquetesResponse;
+    }
+
     public RespuestaRecepcion anularFactura(Long idPuntoVenta, String cuf, String codigoMotivo) throws Exception {
         return anulacionFacturaService.anularFactura(idPuntoVenta, cuf, codigoMotivo);
     }
@@ -152,19 +189,6 @@ public class FacturacionService {
         return reversionFacturaService.reversionAnulacionFactura(idPuntoVenta, cuf);
     }
 
-    public RespuestaRecepcion enviarPaqueteFacturas(Long idPuntoVenta, byte[] archivoComprimido, int cantidadFacturas) throws Exception {
-        Optional<PuntoVentaEntity> puntoVenta = puntoVentaRepository.findById(Math.toIntExact(idPuntoVenta));
-        if (puntoVenta.isEmpty()) {
-            throw new ProcessException("Punto de venta no encontrado.");
-        }
-
-        Optional<CufdEntity> cufd = cufdRepository.findActual(puntoVenta.get());
-        if (cufd.isEmpty()) {
-            throw new ProcessException("CUFD vigente no encontrado.");
-        }
-
-        return recepcionMasivaService.enviarPaqueteFacturas(puntoVenta.get(), cufd.get(), archivoComprimido, cantidadFacturas);
-    }
 //    public List<FacturaEntity> getAllFacturas() {
 //        return facturaRepository.findAll();
 //    }
