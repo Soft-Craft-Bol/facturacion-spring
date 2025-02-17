@@ -146,40 +146,44 @@ public class FacturacionService {
     }
 
     public PaquetesResponse recibirPaquetes(VentaRequest ventaRequest) throws Exception {
-
         Optional<PuntoVentaEntity> puntoVenta = this.puntoVentaRepository.findById(ventaRequest.getIdPuntoVenta());
         if (puntoVenta.isEmpty()) throw new ProcessException("Punto venta no encontrado");
 
         Optional<CufdEntity> cufd = cufdRepository.findActual(puntoVenta.get());
         if (cufd.isEmpty()) throw new ProcessException("Cufd vigente no encontrado");
 
+        // Generar múltiples facturas
+        List<FacturaElectronicaCompraVenta> facturas = new ArrayList<>();
+        for (int i = 0; i < ventaRequest.getCantidadFacturas(); i++) {
+            FacturaElectronicaCompraVenta factura = this.generaFacturaService.llenarDatos(ventaRequest, cufd.get());
+            facturas.add(factura);
+        }
 
-        FacturaElectronicaCompraVenta factura = this.generaFacturaService.llenarDatos(ventaRequest, cufd.get());
+        // Comprimir todas las facturas en un archivo ZIP
+        byte[] xmlComprimidoZip = this.generaFacturaService.obtenerArchivoPaquete(facturas);
 
-        byte[] xmlBytes = this.generaFacturaService.getXmlBytes(factura);
-        String xmlContent = new String(xmlBytes);
-        System.out.println(xmlContent);  // Imprime el XML para verificar su contenido
-
-        byte[] xmlComprimidoZip = this.generaFacturaService.obtenerArchivo(factura);
-
-
+        // Enviar el paquete de facturas
         RespuestaRecepcion respuestaRecepcion = this.envioPaquetesService.enviarPaqueteFacturas(
                 puntoVenta.get(),
                 cufd.get(),
                 xmlComprimidoZip,
-                ventaRequest.getCantidadFacturas(),
+                ventaRequest.getCantidadFacturas(),  // Cantidad de facturas
                 ventaRequest.getCodigoEvento()
         );
+
         // Construir respuesta
         PaquetesResponse paquetesResponse = new PaquetesResponse();
         paquetesResponse.setCodigoEstado(respuestaRecepcion.getCodigoEstado());
-        paquetesResponse.setCuf(factura.getCabecera().getCuf());
-        paquetesResponse.setNumeroFactura(factura.getCabecera().getNumeroFactura());
+        paquetesResponse.setCuf(facturas.get(0).getCabecera().getCuf());
+        paquetesResponse.setNumeroFactura(facturas.get(0).getCabecera().getNumeroFactura());
         paquetesResponse.setCodigoRecepcion(respuestaRecepcion.getCodigoRecepcion());
         paquetesResponse.setMensaje("Envío de paquetes fue enviado correctamente");
 
         return paquetesResponse;
     }
+
+
+
 
     public RespuestaRecepcion anularFactura(Long idPuntoVenta, String cuf, String codigoMotivo) throws Exception {
         return anulacionFacturaService.anularFactura(idPuntoVenta, cuf, codigoMotivo);

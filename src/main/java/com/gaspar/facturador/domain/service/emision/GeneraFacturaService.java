@@ -29,6 +29,7 @@ import javax.xml.transform.*;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.nio.file.Files;
@@ -38,6 +39,8 @@ import java.time.LocalDateTime;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 
 @Service
@@ -166,6 +169,36 @@ public class GeneraFacturaService {
         //TODO: 4 - Comprimir XML
         byte[] xmlComprimidoZip = this.comprimirXMLFactura(xmlFirmado, factura.getCabecera().getCuf());
         return xmlComprimidoZip;
+    }
+
+    public byte[] obtenerArchivoPaquete(List<FacturaElectronicaCompraVenta> facturas) throws Exception {
+        // Crear un archivo ZIP temporal
+        File tempZipFile = File.createTempFile("facturas", ".zip");
+        try (ZipOutputStream zipOut = new ZipOutputStream(new FileOutputStream(tempZipFile))) {
+            for (FacturaElectronicaCompraVenta factura : facturas) {
+                // 1 - Generar XML
+                byte[] xml = this.getXmlBytes(factura);
+                // 2 - Firmar XML
+                byte[] xmlFirmado = this.firmarArchivo(xml);
+                // 3 - Validar XML
+                XmlObject xmlFacturaObj = XmlObject.Factory.parse(new String(xmlFirmado));
+                this.validarContraXSD(xmlFacturaObj);
+
+                // Agregar el XML firmado al archivo ZIP
+                String entryName = factura.getCabecera().getCuf() + ".xml";
+                zipOut.putNextEntry(new ZipEntry(entryName));
+                zipOut.write(xmlFirmado);
+                zipOut.closeEntry();
+            }
+        }
+
+        // Leer el archivo ZIP en un array de bytes
+        byte[] zipBytes = Files.readAllBytes(tempZipFile.toPath());
+
+        // Eliminar el archivo temporal
+        tempZipFile.delete();
+
+        return zipBytes;
     }
 
     public void imprimirXmlSinFirmar(FacturaElectronicaCompraVenta factura) throws JAXBException {
