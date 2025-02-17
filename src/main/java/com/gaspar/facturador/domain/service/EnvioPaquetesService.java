@@ -3,7 +3,6 @@ package com.gaspar.facturador.domain.service;
 import bo.gob.impuestos.siat.api.servicio.facturacion.compra.venta.*;
 import com.gaspar.facturador.application.rest.exception.ProcessException;
 import com.gaspar.facturador.commons.CodigoDocumentoSectorEnum;
-import com.gaspar.facturador.commons.CodigoModalidadEmisionEnum;
 import com.gaspar.facturador.commons.CodigoTipoDocumentoFiscalEnum;
 import com.gaspar.facturador.config.AppConfig;
 import com.gaspar.facturador.domain.helpers.Utils;
@@ -66,7 +65,7 @@ public class EnvioPaquetesService {
 
         // Calcular el hash del archivo
         String sha2 = Utils.obtenerSHA2(comprimidoByte);
-        System.out.println("Hash generado: " + sha2);  // Depuración
+        System.out.println("Hash generado: " + sha2);
 
         // Crear la solicitud de recepción masiva
         SolicitudRecepcionPaquete solicitudRecepcionPaquete = new SolicitudRecepcionPaquete();
