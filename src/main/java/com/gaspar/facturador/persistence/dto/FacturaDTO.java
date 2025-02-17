@@ -27,5 +27,6 @@ public class FacturaDTO {
     private LocalDateTime fechaEmision;
     private String estado;
     private List<FacturaDetalleDTO> detalles;
+    private String xmlContent;
 }
 

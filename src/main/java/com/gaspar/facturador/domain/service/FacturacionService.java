@@ -100,7 +100,6 @@ public class FacturacionService {
         facturaEntity.setUsuario(factura.getCabecera().getUsuario());
         facturaEntity.setCodigoDocumentoSector(factura.getCabecera().getCodigoDocumentoSector());
         facturaEntity.setEstado("EMITIDA"); // Estado inicial
-        //facturaEntity.setEmailCliente(factura.getCabecera().getEmailCliente());
 
         // Convertir detalles
         List<FacturaDetalleEntity> detalles = new ArrayList<>();
@@ -122,11 +121,15 @@ public class FacturacionService {
         }
         facturaEntity.setDetalleList(detalles);
 
-        // Guardar la factura y sus detalles
-        facturaRepository.save(facturaEntity);
         // Obtener el XML sin firmar
         byte[] xmlBytes = this.generaFacturaService.getXmlBytes(factura);
         String xmlContent = new String(xmlBytes);
+
+        // Asignar el contenido XML a la entidad
+        facturaEntity.setXmlContent(xmlContent);
+
+        // Guardar la factura y sus detalles
+        facturaRepository.save(facturaEntity);
 
         // Continuar con el flujo normal
         byte[] xmlComprimidoZip = this.generaFacturaService.obtenerArchivo(factura);
@@ -138,9 +141,6 @@ public class FacturacionService {
         facturaResponse.setCuf(factura.getCabecera().getCuf());
         facturaResponse.setNumeroFactura(factura.getCabecera().getNumeroFactura());
         facturaResponse.setXmlContent(xmlContent);
-
-// In FacturacionService
-       //&& factura = facturaRepository.save(facturaResponse);
 
         return facturaResponse;
     }
@@ -219,7 +219,8 @@ public class FacturacionService {
                 factura.getCuf(),
                 factura.getFechaEmision(),
                 factura.getEstado(),
-                detalles
+                detalles,
+                factura.getXmlContent()
         );
     }
 
