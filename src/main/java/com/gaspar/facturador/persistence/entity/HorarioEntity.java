@@ -20,14 +20,12 @@ public class HorarioEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String panadero; // Nombre del panadero
-
+    private String panadero;
+    private Long idPanadero;
     private LocalTime horaEntrada;
     private LocalTime horaSalida;
-
     private LocalDate fechaEntrada;
-    private LocalDate fechaSalida; // Opcional
-
+    private LocalDate fechaSalida;
     @ElementCollection
     @CollectionTable(name = "dias_horario", joinColumns = @JoinColumn(name = "horario_id"))
     @Column(name = "dia")

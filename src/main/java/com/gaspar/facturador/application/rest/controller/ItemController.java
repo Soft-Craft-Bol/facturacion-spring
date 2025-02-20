@@ -5,7 +5,7 @@ import com.gaspar.facturador.persistence.entity.ItemEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import java.util.stream.Collectors;
 import java.util.List;
 import java.util.Optional;
 
@@ -61,5 +61,10 @@ public class ItemController {
         } catch (Exception e) {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+    @GetMapping("/limited")
+    public ResponseEntity<List<ItemEntity>> getLimitedItems() {
+        List<ItemEntity> items = itemRepository.findAll().stream().limit(5).collect(Collectors.toList());
+        return new ResponseEntity<>(items, HttpStatus.OK);
     }
 }

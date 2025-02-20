@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/clientes")
@@ -45,5 +46,10 @@ public class ClienteController {
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
+    }
+    @GetMapping("/limited")
+    public ResponseEntity<List<ClienteEntity>> getLimitedClientes() {
+        List<ClienteEntity> clientes = clienteRepository.findAll().stream().limit(5).collect(Collectors.toList());
+        return new ResponseEntity<>(clientes, HttpStatus.OK);
     }
 }   
