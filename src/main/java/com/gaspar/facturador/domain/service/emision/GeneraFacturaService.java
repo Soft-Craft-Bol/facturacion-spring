@@ -7,10 +7,7 @@ import com.gaspar.facturador.commons.CodigoModalidadEmisionEnum;
 import com.gaspar.facturador.commons.CodigoTipoDocumentoFiscalEnum;
 import com.gaspar.facturador.commons.CodigoTipoEmisionEnum;
 import com.gaspar.facturador.config.AppConfig;
-import com.gaspar.facturador.domain.CabeceraCompraVenta;
-import com.gaspar.facturador.domain.DatosCUF;
-import com.gaspar.facturador.domain.DetalleCompraVenta;
-import com.gaspar.facturador.domain.FacturaElectronicaCompraVenta;
+import com.gaspar.facturador.domain.*;
 import com.gaspar.facturador.domain.helpers.GZIPHelper;
 import com.gaspar.facturador.domain.helpers.Utils;
 import com.gaspar.facturador.domain.helpers.XmlHelper;
@@ -32,6 +29,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.StringWriter;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
@@ -39,15 +37,15 @@ import java.time.LocalDateTime;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.zip.GZIPOutputStream;
 
 
 @Service
 public class GeneraFacturaService {
 
     private final AppConfig appConfig;
-
+    private final PaqueteFacturas paqueteFacturas;
     public final GZIPHelper gzipHelper;
 
     private final IProductoServicioRepository productoServicioRepository;
@@ -57,17 +55,20 @@ public class GeneraFacturaService {
     private final IClienteRepository clienteRepository;
     private final IItemRepository itemRepository;
 
+    private final List<byte[]> facturasTemporales = new CopyOnWriteArrayList<>();
+
     public GeneraFacturaService(
-        AppConfig appConfig,
-        GZIPHelper gzipHelper,
-        IProductoServicioRepository productoServicioRepository,
-        IFacturaRepository facturaCabeceraRepository,
-        IPuntoVentaRepository puntoVentaRepository,
-        IClienteRepository clienteRepository,
-        ILeyendaRepository leyendaRepository,
-        IItemRepository itemRepository
+            AppConfig appConfig, PaqueteFacturas paqueteFacturas,
+            GZIPHelper gzipHelper,
+            IProductoServicioRepository productoServicioRepository,
+            IFacturaRepository facturaCabeceraRepository,
+            IPuntoVentaRepository puntoVentaRepository,
+            IClienteRepository clienteRepository,
+            ILeyendaRepository leyendaRepository,
+            IItemRepository itemRepository
     ) {
         this.appConfig = appConfig;
+        this.paqueteFacturas = paqueteFacturas;
         this.gzipHelper = gzipHelper;
         this.productoServicioRepository = productoServicioRepository;
         this.facturaCabeceraRepository = facturaCabeceraRepository;
@@ -159,72 +160,55 @@ public class GeneraFacturaService {
     }
 
     public byte[] obtenerArchivo(FacturaElectronicaCompraVenta factura) throws Exception {
-        //TODO: 1 - Generar XML
+        // 1. Generar XML
         byte[] xml = this.getXmlBytes(factura);
-        //TODO: 2 - Firmar XML
+        // 2. Firmar XML
         byte[] xmlFirmado = this.firmarArchivo(xml);
-        //TODO: 3 - Validar XML
+        // 3. Validar XML
         XmlObject xmlFacturaObj = XmlObject.Factory.parse(new String(xmlFirmado));
         this.validarContraXSD(xmlFacturaObj);
-        //TODO: 4 - Comprimir XML
+        // 4. Comprimir XML
         byte[] xmlComprimidoZip = this.comprimirXMLFactura(xmlFirmado, factura.getCabecera().getCuf());
+
         return xmlComprimidoZip;
     }
 
-    public byte[] obtenerArchivoPaquete(List<FacturaElectronicaCompraVenta> facturas) throws Exception {
-        // Crear un archivo ZIP temporal
-        File tempZipFile = File.createTempFile("facturas", ".zip");
-        try (ZipOutputStream zipOut = new ZipOutputStream(new FileOutputStream(tempZipFile))) {
-            for (FacturaElectronicaCompraVenta factura : facturas) {
-                // 1 - Generar XML
-                byte[] xml = this.getXmlBytes(factura);
-                // 2 - Firmar XML
-                byte[] xmlFirmado = this.firmarArchivo(xml);
-                // 3 - Validar XML
-                XmlObject xmlFacturaObj = XmlObject.Factory.parse(new String(xmlFirmado));
-                this.validarContraXSD(xmlFacturaObj);
+    public List<byte[]> obtenerArchivos(List<FacturaElectronicaCompraVenta> facturas) throws Exception {
+        List<byte[]> facturasFirmadas = new LinkedList<>();
 
-                // Agregar el XML firmado al archivo ZIP
-                String entryName = factura.getCabecera().getCuf() + ".xml";
-                zipOut.putNextEntry(new ZipEntry(entryName));
-                zipOut.write(xmlFirmado);
-                zipOut.closeEntry();
-            }
+        for (FacturaElectronicaCompraVenta factura : facturas) {
+            byte[] xml = this.getXmlBytes(factura);
+            byte[] xmlFirmado = this.firmarArchivo(xml);
+
+            XmlObject xmlFacturaObj = XmlObject.Factory.parse(new String(xmlFirmado));
+            this.validarContraXSD(xmlFacturaObj);
+
+            facturasFirmadas.add(xmlFirmado);
         }
 
-        // Leer el archivo ZIP en un array de bytes
-        byte[] zipBytes = Files.readAllBytes(tempZipFile.toPath());
-
-        // Eliminar el archivo temporal
-        tempZipFile.delete();
-
-        return zipBytes;
+        return facturasFirmadas;
     }
+
 
     public void imprimirXmlSinFirmar(FacturaElectronicaCompraVenta factura) throws JAXBException {
         byte[] xmlBytes = this.getXmlBytes(factura);
         String xmlString = new String(xmlBytes);
-        System.out.println("XML generado sin firma digital:");
-        System.out.println(xmlString);
     }
 
     public void imprimirXmlFirmado(FacturaElectronicaCompraVenta factura) throws Exception {
         byte[] xmlFirmado = this.firmarArchivo(this.getXmlBytes(factura));
         String xmlStringFirmado = new String(xmlFirmado);
-        System.out.println("XML generado con firma digital:");
-        System.out.println(xmlStringFirmado);
     }
 
 
     public byte[] getXmlBytes(FacturaElectronicaCompraVenta facturaObject) throws JAXBException {
         JAXBContext context = JAXBContext.newInstance(FacturaElectronicaCompraVenta.class);
-
         Marshaller marshaller = context.createMarshaller();
         marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
+        marshaller.setProperty(Marshaller.JAXB_ENCODING, "UTF-8");
         StringWriter writer = new StringWriter();
         marshaller.marshal(facturaObject, writer);
-
-        return writer.toString().getBytes();
+        return writer.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     private byte[] firmarArchivo(byte[] xmlBytes) throws Exception {
@@ -236,8 +220,6 @@ public class GeneraFacturaService {
 
     private void validarContraXSD(XmlObject xmlFacturaObj) {
         String schemaFile = appConfig.getPathFiles() + "/resources/xsd/facturaElectronicaCompraVenta.xsd";
-
-        System.out.println(schemaFile + "final");
         if(!XmlHelper.validate(schemaFile, xmlFacturaObj)) {
             throw new ProcessException("El XML no cumple las especificaciones de impuestos.");
         }
@@ -250,9 +232,35 @@ public class GeneraFacturaService {
         return comprimidoByte;
     }
 
+    public byte[] comprimirXMLFacturas(List<byte[]> facturasFirmadas, List<String> cufs) throws Exception {
+        File tempZipFile = new File(appConfig.getPathFiles() + "/facturas/paquete_facturas.gz");
+
+        try (FileOutputStream fos = new FileOutputStream(tempZipFile);
+             GZIPOutputStream gzipOS = new GZIPOutputStream(fos)) {
+
+            for (int i = 0; i < facturasFirmadas.size(); i++) {
+                File facturaXmlFile = this.escribirArchivo(facturasFirmadas.get(i), cufs.get(i));
+                byte[] facturaBytes = Files.readAllBytes(facturaXmlFile.toPath());
+
+                gzipOS.write(facturaBytes);
+                gzipOS.write("\n".getBytes()); // Separador entre facturas (opcional)
+            }
+        }
+
+        return Files.readAllBytes(tempZipFile.toPath());
+    }
+    public byte[] obtenerPaqueteFacturas(List<FacturaElectronicaCompraVenta> facturas) throws Exception {
+        List<byte[]> facturasFirmadas = this.obtenerArchivos(facturas);
+        List<String> cufs = facturas.stream().map(f -> f.getCabecera().getCuf()).toList();
+
+        return this.comprimirXMLFacturas(facturasFirmadas, cufs);
+    }
+
+
+
     private File escribirArchivo(byte[] xmlFacturaFirmada, String cuf) throws Exception {
         String contextPath = appConfig.getPathFiles();
-        String fullPath = contextPath + "/facturas/" + cuf + ".xml";
+        String fullPath = contextPath + "/facturas/paquetes/" + cuf + ".xml";
 
         File tempFacturaXml = new File(fullPath);
 
@@ -280,5 +288,13 @@ public class GeneraFacturaService {
         return comprimidoByte;
     }
 
+    // Método para obtener las facturas temporales
+    public List<byte[]> obtenerFacturasTemporales() {
+        return facturasTemporales;
+    }
 
+    public byte[] crearPaqueteDeFacturas(List<byte[]> facturas) throws Exception {
+        String directoryPath = appConfig.getPathFiles() + "/facturas/";
+        return paqueteFacturas.crearPaqueteDeFacturas(facturas, directoryPath);
+    }
 }

@@ -4,14 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -28,5 +20,15 @@ public class FacturaDTO {
     private String estado;
     private List<FacturaDetalleDTO> detalles;
     private String xmlContent;
+
+    public FacturaDTO(Long id, String codigoCliente, String nombreRazonSocial, String cuf, LocalDateTime fechaEmision, String estado, List<FacturaDetalleDTO> detalles) {
+        this.id = id;
+        this.codigoCliente = codigoCliente;
+        this.nombreRazonSocial = nombreRazonSocial;
+        this.cuf = cuf;
+        this.fechaEmision = fechaEmision;
+        this.estado = estado;
+        this.detalles = detalles;
+    }
 }
 

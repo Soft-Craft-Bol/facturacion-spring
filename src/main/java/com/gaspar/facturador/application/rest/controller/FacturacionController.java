@@ -34,10 +34,11 @@ public class FacturacionController {
     }
 
     @PostMapping("/enviar-paquete")
-    public ResponseEntity<PaquetesResponse> enviarPaqueteFacturas(@Valid @RequestBody VentaRequest ventaRequest) throws Exception {
-        PaquetesResponse paquetesResponse = this.facturacionService.recibirPaquetes(ventaRequest);
-        return new ResponseEntity<>(paquetesResponse, HttpStatus.OK);
+    public ResponseEntity<PaquetesResponse> enviarPaqueteFacturas(@Valid @RequestBody VentaRequest ventasRequest) throws Exception {
+        PaquetesResponse paquetesResponse = this.facturacionService.recibirPaquetes(ventasRequest);
+        return ResponseEntity.ok(paquetesResponse);
     }
+
 
 
     @PostMapping("/anular")
