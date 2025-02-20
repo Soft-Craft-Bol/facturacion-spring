@@ -36,4 +36,9 @@ public class ItemRepository implements IItemRepository {
     public void deleteById(Integer id) {
         itemCrudRepository.deleteById(id);
     }
+
+    @Override
+    public long count() {
+        return itemCrudRepository.count();
+    }
 }
