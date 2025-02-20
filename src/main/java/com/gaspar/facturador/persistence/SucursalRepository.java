@@ -27,4 +27,7 @@ public class SucursalRepository {
         sucursalCrudRepository.deleteById(id);
     }
 
+    public long count() {
+        return sucursalCrudRepository.count();
+    }
 }

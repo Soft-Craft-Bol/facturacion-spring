@@ -13,4 +13,5 @@ public interface IItemRepository {
     List<ItemEntity> findAll();
     ItemEntity save(ItemEntity item);
     void deleteById(Integer id);
+    long count();
 }
