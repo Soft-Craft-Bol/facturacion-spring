@@ -17,7 +17,7 @@ import org.hibernate.validator.constraints.Length;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class EgresosEntity {
+public class EgresosEntity {//USAR
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public int id;
