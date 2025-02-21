@@ -1,88 +1,101 @@
 package com.gaspar.facturador.domain.service;
 
-import com.gaspar.facturador.persistence.crud.ItemCrudRepository;
-import com.gaspar.facturador.persistence.crud.VentaCrudRepository;
-import com.gaspar.facturador.persistence.entity.ItemEntity;
-import com.gaspar.facturador.persistence.entity.VentasEntity;
 import com.gaspar.facturador.application.request.VentaSinFacturaRequest;
-import com.gaspar.facturador.application.request.VentaDetalleRequest;
+import com.gaspar.facturador.persistence.PuntoVentaRepository;
+import com.gaspar.facturador.persistence.crud.ItemCrudRepository;
+import com.gaspar.facturador.persistence.crud.UserRepository;
+import com.gaspar.facturador.persistence.crud.VentaCrudRepository;
+import com.gaspar.facturador.persistence.entity.*;
 import com.gaspar.facturador.persistence.entity.enums.TipoComprobanteEnum;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.gaspar.facturador.persistence.entity.enums.TipoPagoEnum;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class VentaService {
-
-    private final VentaCrudRepository ventaCrudRepository;
+    private final VentaCrudRepository ventasRepository;
+    private final UserRepository userRepository;
+    private final PuntoVentaRepository puntoVentaRepository;
     private final ItemCrudRepository itemCrudRepository;
 
-    @Autowired
-    public VentaService(VentaCrudRepository ventaCrudRepository, ItemCrudRepository itemCrudRepository) {
-        this.ventaCrudRepository = ventaCrudRepository;
+    public VentaService(VentaCrudRepository ventasRepository, UserRepository userRepository, PuntoVentaRepository puntoVentaRepository, ItemCrudRepository itemCrudRepository) {
+        this.ventasRepository = ventasRepository;
+        this.userRepository = userRepository;
+        this.puntoVentaRepository = puntoVentaRepository;
         this.itemCrudRepository = itemCrudRepository;
     }
 
-    public List<VentasEntity> getAllVentas() {
-        return (List<VentasEntity>) ventaCrudRepository.findAll();
-    }
-
-    public Optional<VentasEntity> getVentaById(Long id) {
-        return ventaCrudRepository.findById(id);
-    }
-
     @Transactional
-    public VentasEntity saveVenta(VentaSinFacturaRequest ventaRequest) {
-        VentasEntity nuevaVenta = new VentasEntity();
-        nuevaVenta.setCliente(ventaRequest.getUsuario());
-        nuevaVenta.setTipoComprobante(TipoComprobanteEnum.valueOf(ventaRequest.getTipoComprobante()));
+    public VentasEntity saveVenta(VentaSinFacturaRequest request) {
+        System.out.println("Body recibido: " + request);
 
-        // Asignar el user_id de la solicitud al campo correspondiente en la entidad
-        nuevaVenta.setUserId(ventaRequest.getUser_id());
+        UserEntity vendedor = userRepository.findById(Long.valueOf(request.getUser_id()))
+                .orElseThrow(() -> new IllegalArgumentException("Usuario con ID " + request.getUser_id() + " no encontrado"));
 
-        BigDecimal totalMonto = BigDecimal.ZERO;
+        PuntoVentaEntity puntoVenta = puntoVentaRepository.findById(Math.toIntExact(request.getIdPuntoVenta()))
+                .orElseThrow(() -> new IllegalArgumentException("Punto de venta con ID " + request.getIdPuntoVenta() + " no encontrado"));
 
-        for (VentaDetalleRequest detalle : ventaRequest.getDetalle()) {
-            Optional<ItemEntity> itemOpt = itemCrudRepository.findById(detalle.getIdProducto());
-            if (itemOpt.isPresent()) {
-                ItemEntity item = itemOpt.get();
+        // Crear la entidad de venta
+        VentasEntity venta = new VentasEntity();
+        venta.setFecha(new Date());
 
-                // Verifica si hay stock suficiente
-                BigDecimal cantidadDetalle = detalle.getCantidad();
+        // Asignar el cliente
+        venta.setCliente(request.getCliente());
 
-                if (item.getCantidad().compareTo(cantidadDetalle) < 0) {
-                    throw new IllegalArgumentException("Stock insuficiente para el producto ID: " + detalle.getIdProducto());
-                }
-
-                // Resta la cantidad del stock del producto
-                item.setCantidad(item.getCantidad().subtract(cantidadDetalle));
-                itemCrudRepository.save(item);
-
-                // Calcula el monto de la venta
-                BigDecimal monto = item.getPrecioUnitario().multiply(cantidadDetalle).subtract(detalle.getMontoDescuento());
-                totalMonto = totalMonto.add(monto);
-            } else {
-                throw new IllegalArgumentException("Producto no encontrado: ID " + detalle.getIdProducto());
-            }
+        // Manejo de comprobante
+        try {
+            String tipoComprobante = request.getTipoComprobante().toUpperCase();
+            System.out.println("Tipo de comprobante recibido: " + tipoComprobante);
+            venta.setTipoComprobante(TipoComprobanteEnum.valueOf(tipoComprobante));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Tipo de comprobante no válido: " + request.getTipoComprobante());
         }
 
-        nuevaVenta.setMonto(totalMonto);
-        return ventaCrudRepository.save(nuevaVenta);
+        // Verificar que el tipo de comprobante no sea nulo
+        if (venta.getTipoComprobante() == null) {
+            throw new IllegalArgumentException("El tipo de comprobante no puede ser nulo");
+        }
+
+        // Manejo de método de pago
+        try {
+            venta.setMetodoPago(TipoPagoEnum.valueOf(request.getMetodoPago().toUpperCase()));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Método de pago no válido: " + request.getMetodoPago());
+        }
+
+        venta.setVendedor(vendedor);
+        venta.setPuntoVenta(puntoVenta);
+
+        // Calcular monto total
+        BigDecimal montoTotal = BigDecimal.ZERO;
+        List<VentasDetalleEntity> detalles = new ArrayList<>();
+        for (var item : request.getDetalle()) {
+            ItemEntity producto = itemCrudRepository.findById((int) item.getIdProducto().longValue())
+                    .orElseThrow(() -> new IllegalArgumentException("Producto con ID " + item.getIdProducto() + " no encontrado"));
+
+            montoTotal = montoTotal.add(item.getCantidad().multiply(BigDecimal.valueOf(10)).subtract(item.getMontoDescuento()));
+
+            VentasDetalleEntity detalle = new VentasDetalleEntity();
+            detalle.setVenta(venta);
+            detalle.setIdProducto(item.getIdProducto());
+            detalle.setCantidad(item.getCantidad());
+            detalle.setMontoDescuento(item.getMontoDescuento());
+            detalle.setDescripcionProducto(producto.getDescripcion());
+
+            detalles.add(detalle);
+        }
+
+        venta.setMonto(montoTotal);
+        venta.setEstado("COMPLETADO");
+        venta.setDetalles(detalles);
+
+        // Guardar la venta
+        return ventasRepository.save(venta);
     }
 
-
-
-
-    public void deleteVenta(Long id) {
-        ventaCrudRepository.deleteById(id);
-    }
-
-    public List<VentasEntity> getVentasByTipoComprobante(String tipoComprobante) {
-        return ventaCrudRepository.findByTipoComprobante(tipoComprobante);
-    }
 }
