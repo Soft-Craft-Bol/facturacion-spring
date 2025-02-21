@@ -5,11 +5,10 @@ import com.gaspar.facturador.persistence.entity.enums.TipoPagoEnum;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.hibernate.validator.constraints.Length;
+
+import java.sql.Date;
 
 
 @Entity
@@ -17,10 +16,14 @@ import org.hibernate.validator.constraints.Length;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@ToString
 public class EgresosEntity {//USAR
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    public int id;
+    public long id;
+
+    @NotNull
+    private Date fechaDePago;
 
     @NotNull
     @Length(max = 1024)
@@ -39,11 +42,12 @@ public class EgresosEntity {//USAR
     @Enumerated(EnumType.STRING)
     private TipoPagoEnum tipoPagoEnum;
 
-    @ManyToOne
-    @JoinColumn(name = "id_proveedor", nullable = false)
-    private ProveedorEntity proovedor;
+//    @ManyToOne
+//    @JoinColumn(name = "id_proveedor", nullable = false)
+//    private ProveedorEntity proovedor;
+    @Length(max = 1024)
+    private String pagadoA;
 
-    @NotNull
     @Length(max = 1024)
     private String numFacturaComprobante;
 
