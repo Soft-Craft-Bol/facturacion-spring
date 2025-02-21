@@ -32,6 +32,8 @@ public class ItemEntity {
     @Column(length = 1024)
     private String imagen;
 
+    private int cantidad;
+
     public Integer getId() {
         return id;
     }
@@ -88,4 +90,12 @@ public class ItemEntity {
     public String getImagen() { return imagen; }
 
     public void setImagen(String imagen) { this.imagen = imagen; }
+
+    public int getCantidad() {
+        return cantidad;
+    }
+
+    public void setCantidad(int cantidad) {
+        this.cantidad = cantidad;
+    }
 }
