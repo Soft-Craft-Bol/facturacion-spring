@@ -80,13 +80,13 @@ public class EnvioPaquetesService {
         solicitudRecepcionPaquete.setCodigoEmision(2);  // Código de emisión en línea
         solicitudRecepcionPaquete.setCodigoModalidad(appConfig.getCodigoModalidad());
         solicitudRecepcionPaquete.setTipoFacturaDocumento(CodigoTipoDocumentoFiscalEnum.FACTURA_CON_DERECHO_CREDITO_FISCAL.getValue());
-        solicitudRecepcionPaquete.setArchivo(comprimidoByte);
         solicitudRecepcionPaquete.setCantidadFacturas((int) cantidadFacturas);
         solicitudRecepcionPaquete.setCodigoEvento(codigoEvento);
-
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS");
         solicitudRecepcionPaquete.setFechaEnvio(LocalDateTime.now().format(formatter));
         solicitudRecepcionPaquete.setHashArchivo(sha2);
+        solicitudRecepcionPaquete.setArchivo(comprimidoByte);
+
 
         // Enviar el paquete de facturas
         RespuestaRecepcion respuestaRecepcion = servicioFacturacion.recepcionPaqueteFactura(solicitudRecepcionPaquete);

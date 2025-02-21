@@ -18,11 +18,11 @@ import com.gaspar.facturador.persistence.entity.CufdEntity;
 import com.gaspar.facturador.persistence.entity.FacturaDetalleEntity;
 import com.gaspar.facturador.persistence.entity.FacturaEntity;
 import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.gaspar.facturador.persistence.dto.FacturaDTO;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -100,6 +100,7 @@ public class FacturacionService {
         facturaEntity.setUsuario(factura.getCabecera().getUsuario());
         facturaEntity.setCodigoDocumentoSector(factura.getCabecera().getCodigoDocumentoSector());
         facturaEntity.setEstado("EMITIDA"); // Estado inicial
+        //facturaEntity.setEmailCliente(factura.getCabecera().getEmailCliente());
 
         // Convertir detalles
         List<FacturaDetalleEntity> detalles = new ArrayList<>();
@@ -121,15 +122,11 @@ public class FacturacionService {
         }
         facturaEntity.setDetalleList(detalles);
 
+        // Guardar la factura y sus detalles
+        facturaRepository.save(facturaEntity);
         // Obtener el XML sin firmar
         byte[] xmlBytes = this.generaFacturaService.getXmlBytes(factura);
         String xmlContent = new String(xmlBytes);
-
-        // Asignar el contenido XML a la entidad
-        facturaEntity.setXmlContent(xmlContent);
-
-        // Guardar la factura y sus detalles
-        facturaRepository.save(facturaEntity);
 
         // Continuar con el flujo normal
         byte[] xmlComprimidoZip = this.generaFacturaService.obtenerArchivo(factura);
@@ -142,47 +139,42 @@ public class FacturacionService {
         facturaResponse.setNumeroFactura(factura.getCabecera().getNumeroFactura());
         facturaResponse.setXmlContent(xmlContent);
 
+// In FacturacionService
+        //&& factura = facturaRepository.save(facturaResponse);
+
         return facturaResponse;
     }
 
-    public PaquetesResponse recibirPaquetes(VentaRequest ventaRequest) throws Exception {
-        Optional<PuntoVentaEntity> puntoVenta = this.puntoVentaRepository.findById(ventaRequest.getIdPuntoVenta());
+    public PaquetesResponse recibirPaquetes(VentaRequest ventasRequest) throws Exception {
+        Optional<PuntoVentaEntity> puntoVenta = this.puntoVentaRepository.findById(ventasRequest.getIdPuntoVenta());
         if (puntoVenta.isEmpty()) throw new ProcessException("Punto venta no encontrado");
 
         Optional<CufdEntity> cufd = cufdRepository.findActual(puntoVenta.get());
         if (cufd.isEmpty()) throw new ProcessException("Cufd vigente no encontrado");
 
-        // Generar múltiples facturas
-        List<FacturaElectronicaCompraVenta> facturas = new ArrayList<>();
-        for (int i = 0; i < ventaRequest.getCantidadFacturas(); i++) {
-            FacturaElectronicaCompraVenta factura = this.generaFacturaService.llenarDatos(ventaRequest, cufd.get());
-            facturas.add(factura);
+        int cantidadFacturas = ventasRequest.getCantidadFacturas();
+        if (cantidadFacturas <= 0) throw new ProcessException("La cantidad de facturas debe ser mayor a 0");
+
+        // Lista para almacenar las facturas generadas
+        List<FacturaElectronicaCompraVenta> facturasGeneradas = new LinkedList<>();
+
+        // Generar las facturas según la cantidad solicitada
+        for (int i = 0; i < cantidadFacturas; i++) {
+            FacturaElectronicaCompraVenta factura = this.generaFacturaService.llenarDatos(ventasRequest, cufd.get());
+            facturasGeneradas.add(factura);
         }
 
-        // Comprimir todas las facturas en un archivo ZIP
-        byte[] xmlComprimidoZip = this.generaFacturaService.obtenerArchivoPaquete(facturas);
+        // Crear un paquete comprimido de facturas
+        byte[] paqueteFacturas = this.generaFacturaService.obtenerPaqueteFacturas(facturasGeneradas);
 
-        // Enviar el paquete de facturas
-        RespuestaRecepcion respuestaRecepcion = this.envioPaquetesService.enviarPaqueteFacturas(
-                puntoVenta.get(),
-                cufd.get(),
-                xmlComprimidoZip,
-                ventaRequest.getCantidadFacturas(),  // Cantidad de facturas
-                ventaRequest.getCodigoEvento()
-        );
 
-        // Construir respuesta
         PaquetesResponse paquetesResponse = new PaquetesResponse();
-        paquetesResponse.setCodigoEstado(respuestaRecepcion.getCodigoEstado());
-        paquetesResponse.setCuf(facturas.get(0).getCabecera().getCuf());
-        paquetesResponse.setNumeroFactura(facturas.get(0).getCabecera().getNumeroFactura());
-        paquetesResponse.setCodigoRecepcion(respuestaRecepcion.getCodigoRecepcion());
-        paquetesResponse.setMensaje("Envío de paquetes fue enviado correctamente");
+        paquetesResponse.setCodigoEstado(0);
+        paquetesResponse.setMensaje("Facturas almacenadas temporalmente. Esperando más facturas para completar el paquete de 500.");
+        //paquetesResponse.setCantidadFacturasAlmacenadas(facturasTemporales.size());
 
         return paquetesResponse;
     }
-
-
 
 
     public RespuestaRecepcion anularFactura(Long idPuntoVenta, String cuf, String codigoMotivo) throws Exception {
@@ -219,10 +211,12 @@ public class FacturacionService {
                 factura.getCuf(),
                 factura.getFechaEmision(),
                 factura.getEstado(),
-                detalles,
-                factura.getXmlContent()
+                detalles
         );
     }
 
 
 }
+
+
+
