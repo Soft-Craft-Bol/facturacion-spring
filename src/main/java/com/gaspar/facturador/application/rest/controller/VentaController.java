@@ -25,18 +25,6 @@ public class VentaController {
         this.puntoVentaRepository = puntoVentaRepository;
     }
 
-    @GetMapping
-    public ResponseEntity<List<VentasEntity>> getAllVentas() {
-        List<VentasEntity> ventas = ventaService.getAllVentas();
-        return ResponseEntity.ok(ventas);
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<VentasEntity> getVentaById(@PathVariable Long id) {
-        return ventaService.getVentaById(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
-    }
 
     @PostMapping
     public ResponseEntity<?> createVenta(@Valid @RequestBody VentaSinFacturaRequest ventaRequest) {
@@ -58,15 +46,5 @@ public class VentaController {
         }
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteVenta(@PathVariable Long id) {
-        ventaService.deleteVenta(id);
-        return ResponseEntity.noContent().build();
-    }
 
-    @GetMapping("/tipo-comprobante/{tipoComprobante}")
-    public ResponseEntity<List<VentasEntity>> getVentasByTipoComprobante(@PathVariable String tipoComprobante) {
-        List<VentasEntity> ventas = ventaService.getVentasByTipoComprobante(tipoComprobante);
-        return ResponseEntity.ok(ventas);
-    }
 }

@@ -35,7 +35,7 @@ public class VentasEntity {
 
     private String productos;
 
-    private String descuento;
+    private String montoDescuento;
 
     private String cliente;
 
@@ -55,6 +55,4 @@ public class VentasEntity {
     @JoinColumn(name = "id_factura", nullable = true)
     private FacturaEntity factura;
 
-    public void setUserId(@NotNull(message = "El ID del usuario es obligatorio") Integer userId) {
-    }
 }
