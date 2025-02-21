@@ -3,6 +3,7 @@ package com.gaspar.facturador.persistence.crud;
 import com.gaspar.facturador.persistence.entity.RoleEntity;
 import com.gaspar.facturador.persistence.entity.RoleEnum;
 import com.gaspar.facturador.persistence.entity.UserEntity;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
@@ -16,4 +17,6 @@ public interface UserRepository  extends CrudRepository<UserEntity, Long> {
     List<UserEntity> findAll();
     void deleteById(long id);
     long countByRoles(RoleEntity role);
+    @Query("SELECT u FROM UserEntity u JOIN u.roles r WHERE r.roleEnum = :roleEnum")
+    List<UserEntity> findByRolesRoleEnum(RoleEnum roleEnum);
 }

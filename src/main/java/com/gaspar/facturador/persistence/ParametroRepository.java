@@ -7,6 +7,7 @@ import com.gaspar.facturador.persistence.crud.ParametroCrudRepository;
 import com.gaspar.facturador.persistence.entity.ParametroEntity;
 import com.gaspar.facturador.persistence.mapper.ParametroMapper;
 import org.springframework.stereotype.Repository;
+import org.springframework.web.bind.annotation.GetMapping;
 
 import java.util.List;
 
@@ -38,4 +39,13 @@ public class ParametroRepository implements IParametroRepository {
     public List<ParametroEntity> getDocumentosIdentidad() {
         return parametroCrudRepository.findByCodigoTipoParametro("TIPO_DOCUMENTO_IDENTIDAD");
     }
+
+    public List<ParametroEntity> getUnidadesMedida(List<String> codigosClasificador) {
+        return parametroCrudRepository.findUnidadesMedida(codigosClasificador);
+    }
+
+    public List<ParametroEntity> getTipoMoneda(){
+        return parametroCrudRepository.getTipoMoneda();
+    }
+
 }

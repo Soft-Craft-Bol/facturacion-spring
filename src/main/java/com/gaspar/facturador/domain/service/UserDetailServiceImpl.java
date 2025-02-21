@@ -240,4 +240,22 @@ public class UserDetailServiceImpl implements UserDetailsService {
 
         return userDTO;
     }
+    public List<UserDTO> getVendedorUsers() {
+        List<UserEntity> users = userRepository.findByRolesRoleEnum(RoleEnum.VENDEDOR);
+        return users.stream().map(this::convertToDTO).collect(Collectors.toList());
+    }
+    private UserDTO convertToDTO(UserEntity user) {
+        UserDTO dto = new UserDTO();
+        dto.setId(user.getId());
+        dto.setUsername(user.getUsername());
+        dto.setFirstName(user.getFirstName());
+        dto.setLastName(user.getLastName());
+        dto.setEmail(user.getEmail());
+        dto.setTelefono(user.getTelefono());
+        dto.setPhoto(user.getPhoto());
+        dto.setRoles(user.getRoles().stream()
+                .map(role -> role.getRoleEnum().name())
+                .collect(Collectors.toSet()));
+        return dto;
+    }
 }

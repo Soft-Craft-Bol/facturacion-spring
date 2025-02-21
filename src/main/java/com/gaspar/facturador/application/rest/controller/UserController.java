@@ -39,4 +39,10 @@ public class UserController {
         UserDTO user = userDetailService.getUserById(id);
         return ResponseEntity.ok(user);
     }
+
+    @GetMapping("/vendedores")
+    public ResponseEntity<List<UserDTO>> getVendedorUsers() {
+        List<UserDTO> users = userDetailService.getVendedorUsers();
+        return ResponseEntity.ok(users);
+    }
 }
