@@ -35,8 +35,8 @@ public class VentaRequest {
     @NotBlank(message = "El tipo de comprobante es obligatorio")
     private String tipoComprobante;
 
-    @NotNull(message = "El ID del usuario es obligatorio")
-    private Integer user_id;
+    @NotNull(message = "Nombre de usuario obligatorio")
+    private String username;
 
     @NotNull(message = "El método de pago es obligatorio")
     private String metodoPago;

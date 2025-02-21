@@ -86,7 +86,7 @@ public class FacturacionService {
         ventaSinFacturaRequest.setCliente(String.valueOf(ventaRequest.getIdCliente()));
         ventaSinFacturaRequest.setTipoComprobante(ventaRequest.getTipoComprobante());
         ventaSinFacturaRequest.setMetodoPago(ventaRequest.getMetodoPago());
-        ventaSinFacturaRequest.setUser_id(ventaRequest.getUser_id());
+        ventaSinFacturaRequest.setUsername(ventaRequest.getUsername());
         ventaSinFacturaRequest.setDetalle(ventaRequest.getDetalle());
 
         // Guardar la venta en la tabla de ventas
