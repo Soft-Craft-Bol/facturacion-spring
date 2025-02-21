@@ -42,6 +42,7 @@ public class ItemEntity {
 
     private BigDecimal cantidad;
 
+
     public Integer getId() {
         return id;
     }
@@ -98,8 +99,6 @@ public class ItemEntity {
     public String getImagen() { return imagen; }
 
     public void setImagen(String imagen) { this.imagen = imagen; }
-
-
 
 
 }
