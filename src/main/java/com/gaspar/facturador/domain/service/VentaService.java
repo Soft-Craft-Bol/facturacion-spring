@@ -75,11 +75,25 @@ public class VentaService {
         BigDecimal montoTotal = BigDecimal.ZERO;
         List<VentasDetalleEntity> detalles = new ArrayList<>();
         for (var item : request.getDetalle()) {
+            // Obtener el producto (ItemEntity) por su ID
             ItemEntity producto = itemCrudRepository.findById((int) item.getIdProducto().longValue())
                     .orElseThrow(() -> new IllegalArgumentException("Producto con ID " + item.getIdProducto() + " no encontrado"));
 
+            // Verificar si hay suficiente stock
+            if (producto.getCantidad().compareTo(item.getCantidad()) < 0) {
+                throw new IllegalArgumentException("No hay suficiente stock para el producto con ID " + item.getIdProducto());
+            }
+
+            // Restar la cantidad vendida del stock del producto
+            producto.setCantidad(producto.getCantidad().subtract(item.getCantidad()));
+
+            // Guardar el producto actualizado en la base de datos
+            itemCrudRepository.save(producto);
+
+            // Calcular el monto total
             montoTotal = montoTotal.add(item.getCantidad().multiply(BigDecimal.valueOf(10)).subtract(item.getMontoDescuento()));
 
+            // Crear el detalle de la venta
             VentasDetalleEntity detalle = new VentasDetalleEntity();
             detalle.setVenta(venta);
             detalle.setIdProducto(item.getIdProducto());
