@@ -11,4 +11,11 @@ import java.util.List;
 public interface ParametroCrudRepository extends CrudRepository<ParametroEntity, Long> {
     @Query("SELECT p FROM ParametroEntity p WHERE p.codigoTipoParametro = :codigoTipoParametro")
     List<ParametroEntity> findByCodigoTipoParametro(@Param("codigoTipoParametro") String codigoTipoParametro);
+
+    @Query("SELECT p FROM ParametroEntity p WHERE p.codigoTipoParametro = 'UNIDAD_MEDIDA' AND p.codigoClasificador IN :codigosClasificador")
+    List<ParametroEntity> findUnidadesMedida(@Param("codigosClasificador") List<String> codigosClasificador);
+
+    @Query("SELECT p FROM ParametroEntity p WHERE p.codigoTipoParametro = 'TIPO_MONEDA'")
+    List<ParametroEntity> getTipoMoneda();
+
 }
