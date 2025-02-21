@@ -2,6 +2,7 @@ package com.gaspar.facturador.domain.service;
 
 import bo.gob.impuestos.siat.api.servicio.facturacion.compra.venta.RespuestaRecepcion;
 import com.gaspar.facturador.application.request.VentaRequest;
+import com.gaspar.facturador.application.request.VentaSinFacturaRequest;
 import com.gaspar.facturador.application.response.FacturaResponse;
 import com.gaspar.facturador.application.response.PaquetesResponse;
 import com.gaspar.facturador.application.rest.exception.ProcessException;
@@ -48,12 +49,14 @@ public class FacturacionService {
     private final FacturaRepository facturaRepository;
     private final IPuntoVentaRepository puntoVentaRepository;
     private final ICufdRepository cufdRepository;
+    private final VentaService ventaService;
+
 
     public FacturacionService(
             GeneraFacturaService generaFacturaService,
             EnvioFacturaService envioFacturaService, EnvioPaquetesService envioPaquetesService, AnulacionFacturaService anulacionFacturaService, ReversionFacturaService reversionFacturaService, FacturaRepository facturaRepository,
             IPuntoVentaRepository puntoVentaRepository,
-            ICufdRepository cufdRepository
+            ICufdRepository cufdRepository, VentaService ventaService
     ) {
         this.generaFacturaService = generaFacturaService;
         this.envioFacturaService = envioFacturaService;
@@ -63,6 +66,7 @@ public class FacturacionService {
         this.facturaRepository = facturaRepository;
         this.puntoVentaRepository = puntoVentaRepository;
         this.cufdRepository = cufdRepository;
+        this.ventaService = ventaService;
     }
 
     public FacturaResponse emitirFactura(VentaRequest ventaRequest) throws Exception {
@@ -75,6 +79,18 @@ public class FacturacionService {
 
         // Generar la factura
         FacturaElectronicaCompraVenta factura = this.generaFacturaService.llenarDatos(ventaRequest, cufd.get());
+
+        // Convertir VentaRequest a VentaSinFacturaRequest
+        VentaSinFacturaRequest ventaSinFacturaRequest = new VentaSinFacturaRequest();
+        ventaSinFacturaRequest.setIdPuntoVenta(Long.valueOf(ventaRequest.getIdPuntoVenta()));
+        ventaSinFacturaRequest.setCliente(String.valueOf(ventaRequest.getIdCliente()));
+        ventaSinFacturaRequest.setTipoComprobante(ventaRequest.getTipoComprobante());
+        ventaSinFacturaRequest.setMetodoPago(ventaRequest.getMetodoPago());
+        ventaSinFacturaRequest.setUser_id(ventaRequest.getUser_id());
+        ventaSinFacturaRequest.setDetalle(ventaRequest.getDetalle());
+
+        // Guardar la venta en la tabla de ventas
+        ventaService.saveVenta(ventaSinFacturaRequest);
 
         // Convertir FacturaElectronicaCompraVenta a FacturaEntity
         FacturaEntity facturaEntity = new FacturaEntity();
@@ -109,7 +125,6 @@ public class FacturacionService {
         facturaEntity.setUsuario(factura.getCabecera().getUsuario());
         facturaEntity.setCodigoDocumentoSector(factura.getCabecera().getCodigoDocumentoSector());
         facturaEntity.setEstado("EMITIDA"); // Estado inicial
-        //facturaEntity.setEmailCliente(factura.getCabecera().getEmailCliente());
 
         // Convertir detalles
         List<FacturaDetalleEntity> detalles = new ArrayList<>();
@@ -133,6 +148,7 @@ public class FacturacionService {
 
         // Guardar la factura y sus detalles
         facturaRepository.save(facturaEntity);
+
         // Obtener el XML sin firmar
         byte[] xmlBytes = this.generaFacturaService.getXmlBytes(factura);
         String xmlContent = new String(xmlBytes);
@@ -147,9 +163,6 @@ public class FacturacionService {
         facturaResponse.setCuf(factura.getCabecera().getCuf());
         facturaResponse.setNumeroFactura(factura.getCabecera().getNumeroFactura());
         facturaResponse.setXmlContent(xmlContent);
-
-// In FacturacionService
-        //&& factura = facturaRepository.save(facturaResponse);
 
         return facturaResponse;
     }
@@ -223,9 +236,4 @@ public class FacturacionService {
                 detalles
         );
     }
-
-
 }
-
-
-

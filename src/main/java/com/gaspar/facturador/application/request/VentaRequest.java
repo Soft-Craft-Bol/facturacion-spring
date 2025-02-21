@@ -32,4 +32,13 @@ public class VentaRequest {
 
     private Long codigoEvento;
 
+    @NotBlank(message = "El tipo de comprobante es obligatorio")
+    private String tipoComprobante;
+
+    @NotNull(message = "El ID del usuario es obligatorio")
+    private Integer user_id;
+
+    @NotNull(message = "El método de pago es obligatorio")
+    private String metodoPago;
+
 }
