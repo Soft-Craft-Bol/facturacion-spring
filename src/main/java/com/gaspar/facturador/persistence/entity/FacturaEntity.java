@@ -72,4 +72,5 @@ public class FacturaEntity {
         orphanRemoval = true
     )
     private List<FacturaDetalleEntity> detalleList;
+    private String tipoVenta;
 }
