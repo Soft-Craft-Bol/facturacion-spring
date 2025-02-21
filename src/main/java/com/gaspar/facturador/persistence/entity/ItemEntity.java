@@ -32,6 +32,15 @@ public class ItemEntity {
     @Column(length = 1024)
     private String imagen;
 
+    public BigDecimal getCantidad() {
+        return cantidad;
+    }
+
+    public void setCantidad(BigDecimal cantidad) {
+        this.cantidad = cantidad;
+    }
+
+    private BigDecimal cantidad;
 
 
     public Integer getId() {
@@ -90,5 +99,6 @@ public class ItemEntity {
     public String getImagen() { return imagen; }
 
     public void setImagen(String imagen) { this.imagen = imagen; }
+
 
 }
