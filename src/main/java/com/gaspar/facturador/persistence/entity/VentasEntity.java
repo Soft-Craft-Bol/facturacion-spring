@@ -1,15 +1,16 @@
 package com.gaspar.facturador.persistence.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.gaspar.facturador.persistence.entity.enums.TipoComprobanteEnum;
 import com.gaspar.facturador.persistence.entity.enums.TipoPagoEnum;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 @Entity
 @AllArgsConstructor
@@ -31,13 +32,11 @@ public class VentasEntity {
 
     private String estado;
 
-    private Integer cantidad;
-
-    private String productos;
-
-    private String montoDescuento;
-
     private String cliente;
+
+    @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<VentasDetalleEntity> detalles;
 
     @Column(name = "tipo_comprobante")
     @Enumerated(EnumType.STRING)

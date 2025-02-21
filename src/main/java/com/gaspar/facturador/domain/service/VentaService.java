@@ -5,16 +5,16 @@ import com.gaspar.facturador.persistence.PuntoVentaRepository;
 import com.gaspar.facturador.persistence.crud.ItemCrudRepository;
 import com.gaspar.facturador.persistence.crud.UserRepository;
 import com.gaspar.facturador.persistence.crud.VentaCrudRepository;
-import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
-import com.gaspar.facturador.persistence.entity.UserEntity;
-import com.gaspar.facturador.persistence.entity.VentasEntity;
+import com.gaspar.facturador.persistence.entity.*;
 import com.gaspar.facturador.persistence.entity.enums.TipoComprobanteEnum;
 import com.gaspar.facturador.persistence.entity.enums.TipoPagoEnum;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 @Service
 public class VentaService {
@@ -40,12 +40,12 @@ public class VentaService {
         PuntoVentaEntity puntoVenta = puntoVentaRepository.findById(Math.toIntExact(request.getIdPuntoVenta()))
                 .orElseThrow(() -> new IllegalArgumentException("Punto de venta con ID " + request.getIdPuntoVenta() + " no encontrado"));
 
-        ItemCrudRepository producto = itemCrudRepository.findById(1L)
-                .orElseThrow(() -> new IllegalArgumentException("Producto con ID " + 1L + " no encontrado"));
-
         // Crear la entidad de venta
         VentasEntity venta = new VentasEntity();
         venta.setFecha(new Date());
+
+        // Asignar el cliente
+        venta.setCliente(request.getCliente());
 
         // Manejo de comprobante
         try {
@@ -73,12 +73,26 @@ public class VentaService {
 
         // Calcular monto total
         BigDecimal montoTotal = BigDecimal.ZERO;
+        List<VentasDetalleEntity> detalles = new ArrayList<>();
         for (var item : request.getDetalle()) {
+            ItemEntity producto = itemCrudRepository.findById((int) item.getIdProducto().longValue())
+                    .orElseThrow(() -> new IllegalArgumentException("Producto con ID " + item.getIdProducto() + " no encontrado"));
+
             montoTotal = montoTotal.add(item.getCantidad().multiply(BigDecimal.valueOf(10)).subtract(item.getMontoDescuento()));
+
+            VentasDetalleEntity detalle = new VentasDetalleEntity();
+            detalle.setVenta(venta);
+            detalle.setIdProducto(item.getIdProducto());
+            detalle.setCantidad(item.getCantidad());
+            detalle.setMontoDescuento(item.getMontoDescuento());
+            detalle.setDescripcionProducto(producto.getDescripcion());
+
+            detalles.add(detalle);
         }
 
         venta.setMonto(montoTotal);
         venta.setEstado("COMPLETADO");
+        venta.setDetalles(detalles);
 
         // Guardar la venta
         return ventasRepository.save(venta);
