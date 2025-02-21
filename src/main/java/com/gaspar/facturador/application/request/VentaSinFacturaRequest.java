@@ -18,8 +18,8 @@ public class VentaSinFacturaRequest {
     @NotBlank(message = "El tipo de comprobante es obligatorio")
     private String tipoComprobante;
 
-    @NotNull(message = "El ID del usuario es obligatorio")
-    private Integer user_id;
+    @NotNull(message = "Nombre de usuario obligatorio")
+    private String username;
 
     @NotNull(message = "El detalle no puede ser nulo")
     private List<VentaDetalleRequest> detalle;

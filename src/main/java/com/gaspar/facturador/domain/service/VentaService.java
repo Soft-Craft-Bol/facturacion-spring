@@ -34,8 +34,15 @@ public class VentaService {
     public VentasEntity saveVenta(VentaSinFacturaRequest request) {
         System.out.println("Body recibido: " + request);
 
-        UserEntity vendedor = userRepository.findById(Long.valueOf(request.getUser_id()))
-                .orElseThrow(() -> new IllegalArgumentException("Usuario con ID " + request.getUser_id() + " no encontrado"));
+        // Obtener el ID del usuario por su username
+        Long userId = userRepository.findIdByUsername(request.getUsername());
+        if (userId == null) {
+            throw new IllegalArgumentException("Usuario con username " + request.getUsername() + " no encontrado");
+        }
+
+        // Obtener el vendedor por su ID
+        UserEntity vendedor = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario con ID " + userId + " no encontrado"));
 
         PuntoVentaEntity puntoVenta = puntoVentaRepository.findById(Math.toIntExact(request.getIdPuntoVenta()))
                 .orElseThrow(() -> new IllegalArgumentException("Punto de venta con ID " + request.getIdPuntoVenta() + " no encontrado"));

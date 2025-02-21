@@ -14,6 +14,10 @@ import java.util.Optional;
 public interface UserRepository  extends CrudRepository<UserEntity, Long> {
 
     Optional<UserEntity> findUserEntityByUsername(String username);
+    //get id of user by username
+    @Query("SELECT u.id FROM UserEntity u WHERE u.username = :username")
+    Long findIdByUsername(String username);
+
     List<UserEntity> findAll();
     void deleteById(long id);
     long countByRoles(RoleEntity role);
