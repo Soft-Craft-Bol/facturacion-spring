@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.stream.Collectors;
 import java.util.List;
 import java.util.Optional;
+import java. math. BigDecimal;
 
 @RestController
 @RequestMapping("/items")
@@ -67,5 +68,17 @@ public class ItemController {
     public ResponseEntity<List<ItemEntity>> getLimitedItems() {
         List<ItemEntity> items = itemRepository.findAll().stream().limit(5).collect(Collectors.toList());
         return new ResponseEntity<>(items, HttpStatus.OK);
+    }
+    @PutMapping("/{id}/add/{cantidad}")
+    public ResponseEntity<ItemEntity> addCantidadToItem(@PathVariable Integer id, @PathVariable BigDecimal cantidad) {
+        Optional<ItemEntity> itemOptional = itemRepository.findById(id);
+        if (itemOptional.isPresent()) {
+            ItemEntity item = itemOptional.get();
+            item.setCantidad(item.getCantidad().add(cantidad));
+            itemRepository.save(item);
+            return new ResponseEntity<>(item, HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
     }
 }
