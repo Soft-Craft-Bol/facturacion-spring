@@ -3,10 +3,12 @@ package com.gaspar.facturador.persistence.entity;
 import com.gaspar.facturador.persistence.entity.enums.TipoComprobanteEnum;
 import com.gaspar.facturador.persistence.entity.enums.TipoPagoEnum;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.Date;
 
 @Entity
@@ -25,11 +27,17 @@ public class VentasEntity {
     @Enumerated(EnumType.STRING)
     private TipoPagoEnum metodoPago;
 
-    private Double monto;
+    private BigDecimal monto;
 
     private String estado;
 
     private Integer cantidad;
+
+    private String productos;
+
+    private String descuento;
+
+    private String cliente;
 
     @Column(name = "tipo_comprobante")
     @Enumerated(EnumType.STRING)
@@ -46,4 +54,7 @@ public class VentasEntity {
     @OneToOne
     @JoinColumn(name = "id_factura", nullable = true)
     private FacturaEntity factura;
+
+    public void setUserId(@NotNull(message = "El ID del usuario es obligatorio") Integer userId) {
+    }
 }
