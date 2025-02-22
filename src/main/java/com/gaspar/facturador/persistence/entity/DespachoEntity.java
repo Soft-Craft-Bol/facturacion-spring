@@ -18,19 +18,30 @@ public class DespachoEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(name = "sucursal_origen_id")
-    private Long sucursalOrigenId;
-    @Column(name = "destino_id")
-    private Long destinoId;
+
+    @ManyToOne
+    @JoinColumn(name = "sucursal_origen", nullable = false)
+    private SucursalEntity sucursalOrigen;
+
+    @ManyToOne
+    @JoinColumn(name = "sucursal_destino", nullable = false)
+    private SucursalEntity sucursalDestino;
+
     private Date fechaEnvio;
     private String transporte;
+
     @Column(name = "numero_de_contacto")
     private long numeroContacto;
+
     private String observaciones;
-    @ElementCollection
-    @CollectionTable(name = "despacho_items", joinColumns = @JoinColumn(name = "despacho_id"))
-    @Column(name = "item_id")
-    private List<Long> itemIds;
+
+    @ManyToMany
+    @JoinTable(
+            name = "despacho_items",
+            joinColumns = @JoinColumn(name = "despacho_id"),
+            inverseJoinColumns = @JoinColumn(name = "item_id")
+    )
+    private List<ItemEntity> items;
 
     @PrePersist
     protected void onCreate() {
