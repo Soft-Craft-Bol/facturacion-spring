@@ -1,14 +1,11 @@
 package com.gaspar.facturador.persistence.entity;
 
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
+import lombok.*;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -21,11 +18,6 @@ public class ReservaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-
-    @NotNull
-    @ManyToOne
-    @JoinColumn(name = "id_item", nullable = false)
-    private ItemEntity item;
 
     @NotNull
     @ManyToOne
@@ -43,10 +35,6 @@ public class ReservaEntity {
 
     @NotNull
     @Column(nullable = false)
-    private BigDecimal cantidad;
-
-    @NotNull
-    @Column(nullable = false)
     private BigDecimal anticipo;
 
     @NotNull
@@ -60,4 +48,11 @@ public class ReservaEntity {
     @Column(length = 500)
     private String observaciones;
 
+    @Column(nullable = false, name = "metodo_pago")
+    private String metodoPago; // QR, TARJETA, TRANSFERENCIA
+
+    private String comprobante; // Comprobante de pago (para QR y TRANSFERENCIA)
+
+    @OneToMany(mappedBy = "reserva", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ReservaItemEntity> items;
 }

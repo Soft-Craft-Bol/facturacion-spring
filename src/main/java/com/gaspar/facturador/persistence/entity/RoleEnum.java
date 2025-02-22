@@ -8,6 +8,7 @@ public enum RoleEnum {
     PANADERO,
     MAESTRO,
     SECRETARIA,
-    VENDEDOR
+    VENDEDOR,
+    CLIENTE,
 }
 
