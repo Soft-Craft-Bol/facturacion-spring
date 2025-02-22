@@ -40,7 +40,8 @@ public class ItemEntity {
         this.cantidad = cantidad;
     }
 
-    private BigDecimal cantidad;
+    private BigDecimal cantidad;//esta es la cantidad total
+
 
 
     public Integer getId() {

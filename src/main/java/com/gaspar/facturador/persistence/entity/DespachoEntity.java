@@ -1,5 +1,6 @@
 package com.gaspar.facturador.persistence.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -35,13 +36,9 @@ public class DespachoEntity {
 
     private String observaciones;
 
-    @ManyToMany
-    @JoinTable(
-            name = "despacho_items",
-            joinColumns = @JoinColumn(name = "despacho_id"),
-            inverseJoinColumns = @JoinColumn(name = "item_id")
-    )
-    private List<ItemEntity> items;
+    @OneToMany(mappedBy = "despacho", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<DespachoItemEntity> despachoItems;
 
     @PrePersist
     protected void onCreate() {

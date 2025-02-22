@@ -2,6 +2,7 @@ package com.gaspar.facturador.application.rest.controller;
 
 import com.gaspar.facturador.persistence.DespachoRepository;
 import com.gaspar.facturador.persistence.entity.DespachoEntity;
+import com.gaspar.facturador.persistence.entity.DespachoItemEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +29,9 @@ public class DespachoController {
 
     @PostMapping
     public ResponseEntity<DespachoEntity> save(@RequestBody DespachoEntity despacho) {
+        for (DespachoItemEntity despachoItem : despacho.getDespachoItems()) {
+            despachoItem.setDespacho(despacho);
+        }
         DespachoEntity savedDespacho = despachoService.save(despacho);
         return new ResponseEntity<>(savedDespacho, HttpStatus.CREATED);
     }
