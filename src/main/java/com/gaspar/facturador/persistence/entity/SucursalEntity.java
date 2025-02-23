@@ -47,6 +47,4 @@ public class SucursalEntity {
     @Column(length = 1024)
     private String image;
 
-    @OneToMany(mappedBy = "sucursal")
-    private Set<SucursalItemEntity> sucursalItems;
 }

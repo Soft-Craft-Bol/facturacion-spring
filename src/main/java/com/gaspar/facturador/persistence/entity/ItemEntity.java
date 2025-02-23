@@ -35,9 +35,6 @@ public class ItemEntity {
 
     private BigDecimal cantidad;//esta es la cantidad total
 
-    @OneToMany(mappedBy = "item")
-    private Set<SucursalItemEntity> sucursalItems;
-
     @PrePersist
     protected void onCreate() {
         this.codigo = UUID.randomUUID().toString();
