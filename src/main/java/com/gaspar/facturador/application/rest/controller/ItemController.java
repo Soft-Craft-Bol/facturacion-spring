@@ -2,6 +2,7 @@ package com.gaspar.facturador.application.rest.controller;
 
 import com.gaspar.facturador.domain.repository.IItemRepository;
 import com.gaspar.facturador.persistence.entity.ItemEntity;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +14,7 @@ import java. math. BigDecimal;
 @RestController
 @RequestMapping("/items")
 public class ItemController {
+    @Autowired
     private IItemRepository itemRepository;
 
     public ItemController(IItemRepository itemRepository){
@@ -30,11 +32,10 @@ public class ItemController {
         return item.map(value -> new ResponseEntity<>(value, HttpStatus.OK))
                 .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
-
     @PostMapping
     public ResponseEntity<ItemEntity> createItem(@RequestBody ItemEntity item) {
-        ItemEntity savedItem = itemRepository.save(item);
-        return new ResponseEntity<>(savedItem, HttpStatus.CREATED);
+        ItemEntity createdItem = itemRepository.save(item);
+        return new ResponseEntity<>(createdItem, HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")

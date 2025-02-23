@@ -11,6 +11,7 @@ import java.util.Optional;
 public class SucursalRepository {
     @Autowired
     private SucursalCrudRepository sucursalCrudRepository;
+
     public Iterable<SucursalEntity> findAll() {
         return sucursalCrudRepository.findAll();
     }

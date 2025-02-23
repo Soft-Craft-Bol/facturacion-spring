@@ -7,6 +7,9 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
+import java.util.List;
+import java.util.Set;
+
 
 @Getter
 @Setter
@@ -43,4 +46,7 @@ public class SucursalEntity {
 
     @Column(length = 1024)
     private String image;
+
+    @OneToMany(mappedBy = "sucursal")
+    private Set<SucursalItemEntity> sucursalItems;
 }

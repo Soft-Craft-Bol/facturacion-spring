@@ -4,13 +4,16 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
+@Entity
 @Data
-@Table(name = "stock")
-public class StockEntity {
+@Table(name = "sucursal_item")
+public class SucursalItemEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
+    private Integer id;
 
     @ManyToOne
     @JoinColumn(name = "sucursal_id", nullable = false)
@@ -21,6 +24,6 @@ public class StockEntity {
     private ItemEntity item;
 
     @Column(nullable = false)
-    private BigDecimal catidad;
+    private Integer cantidad;
 
 }
