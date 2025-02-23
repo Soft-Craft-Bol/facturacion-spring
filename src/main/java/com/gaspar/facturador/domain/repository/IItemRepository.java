@@ -8,7 +8,6 @@ import java.util.Optional;
 
 
 public interface IItemRepository {
-
     Optional<ItemEntity> findById(Integer id);
     List<ItemEntity> findAll();
     ItemEntity save(ItemEntity item);

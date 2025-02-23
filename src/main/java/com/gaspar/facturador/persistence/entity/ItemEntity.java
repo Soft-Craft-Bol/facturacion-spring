@@ -1,15 +1,16 @@
 package com.gaspar.facturador.persistence.entity;
 
-import lombok.Getter;
-import lombok.Setter;
 
 import jakarta.persistence.*;
+import lombok.Data;
+
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
-@Getter
-@Setter
 @Entity
+@Data
 @Table(name = "item")
 public class ItemEntity {
 
@@ -32,74 +33,14 @@ public class ItemEntity {
     @Column(length = 1024)
     private String imagen;
 
-    public BigDecimal getCantidad() {
-        return cantidad;
-    }
-
-    public void setCantidad(BigDecimal cantidad) {
-        this.cantidad = cantidad;
-    }
-
     private BigDecimal cantidad;//esta es la cantidad total
 
-
-
-    public Integer getId() {
-        return id;
-    }
+    @OneToMany(mappedBy = "item")
+    private Set<SucursalItemEntity> sucursalItems;
 
     @PrePersist
     protected void onCreate() {
         this.codigo = UUID.randomUUID().toString();
     }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public String getCodigo() {
-        return codigo;
-    }
-
-    public void setCodigo(String codigo) {
-        this.codigo = codigo;
-    }
-
-    public String getDescripcion() {
-        return descripcion;
-    }
-
-    public void setDescripcion(String descripcion) {
-        this.descripcion = descripcion;
-    }
-
-    public Integer getUnidadMedida() {
-        return unidadMedida;
-    }
-
-    public void setUnidadMedida(Integer unidadMedida) {
-        this.unidadMedida = unidadMedida;
-    }
-
-    public BigDecimal getPrecioUnitario() {
-        return precioUnitario;
-    }
-
-    public void setPrecioUnitario(BigDecimal precioUnitario) {
-        this.precioUnitario = precioUnitario;
-    }
-
-    public Integer getCodigoProductoSin() {
-        return codigoProductoSin;
-    }
-
-    public void setCodigoProductoSin(Integer codigoProductoSin) {
-        this.codigoProductoSin = codigoProductoSin;
-    }
-
-    public String getImagen() { return imagen; }
-
-    public void setImagen(String imagen) { this.imagen = imagen; }
-
 
 }
