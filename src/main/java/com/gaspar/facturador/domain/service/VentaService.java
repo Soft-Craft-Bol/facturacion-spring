@@ -5,16 +5,24 @@ import com.gaspar.facturador.persistence.PuntoVentaRepository;
 import com.gaspar.facturador.persistence.crud.ItemCrudRepository;
 import com.gaspar.facturador.persistence.crud.UserRepository;
 import com.gaspar.facturador.persistence.crud.VentaCrudRepository;
+import com.gaspar.facturador.persistence.dto.VentaHoyDTO;
 import com.gaspar.facturador.persistence.entity.*;
 import com.gaspar.facturador.persistence.entity.enums.TipoComprobanteEnum;
 import com.gaspar.facturador.persistence.entity.enums.TipoPagoEnum;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class VentaService {
@@ -34,27 +42,22 @@ public class VentaService {
     public VentasEntity saveVenta(VentaSinFacturaRequest request) {
         System.out.println("Body recibido: " + request);
 
-        // Obtener el ID del usuario por su username
         Long userId = userRepository.findIdByUsername(request.getUsername());
         if (userId == null) {
             throw new IllegalArgumentException("Usuario con username " + request.getUsername() + " no encontrado");
         }
 
-        // Obtener el vendedor por su ID
         UserEntity vendedor = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario con ID " + userId + " no encontrado"));
 
         PuntoVentaEntity puntoVenta = puntoVentaRepository.findById(Math.toIntExact(request.getIdPuntoVenta()))
                 .orElseThrow(() -> new IllegalArgumentException("Punto de venta con ID " + request.getIdPuntoVenta() + " no encontrado"));
 
-        // Crear la entidad de venta
         VentasEntity venta = new VentasEntity();
         venta.setFecha(new Date());
 
-        // Asignar el cliente
         venta.setCliente(request.getCliente());
 
-        // Manejo de comprobante
         try {
             String tipoComprobante = request.getTipoComprobante().toUpperCase();
             System.out.println("Tipo de comprobante recibido: " + tipoComprobante);
@@ -63,12 +66,10 @@ public class VentaService {
             throw new IllegalArgumentException("Tipo de comprobante no válido: " + request.getTipoComprobante());
         }
 
-        // Verificar que el tipo de comprobante no sea nulo
         if (venta.getTipoComprobante() == null) {
             throw new IllegalArgumentException("El tipo de comprobante no puede ser nulo");
         }
 
-        // Manejo de método de pago
         try {
             venta.setMetodoPago(TipoPagoEnum.valueOf(request.getMetodoPago().toUpperCase()));
         } catch (IllegalArgumentException e) {
@@ -78,29 +79,22 @@ public class VentaService {
         venta.setVendedor(vendedor);
         venta.setPuntoVenta(puntoVenta);
 
-        // Calcular monto total
         BigDecimal montoTotal = BigDecimal.ZERO;
         List<VentasDetalleEntity> detalles = new ArrayList<>();
         for (var item : request.getDetalle()) {
-            // Obtener el producto (ItemEntity) por su ID
             ItemEntity producto = itemCrudRepository.findById((int) item.getIdProducto().longValue())
                     .orElseThrow(() -> new IllegalArgumentException("Producto con ID " + item.getIdProducto() + " no encontrado"));
 
-            // Verificar si hay suficiente stock
             if (producto.getCantidad().compareTo(item.getCantidad()) < 0) {
                 throw new IllegalArgumentException("No hay suficiente stock para el producto con ID " + item.getIdProducto());
             }
 
-            // Restar la cantidad vendida del stock del producto
             producto.setCantidad(producto.getCantidad().subtract(item.getCantidad()));
 
-            // Guardar el producto actualizado en la base de datos
             itemCrudRepository.save(producto);
 
-            // Calcular el monto total
             montoTotal = montoTotal.add(item.getCantidad().multiply(BigDecimal.valueOf(10)).subtract(item.getMontoDescuento()));
 
-            // Crear el detalle de la venta
             VentasDetalleEntity detalle = new VentasDetalleEntity();
             detalle.setVenta(venta);
             detalle.setIdProducto(item.getIdProducto());
@@ -115,8 +109,61 @@ public class VentaService {
         venta.setEstado("COMPLETADO");
         venta.setDetalles(detalles);
 
-        // Guardar la venta
+        if (request.getIdfactura() != null) {
+            FacturaEntity factura = new FacturaEntity();
+            factura.setId(request.getIdfactura());
+            venta.setFactura(factura);
+        }
         return ventasRepository.save(venta);
+    }
+
+    public Page<VentaHoyDTO> getVentasDeHoy(int page, int size) {
+        LocalDate hoy = LocalDate.now();
+        Pageable pageable = PageRequest.of(page, size);
+        Page<VentasEntity> ventasPage = ventasRepository.findByFecha(hoy, pageable);
+
+        return ventasPage.map(this::mapToVentaHoyDTO);
+    }
+
+    private VentaHoyDTO mapToVentaHoyDTO(VentasEntity venta) {
+        VentaHoyDTO dto = new VentaHoyDTO();
+        dto.setIdVenta(venta.getId());
+        dto.setCodigoCliente(venta.getCliente());
+        dto.setNombreRazonSocial(venta.getCliente()); // Asumiendo que el cliente es la razón social
+
+        // Convertir java.util.Date a LocalDateTime
+        Date fechaVenta = venta.getFecha();
+        LocalDateTime fechaEmision = fechaVenta.toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDateTime();
+        dto.setFechaEmision(fechaEmision);
+
+        // Priorizar el estado de la factura si existe
+        if (venta.getFactura() != null) {
+            dto.setEstado(venta.getFactura().getEstado()); // Estado de la factura
+            dto.setCuf(venta.getFactura().getCuf()); // CUF de la factura
+        } else {
+            dto.setEstado(venta.getEstado()); // Estado de la venta
+        }
+
+        dto.setTipoComprobante(venta.getTipoComprobante());
+
+        // Mapear detalles de la venta
+        dto.setDetalles(venta.getDetalles().stream().map(detalle -> {
+            VentaHoyDTO.VentaDetalleDTO detalleDTO = new VentaHoyDTO.VentaDetalleDTO();
+            detalleDTO.setDescripcion(detalle.getDescripcionProducto());
+            detalleDTO.setSubTotal(detalle.getCantidad().multiply(BigDecimal.valueOf(10))); // Asumiendo un precio unitario de 10
+            return detalleDTO;
+        }).collect(Collectors.toList()));
+
+        // Mapear información del punto de venta, sucursal y vendedor
+        dto.setNombrePuntoVenta(venta.getPuntoVenta().getNombre());
+        dto.setIdPuntoVenta(venta.getPuntoVenta().getId());
+        dto.setNombreSucursal(venta.getPuntoVenta().getSucursal().getNombre());
+        dto.setIdUsuario(venta.getVendedor().getId());
+        dto.setNombreUsuario(venta.getVendedor().getUsername());
+
+        return dto;
     }
 
 }

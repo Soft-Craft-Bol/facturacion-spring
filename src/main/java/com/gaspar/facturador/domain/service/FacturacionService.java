@@ -80,17 +80,6 @@ public class FacturacionService {
         // Generar la factura
         FacturaElectronicaCompraVenta factura = this.generaFacturaService.llenarDatos(ventaRequest, cufd.get());
 
-        // Convertir VentaRequest a VentaSinFacturaRequest
-        VentaSinFacturaRequest ventaSinFacturaRequest = new VentaSinFacturaRequest();
-        ventaSinFacturaRequest.setIdPuntoVenta(Long.valueOf(ventaRequest.getIdPuntoVenta()));
-        ventaSinFacturaRequest.setCliente(String.valueOf(ventaRequest.getIdCliente()));
-        ventaSinFacturaRequest.setTipoComprobante(ventaRequest.getTipoComprobante());
-        ventaSinFacturaRequest.setMetodoPago(ventaRequest.getMetodoPago());
-        ventaSinFacturaRequest.setUsername(ventaRequest.getUsername());
-        ventaSinFacturaRequest.setDetalle(ventaRequest.getDetalle());
-
-        // Guardar la venta en la tabla de ventas
-        ventaService.saveVenta(ventaSinFacturaRequest);
 
         // Convertir FacturaElectronicaCompraVenta a FacturaEntity
         FacturaEntity facturaEntity = new FacturaEntity();
@@ -147,7 +136,24 @@ public class FacturacionService {
         facturaEntity.setDetalleList(detalles);
 
         // Guardar la factura y sus detalles
-        facturaRepository.save(facturaEntity);
+        FacturaEntity facturaGuardada = facturaRepository.save(facturaEntity);
+
+        // Obtener el ID de la factura recién creada
+        Long idFactura = facturaGuardada.getId();
+
+
+        // Convertir VentaRequest a VentaSinFacturaRequest
+        VentaSinFacturaRequest ventaSinFacturaRequest = new VentaSinFacturaRequest();
+        ventaSinFacturaRequest.setIdPuntoVenta(Long.valueOf(ventaRequest.getIdPuntoVenta()));
+        ventaSinFacturaRequest.setCliente(String.valueOf(ventaRequest.getIdCliente()));
+        ventaSinFacturaRequest.setTipoComprobante(ventaRequest.getTipoComprobante());
+        ventaSinFacturaRequest.setMetodoPago(ventaRequest.getMetodoPago());
+        ventaSinFacturaRequest.setUsername(ventaRequest.getUsername());
+        ventaSinFacturaRequest.setDetalle(ventaRequest.getDetalle());
+        ventaSinFacturaRequest.setIdfactura(idFactura);
+
+        // Guardar la venta en la tabla de ventas
+        ventaService.saveVenta(ventaSinFacturaRequest);
 
         // Obtener el XML sin firmar
         byte[] xmlBytes = this.generaFacturaService.getXmlBytes(factura);

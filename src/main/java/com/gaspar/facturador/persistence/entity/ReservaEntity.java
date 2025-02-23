@@ -49,9 +49,9 @@ public class ReservaEntity {
     private String observaciones;
 
     @Column(nullable = false, name = "metodo_pago")
-    private String metodoPago; // QR, TARJETA, TRANSFERENCIA
+    private String metodoPago;
 
-    private String comprobante; // Comprobante de pago (para QR y TRANSFERENCIA)
+    private String comprobante;
 
     @OneToMany(mappedBy = "reserva", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ReservaItemEntity> items;
