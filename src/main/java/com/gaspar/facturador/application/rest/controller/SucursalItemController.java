@@ -1,6 +1,6 @@
 package com.gaspar.facturador.application.rest.controller;
 
-import com.gaspar.facturador.domain.repository.SucursalItemCrudRepository;
+import com.gaspar.facturador.persistence.crud.SucursalItemCrudRepository;
 import com.gaspar.facturador.persistence.entity.SucursalItemEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -11,8 +11,9 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/sucursal-items")
 public class SucursalItemController {
+
     @Autowired
-    private SucursalItemCrudRepository sucursalItemCrudRepository;
+    private SucursalItemCrudRepository sucursalItemCrudRepository; // Inyecta el repositorio
 
     @GetMapping
     public ResponseEntity<Iterable<SucursalItemEntity>> findAll() {
@@ -33,7 +34,7 @@ public class SucursalItemController {
 
     @PutMapping("/{id}")
     public ResponseEntity<SucursalItemEntity> update(@PathVariable Integer id, @RequestBody SucursalItemEntity sucursalItem) {
-        if (!sucursalItemCrudRepository.findById(id).isPresent()) {
+        if (!sucursalItemCrudRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
         sucursalItem.setId(id);
@@ -43,7 +44,7 @@ public class SucursalItemController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
-        if (!sucursalItemCrudRepository.findById(id).isPresent()) {
+        if (!sucursalItemCrudRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
         sucursalItemCrudRepository.deleteById(id);

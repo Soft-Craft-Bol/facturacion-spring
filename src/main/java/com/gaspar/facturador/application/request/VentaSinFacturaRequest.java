@@ -26,4 +26,6 @@ public class VentaSinFacturaRequest {
 
     @NotNull(message = "El método de pago es obligatorio")
     private String metodoPago;
+
+    private Integer idfactura;
 }
