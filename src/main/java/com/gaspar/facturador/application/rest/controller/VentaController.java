@@ -2,10 +2,12 @@ package com.gaspar.facturador.application.rest.controller;
 
 import com.gaspar.facturador.application.request.VentaSinFacturaRequest;
 import com.gaspar.facturador.persistence.PuntoVentaRepository;
+import com.gaspar.facturador.persistence.dto.VentaHoyDTO;
 import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
 import com.gaspar.facturador.persistence.entity.VentasEntity;
 import com.gaspar.facturador.domain.service.VentaService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -44,6 +46,14 @@ public class VentaController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error al procesar la venta: " + e.getMessage());
         }
+    }
+
+    @GetMapping("/hoy")
+    public ResponseEntity<Page<VentaHoyDTO>> getVentasDeHoy(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "100") int size) {
+        Page<VentaHoyDTO> ventas = ventaService.getVentasDeHoy(page, size);
+        return ResponseEntity.ok(ventas);
     }
 
 
