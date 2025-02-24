@@ -1,11 +1,17 @@
 package com.gaspar.facturador.application.rest.controller;
 
+import com.gaspar.facturador.persistence.crud.ItemCrudRepository;
+import com.gaspar.facturador.persistence.crud.SucursalCrudRepository;
 import com.gaspar.facturador.persistence.crud.SucursalItemCrudRepository;
+import com.gaspar.facturador.persistence.entity.ItemEntity;
+import com.gaspar.facturador.persistence.entity.SucursalEntity;
 import com.gaspar.facturador.persistence.entity.SucursalItemEntity;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -13,52 +19,85 @@ import java.util.Optional;
 public class SucursalItemController {
 
     @Autowired
-    private SucursalItemCrudRepository sucursalItemCrudRepository; // Inyecta el repositorio
+    private SucursalItemCrudRepository sucursalItemCrudRepository;
+
+    @Autowired
+    private SucursalCrudRepository sucursalCrudRepository;
+
+    @Autowired
+    private ItemCrudRepository itemCrudRepository;
 
     @GetMapping
     public ResponseEntity<Iterable<SucursalItemEntity>> findAll() {
         return ResponseEntity.ok(sucursalItemCrudRepository.findAll());
     }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<SucursalItemEntity> findById(@PathVariable Integer id) {
-        Optional<SucursalItemEntity> sucursalItem = sucursalItemCrudRepository.findById(id);
-        return sucursalItem.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    //obtener items por sucursal
+    @GetMapping("/sucursal/{sucursalId}")
+    public ResponseEntity<List<SucursalItemEntity>> findBySucursal(@PathVariable Integer sucursalId) {
+        List<SucursalItemEntity> items = sucursalItemCrudRepository.findBySucursalId(sucursalId);
+        return ResponseEntity.ok(items);
     }
+    //insertar un item con cantidad a una sucursal a una sucursal
+    @PostMapping("/sucursal/{sucursalId}/item/{itemId}")
+    public ResponseEntity<SucursalItemEntity> setInitialQuantity(@PathVariable Integer sucursalId, @PathVariable Integer itemId, @RequestParam Integer cantidad) {
+        Optional<SucursalEntity> sucursalOptional = sucursalCrudRepository.findById(sucursalId);
+        Optional<ItemEntity> itemOptional = itemCrudRepository.findById(itemId);
 
-    @PostMapping
-    public ResponseEntity<SucursalItemEntity> create(@RequestBody SucursalItemEntity sucursalItem) {
+        if (!sucursalOptional.isPresent() || !itemOptional.isPresent()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Optional<SucursalItemEntity> sucursalItems = sucursalItemCrudRepository.findBySucursalIdAndItemId(sucursalId, itemId);
+        if (!sucursalItems.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(null);
+        }
+
+        SucursalItemEntity sucursalItem = new SucursalItemEntity();
+        sucursalItem.setSucursal(sucursalOptional.get());
+        sucursalItem.setItem(itemOptional.get());
+        sucursalItem.setCantidad(cantidad);
         SucursalItemEntity savedSucursalItem = sucursalItemCrudRepository.save(sucursalItem);
         return ResponseEntity.ok(savedSucursalItem);
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<SucursalItemEntity> update(@PathVariable Integer id, @RequestBody SucursalItemEntity sucursalItem) {
-        if (!sucursalItemCrudRepository.existsById(id)) {
+    @DeleteMapping("/sucursal/{sucursalId}/item/{itemId}")
+    public ResponseEntity<Void> removeItemFromScurusal(@PathVariable Integer sucursalId, @PathVariable Integer itemId) {
+        Optional<SucursalItemEntity> sucursalItemOptional = sucursalItemCrudRepository.findBySucursalIdAndItemId(sucursalId, itemId);
+        if (!sucursalItemOptional.isPresent()) {
             return ResponseEntity.notFound().build();
         }
-        sucursalItem.setId(id);
+        sucursalItemCrudRepository.delete(sucursalItemOptional.get());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/sucursal/{sucursalId}/item/{itemId}/increase")
+    public ResponseEntity<SucursalItemEntity> increaseQuantity(@PathVariable Integer sucursalId, @PathVariable Integer itemId, @RequestParam Integer cantidad) {
+        Optional<SucursalItemEntity> sucursalItemOptional = sucursalItemCrudRepository.findBySucursalIdAndItemId(sucursalId, itemId);
+
+        if (!sucursalItemOptional.isPresent()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        SucursalItemEntity sucursalItem = sucursalItemOptional.get();
+        sucursalItem.setCantidad(sucursalItem.getCantidad() + cantidad);
         SucursalItemEntity updatedSucursalItem = sucursalItemCrudRepository.save(sucursalItem);
         return ResponseEntity.ok(updatedSucursalItem);
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Integer id) {
-        if (!sucursalItemCrudRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
-        sucursalItemCrudRepository.deleteById(id);
-        return ResponseEntity.noContent().build();
-    }
+    @PutMapping("/sucursal/{sucursalId}/item/{itemId}/decrease")
+    public ResponseEntity<SucursalItemEntity> decreaseQuantity(@PathVariable Integer sucursalId, @PathVariable Integer itemId, @RequestParam Integer cantidad) {
+        Optional<SucursalItemEntity> sucursalItemOptional = sucursalItemCrudRepository.findBySucursalIdAndItemId(sucursalId, itemId);
 
-    @PostMapping("/{id}/add-cantidad")
-    public ResponseEntity<SucursalItemEntity> addCantidad(@PathVariable Integer id, @RequestParam Integer cantidad) {
-        Optional<SucursalItemEntity> sucursalItemOptional = sucursalItemCrudRepository.findById(id);
         if (!sucursalItemOptional.isPresent()) {
             return ResponseEntity.notFound().build();
         }
+
         SucursalItemEntity sucursalItem = sucursalItemOptional.get();
-        sucursalItem.setCantidad(sucursalItem.getCantidad() + cantidad);
+        int newCantidad = sucursalItem.getCantidad() - cantidad;
+        if (newCantidad < 0) {
+            return ResponseEntity.badRequest().body(null);
+        }
+        sucursalItem.setCantidad(newCantidad);
         SucursalItemEntity updatedSucursalItem = sucursalItemCrudRepository.save(sucursalItem);
         return ResponseEntity.ok(updatedSucursalItem);
     }
