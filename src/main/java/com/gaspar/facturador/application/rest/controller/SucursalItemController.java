@@ -1,8 +1,6 @@
 package com.gaspar.facturador.application.rest.controller;
 
-import com.gaspar.facturador.application.response.EmpresaDTO;
-import com.gaspar.facturador.application.response.ItemDTO;
-import com.gaspar.facturador.application.response.SucursalDTO;
+import com.gaspar.facturador.application.response.*;
 import com.gaspar.facturador.application.rest.util.SucursalItemUtility;
 import com.gaspar.facturador.persistence.crud.ItemCrudRepository;
 import com.gaspar.facturador.persistence.crud.SucursalCrudRepository;
@@ -16,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/sucursal-items")
@@ -108,4 +107,37 @@ public class SucursalItemController {
         SucursalItemEntity updatedSucursalItem = sucursalItemCrudRepository.save(sucursalItem);
         return ResponseEntity.ok(updatedSucursalItem);
     }
+    @GetMapping("/item/{itemId}")
+    public ResponseEntity<ItemWithSucursalesDTO> findItemWithSucursales(@PathVariable Integer itemId) {
+        List<SucursalItemEntity> sucursalItems = sucursalItemCrudRepository.findByItemId(itemId);
+
+        if (sucursalItems.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        SucursalItemEntity firstItem = sucursalItems.get(0);
+        ItemWithSucursalesDTO itemDTO = new ItemWithSucursalesDTO();
+        itemDTO.setId(firstItem.getItem().getId());
+        itemDTO.setCodigo(firstItem.getItem().getCodigo());
+        itemDTO.setDescripcion(firstItem.getItem().getDescripcion());
+        itemDTO.setUnidadMedida(firstItem.getItem().getUnidadMedida());
+        itemDTO.setPrecioUnitario(firstItem.getItem().getPrecioUnitario());
+        itemDTO.setCodigoProductoSin(firstItem.getItem().getCodigoProductoSin());
+        itemDTO.setImagen(firstItem.getItem().getImagen());
+
+        List<SucursalInfoDTO> sucursales = sucursalItems.stream().map(sucursalItem -> {
+            SucursalInfoDTO sucursalInfo = new SucursalInfoDTO();
+            sucursalInfo.setId(sucursalItem.getSucursal().getId());
+            sucursalInfo.setNombre(sucursalItem.getSucursal().getNombre());
+            sucursalInfo.setDepartamento(sucursalItem.getSucursal().getDepartamento());
+            sucursalInfo.setCantidad(sucursalItem.getCantidad());
+            return sucursalInfo;
+        }).collect(Collectors.toList());
+
+        itemDTO.setSucursales(sucursales);
+
+        return ResponseEntity.ok(itemDTO);
+    }
+
+
 }
