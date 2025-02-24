@@ -5,6 +5,7 @@ import com.gaspar.facturador.persistence.entity.ItemEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import java.util.stream.Collectors;
 import java.util.List;
@@ -57,6 +58,7 @@ public class ItemController {
     }
 
     @DeleteMapping("/{id}")
+    @Transactional
     public ResponseEntity<HttpStatus> deleteItem(@PathVariable Integer id) {
         try {
             itemRepository.deleteById(id);

@@ -1,6 +1,7 @@
 package com.gaspar.facturador.persistence.entity;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -34,6 +35,13 @@ public class ItemEntity {
     private String imagen;
 
     private BigDecimal cantidad;//esta es la cantidad total
+    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<SucursalItemEntity> sucursalItems;
+
+    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<DespachoItemEntity> despachoItems;
 
     @PrePersist
     protected void onCreate() {
