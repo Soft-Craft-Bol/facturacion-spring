@@ -1,5 +1,9 @@
 package com.gaspar.facturador.application.rest.controller;
 
+import com.gaspar.facturador.application.response.EmpresaDTO;
+import com.gaspar.facturador.application.response.ItemDTO;
+import com.gaspar.facturador.application.response.SucursalDTO;
+import com.gaspar.facturador.application.rest.util.SucursalItemUtility;
 import com.gaspar.facturador.persistence.crud.ItemCrudRepository;
 import com.gaspar.facturador.persistence.crud.SucursalCrudRepository;
 import com.gaspar.facturador.persistence.crud.SucursalItemCrudRepository;
@@ -11,8 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @RestController
 @RequestMapping("/sucursal-items")
@@ -28,14 +31,18 @@ public class SucursalItemController {
     private ItemCrudRepository itemCrudRepository;
 
     @GetMapping
-    public ResponseEntity<Iterable<SucursalItemEntity>> findAll() {
-        return ResponseEntity.ok(sucursalItemCrudRepository.findAll());
+    public ResponseEntity<List<SucursalDTO>> findAll() {
+        List<SucursalItemEntity> sucursalItems = (List<SucursalItemEntity>) sucursalItemCrudRepository.findAll();
+        return ResponseEntity.ok(SucursalItemUtility.groupItemsBySucursal(sucursalItems));
     }
     //obtener items por sucursal
     @GetMapping("/sucursal/{sucursalId}")
-    public ResponseEntity<List<SucursalItemEntity>> findBySucursal(@PathVariable Integer sucursalId) {
+    public ResponseEntity<SucursalDTO> findBySucursal(@PathVariable Integer sucursalId) {
         List<SucursalItemEntity> items = sucursalItemCrudRepository.findBySucursalId(sucursalId);
-        return ResponseEntity.ok(items);
+        if (items.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(SucursalItemUtility.groupItemsBySucursal(items).get(0));
     }
     //insertar un item con cantidad a una sucursal a una sucursal
     @PostMapping("/sucursal/{sucursalId}/item/{itemId}")
