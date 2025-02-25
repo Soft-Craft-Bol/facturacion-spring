@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @RestController
 @RequestMapping("/sucursal-items")
@@ -138,6 +139,35 @@ public class SucursalItemController {
 
         return ResponseEntity.ok(itemDTO);
     }
+    @GetMapping("/items-with-sucursales")
+    public ResponseEntity<List<ItemWithSucursalesDTO>> findAllItemsWithSucursales() {
+        List<ItemEntity> items = StreamSupport.stream(itemCrudRepository.findAll().spliterator(), false)
+                .collect(Collectors.toList());
+        List<ItemWithSucursalesDTO> itemsWithSucursales = items.stream().map(item -> {
+            List<SucursalItemEntity> sucursalItems = sucursalItemCrudRepository.findByItemId(item.getId());
+            ItemWithSucursalesDTO itemDTO = new ItemWithSucursalesDTO();
+            itemDTO.setId(item.getId());
+            itemDTO.setCodigo(item.getCodigo());
+            itemDTO.setDescripcion(item.getDescripcion());
+            itemDTO.setUnidadMedida(item.getUnidadMedida());
+            itemDTO.setPrecioUnitario(item.getPrecioUnitario());
+            itemDTO.setCodigoProductoSin(item.getCodigoProductoSin());
+            itemDTO.setImagen(item.getImagen());
 
+            List<SucursalInfoDTO> sucursales = sucursalItems.stream().map(sucursalItem -> {
+                SucursalInfoDTO sucursalInfo = new SucursalInfoDTO();
+                sucursalInfo.setId(sucursalItem.getSucursal().getId());
+                sucursalInfo.setNombre(sucursalItem.getSucursal().getNombre());
+                sucursalInfo.setDepartamento(sucursalItem.getSucursal().getDepartamento());
+                sucursalInfo.setCantidad(sucursalItem.getCantidad());
+                return sucursalInfo;
+            }).collect(Collectors.toList());
+
+            itemDTO.setSucursales(sucursales);
+            return itemDTO;
+        }).collect(Collectors.toList());
+
+        return ResponseEntity.ok(itemsWithSucursales);
+    }
 
 }
