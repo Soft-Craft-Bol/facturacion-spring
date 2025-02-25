@@ -3,6 +3,7 @@ package com.gaspar.facturador.domain.service;
 import com.gaspar.facturador.application.request.VentaSinFacturaRequest;
 import com.gaspar.facturador.persistence.PuntoVentaRepository;
 import com.gaspar.facturador.persistence.crud.ItemCrudRepository;
+import com.gaspar.facturador.persistence.crud.SucursalItemCrudRepository;
 import com.gaspar.facturador.persistence.crud.UserRepository;
 import com.gaspar.facturador.persistence.crud.VentaCrudRepository;
 import com.gaspar.facturador.persistence.dto.VentaHoyDTO;
@@ -30,12 +31,14 @@ public class VentaService {
     private final UserRepository userRepository;
     private final PuntoVentaRepository puntoVentaRepository;
     private final ItemCrudRepository itemCrudRepository;
+    private final SucursalItemCrudRepository sucursalItemCrudRepository;
 
-    public VentaService(VentaCrudRepository ventasRepository, UserRepository userRepository, PuntoVentaRepository puntoVentaRepository, ItemCrudRepository itemCrudRepository) {
+    public VentaService(VentaCrudRepository ventasRepository, UserRepository userRepository, PuntoVentaRepository puntoVentaRepository, ItemCrudRepository itemCrudRepository, SucursalItemCrudRepository sucursalItemCrudRepository){
         this.ventasRepository = ventasRepository;
         this.userRepository = userRepository;
         this.puntoVentaRepository = puntoVentaRepository;
         this.itemCrudRepository = itemCrudRepository;
+        this.sucursalItemCrudRepository=sucursalItemCrudRepository;
     }
 
     @Transactional
@@ -55,7 +58,6 @@ public class VentaService {
 
         VentasEntity venta = new VentasEntity();
         venta.setFecha(new Date());
-
         venta.setCliente(request.getCliente());
 
         try {
@@ -82,16 +84,15 @@ public class VentaService {
         BigDecimal montoTotal = BigDecimal.ZERO;
         List<VentasDetalleEntity> detalles = new ArrayList<>();
         for (var item : request.getDetalle()) {
-            ItemEntity producto = itemCrudRepository.findById((int) item.getIdProducto().longValue())
-                    .orElseThrow(() -> new IllegalArgumentException("Producto con ID " + item.getIdProducto() + " no encontrado"));
+            SucursalItemEntity sucursalItem = sucursalItemCrudRepository.findBySucursalIdAndItemId(puntoVenta.getSucursal().getId(), (int) item.getIdProducto().longValue())
+                    .orElseThrow(() -> new IllegalArgumentException("Producto con ID " + item.getIdProducto() + " no encontrado en la sucursal"));
 
-            if (producto.getCantidad().compareTo(item.getCantidad()) < 0) {
+            if (BigDecimal.valueOf(sucursalItem.getCantidad()).compareTo(item.getCantidad()) < 0) {
                 throw new IllegalArgumentException("No hay suficiente stock para el producto con ID " + item.getIdProducto());
             }
 
-            producto.setCantidad(producto.getCantidad().subtract(item.getCantidad()));
-
-            itemCrudRepository.save(producto);
+            sucursalItem.setCantidad(sucursalItem.getCantidad() - item.getCantidad().intValue());
+            sucursalItemCrudRepository.save(sucursalItem);
 
             montoTotal = montoTotal.add(item.getCantidad().multiply(BigDecimal.valueOf(10)).subtract(item.getMontoDescuento()));
 
@@ -100,7 +101,7 @@ public class VentaService {
             detalle.setIdProducto(item.getIdProducto());
             detalle.setCantidad(item.getCantidad());
             detalle.setMontoDescuento(item.getMontoDescuento());
-            detalle.setDescripcionProducto(producto.getDescripcion());
+            detalle.setDescripcionProducto(sucursalItem.getItem().getDescripcion());
 
             detalles.add(detalle);
         }

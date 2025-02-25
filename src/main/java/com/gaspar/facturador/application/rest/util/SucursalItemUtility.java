@@ -2,6 +2,7 @@ package com.gaspar.facturador.application.rest.util;
 
 import com.gaspar.facturador.application.response.EmpresaDTO;
 import com.gaspar.facturador.application.response.ItemDTO;
+import com.gaspar.facturador.application.response.ItemWithQuantityDTO;
 import com.gaspar.facturador.application.response.SucursalDTO;
 import com.gaspar.facturador.persistence.entity.SucursalItemEntity;
 
@@ -11,7 +12,8 @@ import java.util.List;
 import java.util.Map;
 
 public class SucursalItemUtility {
-    public SucursalItemUtility(){}
+    public SucursalItemUtility() {}
+
     public static List<SucursalDTO> groupItemsBySucursal(List<SucursalItemEntity> sucursalItems) {
         Map<Integer, SucursalDTO> sucursalMap = new HashMap<>();
 
@@ -39,7 +41,7 @@ public class SucursalItemUtility {
                 sucursalMap.put(sucursalId, sucursalDTO);
             }
 
-            ItemDTO itemDTO = new ItemDTO();
+            ItemWithQuantityDTO itemDTO = new ItemWithQuantityDTO();
             itemDTO.setId(sucursalItem.getItem().getId());
             itemDTO.setCodigo(sucursalItem.getItem().getCodigo());
             itemDTO.setDescripcion(sucursalItem.getItem().getDescripcion());

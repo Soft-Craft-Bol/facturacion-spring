@@ -15,6 +15,6 @@ public class SucursalDTO {
     private String telefono;
     private EmpresaDTO empresa;
     private String image;
-    private List<ItemDTO> items;
+    private List<ItemWithQuantityDTO> items;
 
 }
