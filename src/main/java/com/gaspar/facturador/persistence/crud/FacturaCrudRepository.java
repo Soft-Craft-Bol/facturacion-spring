@@ -13,5 +13,6 @@ public interface FacturaCrudRepository extends CrudRepository<FacturaEntity, Lon
     Optional<FacturaEntity> findByCuf(String cuf);
     long countByFechaEmisionBetween(LocalDateTime start, LocalDateTime end);
     @Query("SELECT SUM(fd.subTotal) FROM FacturaEntity f JOIN f.detalleList fd WHERE f.fechaEmision BETWEEN :start AND :end")
-    double sumSubtotalByFechaEmisionBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    Double sumSubtotalByFechaEmisionBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
 }

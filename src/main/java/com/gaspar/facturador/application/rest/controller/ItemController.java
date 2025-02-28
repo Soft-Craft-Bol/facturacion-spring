@@ -72,6 +72,8 @@ public class ItemController {
         List<ItemEntity> items = itemRepository.findAll().stream().limit(5).collect(Collectors.toList());
         return new ResponseEntity<>(items, HttpStatus.OK);
     }
+
+    //ya no se usa
     @PutMapping("/{id}/add/{cantidad}")
     public ResponseEntity<ItemEntity> addCantidadToItem(@PathVariable Integer id, @PathVariable BigDecimal cantidad) {
         Optional<ItemEntity> itemOptional = itemRepository.findById(id);
