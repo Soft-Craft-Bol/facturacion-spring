@@ -18,7 +18,7 @@ public class InsumoEntity {
     private String proveedor;
     private String marca;
     private BigDecimal precio;
-    private String unidades;// aqui tiene que ser el enum de
+    private String unidades;
     private String descripcion;
     //private Date ultimaAdquisicion;
     private String imagen;
