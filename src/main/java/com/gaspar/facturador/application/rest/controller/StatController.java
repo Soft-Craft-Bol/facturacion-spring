@@ -50,15 +50,14 @@ public class StatController {
         StatDTO stats = new StatDTO();
 
         stats.setNumeroSucursales(sucursalRepository.count());
-
         stats.setInventario(itemRepository.count());
 
         LocalDateTime startOfDay = LocalDateTime.of(LocalDate.now(), LocalTime.MIDNIGHT);
         LocalDateTime endOfDay = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);
         long facturasEmitidasHoy = facturaCrudRepository.countByFechaEmisionBetween(startOfDay, endOfDay);
         stats.setFacturasEmitidasHoy(facturasEmitidasHoy);
-        double totalVentasHoy = facturaCrudRepository.sumSubtotalByFechaEmisionBetween(startOfDay, endOfDay);
-        stats.setTotalVentasHoy(totalVentasHoy);
+        Double totalVentasHoy = facturaCrudRepository.sumSubtotalByFechaEmisionBetween(startOfDay, endOfDay);
+        stats.setTotalVentasHoy(totalVentasHoy != null ? totalVentasHoy : 0.0);
         stats.setNumeroPuntosVenta(puntoVentaCrudRepository.count());
         stats.setNumeroUsuarios(usuarioRepository.count());
         stats.setClientesRegistrados(clienteRepository.count());
