@@ -37,7 +37,8 @@ public class ReversionFacturaService {
             ServicioFacturacion servicioFacturacion,
             IPuntoVentaRepository puntoVentaRepository,
             ICufdRepository cufdRepository,
-            ICuisRepository cuisRepository, FacturaRepository facturaRepository
+            ICuisRepository cuisRepository,
+            FacturaRepository facturaRepository
     ) {
         this.appConfig = appConfig;
         this.servicioFacturacion = servicioFacturacion;
@@ -75,6 +76,17 @@ public class ReversionFacturaService {
             throw new ProcessException("CUIS vigente no encontrado");
         }
 
+        // Verificar el estado de la factura antes de revertir la anulación
+        Optional<FacturaEntity> facturaOpt = facturaRepository.findByCuf(cuf);
+        if (facturaOpt.isEmpty()) {
+            throw new ProcessException("Factura no encontrada con el CUF proporcionado.");
+        }
+
+        FacturaEntity factura = facturaOpt.get();
+        if (!"ANULADA".equals(factura.getEstado())) {
+            throw new ProcessException("La factura no está en estado ANULADA, no se puede revertir la anulación.");
+        }
+
         // Crear la solicitud de reversión de anulación
         SolicitudReversionAnulacion solicitudReversionAnulacion = new SolicitudReversionAnulacion();
         solicitudReversionAnulacion.setCodigoAmbiente(appConfig.getCodigoAmbiente());
@@ -94,18 +106,18 @@ public class ReversionFacturaService {
         LOGGER.info("Solicitud de reversión de anulación: {}", solicitudReversionAnulacion);
         RespuestaRecepcion respuestaRecepcion = servicioFacturacion.reversionAnulacionFactura(solicitudReversionAnulacion);
         LOGGER.info("Respuesta del servicio: {}", obtenerMensajeServicio(respuestaRecepcion.getMensajesList()));
+        LOGGER.info("Código de estado recibido del SIAT: {}", respuestaRecepcion.getCodigoEstado());
+
 
         // Verificar la respuesta
-        if (respuestaRecepcion != null && respuestaRecepcion.getCodigoEstado() != 907) {
-            throw new ProcessException(obtenerMensajeServicio(respuestaRecepcion.getMensajesList()));
+        if (respuestaRecepcion == null || respuestaRecepcion.getCodigoEstado() != 907) {
+            throw new ProcessException("Error SIAT: Código de estado " +
+                    (respuestaRecepcion != null ? respuestaRecepcion.getCodigoEstado() : "N/A") +
+                    " - " + obtenerMensajeServicio(respuestaRecepcion.getMensajesList()));
         }
 
-        Optional<FacturaEntity> facturaOpt = facturaRepository.findByCuf(cuf);
-        if (facturaOpt.isPresent()) {
-            facturaRepository.updateEstado(facturaOpt.get().getId(), "REVERTIDA");
-        } else {
-            throw new ProcessException("Factura no encontrada con el CUF proporcionado.");
-        }
+        // Actualizar el estado de la factura a "REVERTIDA"
+        facturaRepository.updateEstado(factura.getId(), "REVERTIDA");
 
         return respuestaRecepcion;
     }

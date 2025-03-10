@@ -19,17 +19,9 @@ import com.gaspar.facturador.persistence.entity.CufdEntity;
 import com.gaspar.facturador.persistence.entity.FacturaDetalleEntity;
 import com.gaspar.facturador.persistence.entity.FacturaEntity;
 import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
-import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
-import org.apache.commons.compress.utils.IOUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.gaspar.facturador.persistence.dto.FacturaDTO;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
