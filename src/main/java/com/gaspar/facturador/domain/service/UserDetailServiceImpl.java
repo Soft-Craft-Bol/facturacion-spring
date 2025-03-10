@@ -169,6 +169,8 @@ public class UserDetailServiceImpl implements UserDetailsService {
 
     public List<UserDTO> getAllUsers() {
         return userRepository.findAll().stream()
+                .filter(user -> user.getRoles().stream()
+                .noneMatch(role -> role.getRoleEnum() == RoleEnum.USER || role.getRoleEnum() == RoleEnum.CLIENTE))
                 .map(user -> {
                     UserDTO dto = new UserDTO();
                     dto.setId(user.getId());
