@@ -3,9 +3,8 @@ package com.gaspar.facturador.application.response;
 import lombok.Data;
 
 import java.util.List;
-
 @Data
-public class SucursalDTO {
+public class SucursalDTOIns {
     private Integer id;
     private Integer codigo;
     private String nombre;
@@ -15,6 +14,5 @@ public class SucursalDTO {
     private String telefono;
     private EmpresaDTO empresa;
     private String image;
-    private List<ItemWithQuantityDTO> items;
-
+    private List<InsumoWithQuantityDTO> insumos;
 }

@@ -42,7 +42,31 @@ public class SucursalItemController {
         if (items.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(SucursalItemUtility.groupItemsBySucursal(items).get(0));
+        SucursalEntity sucursal = items.get(0).getSucursal();
+        SucursalDTO sucursalDTO = new SucursalDTO();
+        sucursalDTO.setId(sucursal.getId());
+        sucursalDTO.setCodigo(sucursal.getCodigo());
+        sucursalDTO.setNombre(sucursal.getNombre());
+        sucursalDTO.setDepartamento(sucursal.getDepartamento());
+        sucursalDTO.setMunicipio(sucursal.getMunicipio());
+        sucursalDTO.setDireccion(sucursal.getDireccion());
+        sucursalDTO.setTelefono(sucursal.getTelefono());
+        sucursalDTO.setImage(sucursal.getImage());
+
+        List<ItemWithQuantityDTO> itemDTOs = items.stream().map(sucursalItem -> {
+            ItemWithQuantityDTO itemDTO = new ItemWithQuantityDTO();
+            itemDTO.setId(sucursalItem.getItem().getId());
+            itemDTO.setCodigo(sucursalItem.getItem().getCodigo());
+            itemDTO.setDescripcion(sucursalItem.getItem().getDescripcion());
+            itemDTO.setUnidadMedida(sucursalItem.getItem().getUnidadMedida());
+            itemDTO.setPrecioUnitario(sucursalItem.getItem().getPrecioUnitario());
+            itemDTO.setCodigoProductoSin(sucursalItem.getItem().getCodigoProductoSin());
+            itemDTO.setImagen(sucursalItem.getItem().getImagen());
+            itemDTO.setCantidad(sucursalItem.getCantidad());
+            return itemDTO;
+        }).collect(Collectors.toList());
+        sucursalDTO.setItems(itemDTOs);
+        return ResponseEntity.ok(sucursalDTO);
     }
     //insertar un item con cantidad a una sucursal a una sucursal
     @PostMapping("/sucursal/{sucursalId}/item/{itemId}")
