@@ -9,7 +9,7 @@ import jakarta.persistence.*;
 @Getter
 @Setter
 @Entity
-@Table(name = "leyenda")
+@Table(name = "leyenda_factura")
 public class LeyendaFacturaEntity {
 
     @Id
