@@ -49,6 +49,7 @@ public class ItemController {
             updatedItem.setUnidadMedida(itemDetails.getUnidadMedida());
             updatedItem.setPrecioUnitario(itemDetails.getPrecioUnitario());
             updatedItem.setCodigoProductoSin(itemDetails.getCodigoProductoSin());
+            updatedItem.setImagen(itemDetails.getImagen());
             updatedItem.setCantidad(itemDetails.getCantidad());
             itemRepository.save(updatedItem);
             return new ResponseEntity<>(updatedItem, HttpStatus.OK);
