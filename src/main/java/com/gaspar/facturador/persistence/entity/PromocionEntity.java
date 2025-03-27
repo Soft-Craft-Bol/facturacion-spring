@@ -19,5 +19,8 @@ public class PromocionEntity {
     @ManyToOne
     @JoinColumn(name = "id_item", nullable = false)
     private ItemEntity item;
+    @ManyToOne
+    @JoinColumn(name = "id_sucursal", nullable = false)
+    private SucursalEntity sucursal;
     private Double descuento;
 }

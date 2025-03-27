@@ -58,7 +58,8 @@ public class InsumoController {
             updatedInsumo.setMarca(insumoEdited.getMarca());
             updatedInsumo.setPrecio(insumoEdited.getPrecio());
             updatedInsumo.setDescripcion(insumoEdited.getDescripcion());
-            return ResponseEntity.ok(updatedInsumo);
+            InsumoEntity savedInsumo = insumoCrudRepository.save(updatedInsumo); // Guardar los cambios
+            return ResponseEntity.ok(savedInsumo);
         }else{
             return ResponseEntity.notFound().build();
         }

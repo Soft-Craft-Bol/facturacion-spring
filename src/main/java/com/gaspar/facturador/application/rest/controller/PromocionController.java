@@ -21,7 +21,8 @@ public class PromocionController {
     }
     @PostMapping
     public ResponseEntity<PromocionEntity> savePromocion(@RequestBody PromocionEntity promocion) {
-        if (promocion.getItem() == null || promocion.getItem().getId() == null) {
+        if (promocion.getItem() == null || promocion.getItem().getId() == null ||
+                promocion.getSucursal() == null || promocion.getSucursal().getId() == null) {
             return ResponseEntity.badRequest().body(null);
         }
         PromocionEntity promocionEntity = promocionCrudRepository.save(promocion);

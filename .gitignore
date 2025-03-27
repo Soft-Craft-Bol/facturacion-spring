@@ -39,3 +39,4 @@ application-prod.properties
 application.properties
 
 root@145.223.92.183
+deploy.sh
