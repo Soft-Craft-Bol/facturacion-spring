@@ -9,8 +9,8 @@ import com.gaspar.facturador.persistence.mapper.CufdMapper;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
-
 
 @Repository
 public class CufdRepository implements ICufdRepository {
@@ -39,9 +39,13 @@ public class CufdRepository implements ICufdRepository {
         this.cufdCrudRepository.save(cufd);
     }
 
-
     @Override
     public Optional<CufdEntity> findActual(PuntoVentaEntity puntoVenta) {
         return this.cufdCrudRepository.findByPuntoVentaAndVigente(puntoVenta, true);
+    }
+
+    @Override
+    public List<CufdEntity> findAnteriores(PuntoVentaEntity puntoVenta) {
+        return this.cufdCrudRepository.findAllByPuntoVentaAndVigente(puntoVenta, false);
     }
 }

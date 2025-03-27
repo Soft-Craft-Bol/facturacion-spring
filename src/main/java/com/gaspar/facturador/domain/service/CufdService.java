@@ -9,6 +9,7 @@ import com.gaspar.facturador.config.AppConfig;
 import com.gaspar.facturador.domain.repository.ICufdRepository;
 import com.gaspar.facturador.domain.repository.ICuisRepository;
 import com.gaspar.facturador.domain.repository.IPuntoVentaRepository;
+import com.gaspar.facturador.persistence.entity.CufdEntity;
 import com.gaspar.facturador.persistence.entity.CuisEntity;
 import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
 import jakarta.xml.bind.JAXBElement;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import javax.xml.namespace.QName;
 import java.rmi.RemoteException;
+import java.util.List;
 import java.util.Optional;
 
 
@@ -79,5 +81,12 @@ public class CufdService {
         }
 
         this.cufdRepository.save(respuestaCufd, puntoVenta.get());
+    }
+
+    public List<CufdEntity> obtenerCufdsAnteriores(Integer idPuntoVenta) {
+        Optional<PuntoVentaEntity> puntoVenta = this.puntoVentaRepository.findById(idPuntoVenta);
+        if (puntoVenta.isEmpty()) throw new ProcessException("Punto venta no encontrado");
+
+        return this.cufdRepository.findAnteriores(puntoVenta.get());
     }
 }
