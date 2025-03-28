@@ -191,11 +191,8 @@ public class FacturacionService {
         FacturaElectronicaCompraVenta factura = this.generaFacturaService.llenarDatos(ventasRequest, cufd.get());
         this.generaFacturaService.obtenerArchivo(factura);
 
-        //Justo aqui quiero que comprima esta direccion en empaquetado tipo tar y después en un gzip a esta direccion D:\CursosDeSpring\facturador\facturas\paquetes
-        // una vez comprimido quiero que se obtenga este archivo, ahorita esta como null
         byte[] xmlsComprimidosZip = FacturaCompressor.comprimirPaqueteFacturas();
 
-        // Enviar el paquete comprimido al SIAT
         RespuestaRecepcion respuestaRecepcion = envioPaquetesService.enviarPaqueteFacturas(
                 puntoVenta.get(),
                 cufd.get(),

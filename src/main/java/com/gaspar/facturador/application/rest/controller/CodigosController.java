@@ -1,5 +1,6 @@
 package com.gaspar.facturador.application.rest.controller;
 
+import com.gaspar.facturador.application.response.CufdEventoDTO;
 import com.gaspar.facturador.domain.service.CufdService;
 import com.gaspar.facturador.domain.service.CuisService;
 import com.gaspar.facturador.persistence.entity.CufdEntity;
@@ -37,8 +38,8 @@ public class CodigosController {
     }
 
     @GetMapping("/obtener-cufds-anteriores/{idPuntoVenta}")
-    public ResponseEntity<List<CufdEntity>> obtenerCufdsAnteriores(@PathVariable("idPuntoVenta") Integer idPuntoVenta) {
-        List<CufdEntity> cufdsAnteriores = this.cufdService.obtenerCufdsAnteriores(idPuntoVenta);
-        return ResponseEntity.ok(cufdsAnteriores);
+    public ResponseEntity<List<CufdEventoDTO>> obtenerCufdEvento(@PathVariable Integer idPuntoVenta) {
+        return ResponseEntity.ok(cufdService.obtenerCufdsAnteriores(idPuntoVenta));
     }
+
 }
