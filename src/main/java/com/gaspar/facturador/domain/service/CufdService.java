@@ -4,11 +4,13 @@ import bo.gob.impuestos.siat.api.facturacion.codigos.MensajeServicio;
 import bo.gob.impuestos.siat.api.facturacion.codigos.RespuestaCufd;
 import bo.gob.impuestos.siat.api.facturacion.codigos.ServicioFacturacionCodigos;
 import bo.gob.impuestos.siat.api.facturacion.codigos.SolicitudCufd;
+import com.gaspar.facturador.application.response.CufdEventoDTO;
 import com.gaspar.facturador.application.rest.exception.ProcessException;
 import com.gaspar.facturador.config.AppConfig;
 import com.gaspar.facturador.domain.repository.ICufdRepository;
 import com.gaspar.facturador.domain.repository.ICuisRepository;
 import com.gaspar.facturador.domain.repository.IPuntoVentaRepository;
+import com.gaspar.facturador.persistence.entity.CufdEntity;
 import com.gaspar.facturador.persistence.entity.CuisEntity;
 import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
 import jakarta.xml.bind.JAXBElement;
@@ -16,8 +18,9 @@ import org.springframework.stereotype.Service;
 
 import javax.xml.namespace.QName;
 import java.rmi.RemoteException;
+import java.util.List;
 import java.util.Optional;
-
+import java.util.stream.Collectors;
 
 
 @Service
@@ -80,4 +83,25 @@ public class CufdService {
 
         this.cufdRepository.save(respuestaCufd, puntoVenta.get());
     }
+
+
+    public List<CufdEventoDTO> obtenerCufdsAnteriores(Integer idPuntoVenta) {
+        Optional<PuntoVentaEntity> puntoVenta = this.puntoVentaRepository.findById(idPuntoVenta);
+        if (puntoVenta.isEmpty()) throw new ProcessException("Punto de venta no encontrado");
+
+        List<CufdEntity> cufdsAnteriores = this.cufdRepository.findAnteriores(puntoVenta.get());
+        if (cufdsAnteriores.isEmpty()) throw new ProcessException("No hay CUFD anteriores");
+
+        return cufdsAnteriores.stream().map(cufd -> {
+            CufdEventoDTO dto = new CufdEventoDTO();
+            dto.setIdPuntoVenta(cufd.getPuntoVenta().getId());
+            dto.setCufdEvento(cufd.getCodigo());
+            dto.setFechaHoraInicioEvento(cufd.getFechaInicio());
+            dto.setFechaHoraFinEvento(cufd.getFechaVigencia());
+            return dto;
+        }).collect(Collectors.toList());
+    }
+
+
+
 }

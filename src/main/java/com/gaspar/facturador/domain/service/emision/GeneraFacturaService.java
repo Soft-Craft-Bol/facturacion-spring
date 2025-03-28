@@ -25,9 +25,7 @@ import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.transform.*;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.StringWriter;
+import java.io.*;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -173,22 +171,6 @@ public class GeneraFacturaService {
         return xmlComprimidoZip;
     }
 
-    public List<byte[]> obtenerArchivos(List<FacturaElectronicaCompraVenta> facturas) throws Exception {
-        List<byte[]> facturasFirmadas = new LinkedList<>();
-
-        for (FacturaElectronicaCompraVenta factura : facturas) {
-            byte[] xml = this.getXmlBytes(factura);
-            byte[] xmlFirmado = this.firmarArchivo(xml);
-
-            XmlObject xmlFacturaObj = XmlObject.Factory.parse(new String(xmlFirmado));
-            this.validarContraXSD(xmlFacturaObj);
-
-            facturasFirmadas.add(xmlFirmado);
-        }
-
-        return facturasFirmadas;
-    }
-
 
     public void imprimirXmlSinFirmar(FacturaElectronicaCompraVenta factura) throws JAXBException {
         byte[] xmlBytes = this.getXmlBytes(factura);
@@ -211,7 +193,7 @@ public class GeneraFacturaService {
         return writer.toString().getBytes(StandardCharsets.UTF_8);
     }
 
-    private byte[] firmarArchivo(byte[] xmlBytes) throws Exception {
+    public byte[] firmarArchivo(byte[] xmlBytes) throws Exception {
         PrivateKey privateKey = XmlHelper.getPrivateKey(appConfig.getPathFiles() + "/resources/cert/clav.pem"); //privateKey.pem
         X509Certificate cert =  XmlHelper.getX509Certificate(appConfig.getPathFiles() + "/resources/cert/cer.pem"); //ende.crt
 
@@ -232,31 +214,41 @@ public class GeneraFacturaService {
         return comprimidoByte;
     }
 
-    public byte[] comprimirXMLFacturas(List<byte[]> facturasFirmadas, List<String> cufs) throws Exception {
-        File tempZipFile = new File(appConfig.getPathFiles() + "/facturas/paquete_facturas.gz");
-
-        try (FileOutputStream fos = new FileOutputStream(tempZipFile);
-             GZIPOutputStream gzipOS = new GZIPOutputStream(fos)) {
-
-            for (int i = 0; i < facturasFirmadas.size(); i++) {
-                File facturaXmlFile = this.escribirArchivo(facturasFirmadas.get(i), cufs.get(i));
-                byte[] facturaBytes = Files.readAllBytes(facturaXmlFile.toPath());
-
-                gzipOS.write(facturaBytes);
-                gzipOS.write("\n".getBytes()); // Separador entre facturas (opcional)
+    public byte[] comprimirPaqueteFacturas(List<File> xmlFiles) throws IOException {
+        // Crear un archivo temporal para almacenar todos los XMLs
+        File tempFile = File.createTempFile("paquete_facturas", ".xml");
+        try (FileOutputStream fos = new FileOutputStream(tempFile)) {
+            for (File xmlFile : xmlFiles) {
+                byte[] xmlBytes = Files.readAllBytes(xmlFile.toPath());
+                fos.write(xmlBytes); // Escribir cada XML en el archivo temporal
+                fos.write("\n".getBytes(StandardCharsets.UTF_8)); // Separar los XMLs con una nueva línea
             }
         }
 
-        return Files.readAllBytes(tempZipFile.toPath());
+        // Comprimir el archivo temporal usando GZIP
+        File compressedFile = new File(tempFile.getAbsolutePath() + ".zip");
+        try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(new FileOutputStream(compressedFile));
+             FileInputStream fileInputStream = new FileInputStream(tempFile)) {
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = fileInputStream.read(buffer)) != -1) {
+                gzipOutputStream.write(buffer, 0, len);
+            }
+        }
+
+        // Leer el archivo comprimido en un array de bytes
+        byte[] compressedBytes = Files.readAllBytes(compressedFile.toPath());
+
+        // Eliminar los archivos temporales
+        tempFile.delete();
+        compressedFile.delete();
+
+        return compressedBytes;
     }
-    public byte[] obtenerPaqueteFacturas(List<FacturaElectronicaCompraVenta> facturas) throws Exception {
-        List<byte[]> facturasFirmadas = this.obtenerArchivos(facturas);
-        List<String> cufs = facturas.stream().map(f -> f.getCabecera().getCuf()).toList();
 
-        return this.comprimirXMLFacturas(facturasFirmadas, cufs);
+    public void limpiarFacturasTemporales() {
+        this.facturasTemporales.clear();
     }
-
-
 
     private File escribirArchivo(byte[] xmlFacturaFirmada, String cuf) throws Exception {
         String contextPath = appConfig.getPathFiles();
@@ -288,13 +280,4 @@ public class GeneraFacturaService {
         return comprimidoByte;
     }
 
-    // Método para obtener las facturas temporales
-    public List<byte[]> obtenerFacturasTemporales() {
-        return facturasTemporales;
-    }
-
-    public byte[] crearPaqueteDeFacturas(List<byte[]> facturas) throws Exception {
-        String directoryPath = appConfig.getPathFiles() + "/facturas/";
-        return paqueteFacturas.crearPaqueteDeFacturas(facturas, directoryPath);
-    }
 }
