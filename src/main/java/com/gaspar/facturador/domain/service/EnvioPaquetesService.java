@@ -40,7 +40,8 @@ public class EnvioPaquetesService {
             CufdEntity cufd,
             byte[] comprimidoByte,
             long cantidadFacturas,
-            long codigoEvento
+            long codigoEvento,
+            String cafc
     ) throws RemoteException {
         // Verificar la comunicación con el SIAT
         RespuestaComunicacion respuestaComunicacion = servicioFacturacion.verificarComunicacion();
@@ -60,6 +61,7 @@ public class EnvioPaquetesService {
         String sha2 = Utils.obtenerSHA2(comprimidoByte);
         System.out.println("Hash generado: " + sha2);
 
+
         // Crear la solicitud de recepción masiva
         SolicitudRecepcionPaquete solicitudRecepcionPaquete = new SolicitudRecepcionPaquete();
         solicitudRecepcionPaquete.setCodigoAmbiente(appConfig.getCodigoAmbiente());
@@ -74,6 +76,7 @@ public class EnvioPaquetesService {
         solicitudRecepcionPaquete.setCodigoModalidad(appConfig.getCodigoModalidad());
         solicitudRecepcionPaquete.setTipoFacturaDocumento(CodigoTipoDocumentoFiscalEnum.FACTURA_CON_DERECHO_CREDITO_FISCAL.getValue());
         solicitudRecepcionPaquete.setCantidadFacturas((int) cantidadFacturas);
+        solicitudRecepcionPaquete.setCafc(cafc);
         solicitudRecepcionPaquete.setCodigoEvento(codigoEvento);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS");
         solicitudRecepcionPaquete.setFechaEnvio(LocalDateTime.now().format(formatter));
@@ -86,7 +89,8 @@ public class EnvioPaquetesService {
         // Verificar la respuesta
         if (respuestaRecepcion != null) {
             System.out.println("Código estado SIAT: " + respuestaRecepcion.getCodigoEstado());
-
+            String codigoRecepcion = respuestaRecepcion.getCodigoRecepcion(); // o el método correcto según la clase
+            System.out.println("Código de recepción: " + codigoRecepcion);
             if (respuestaRecepcion.getMensajesList() != null && !respuestaRecepcion.getMensajesList().isEmpty()) {
                 StringBuilder mensajeError = new StringBuilder("Error al enviar el paquete de facturas: ");
                 for (MensajeRecepcion mensaje : respuestaRecepcion.getMensajesList()) {
@@ -99,7 +103,6 @@ public class EnvioPaquetesService {
             System.out.println("Error: La respuesta de SIAT es nula.");
             throw new ProcessException("Error al enviar el paquete de facturas: respuesta nula del SIAT.");
         }
-
 
         return respuestaRecepcion;
     }

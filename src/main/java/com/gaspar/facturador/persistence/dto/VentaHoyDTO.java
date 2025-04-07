@@ -27,6 +27,9 @@ public class VentaHoyDTO {
     @Data
     public static class VentaDetalleDTO {
         private String descripcion;
+        private BigDecimal cantidad;
+        private BigDecimal precioUnitario;
+        private BigDecimal montoDescuento;
         private BigDecimal subTotal;
     }
 }

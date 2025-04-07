@@ -41,4 +41,5 @@ public class VentaRequest {
     @NotNull(message = "El método de pago es obligatorio")
     private String metodoPago;
 
+    private String cafc;
 }
