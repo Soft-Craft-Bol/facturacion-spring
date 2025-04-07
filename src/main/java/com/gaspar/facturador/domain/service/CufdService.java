@@ -85,6 +85,8 @@ public class CufdService {
     }
 
 
+
+
     public List<CufdEventoDTO> obtenerCufdsAnteriores(Integer idPuntoVenta) {
         Optional<PuntoVentaEntity> puntoVenta = this.puntoVentaRepository.findById(idPuntoVenta);
         if (puntoVenta.isEmpty()) throw new ProcessException("Punto de venta no encontrado");

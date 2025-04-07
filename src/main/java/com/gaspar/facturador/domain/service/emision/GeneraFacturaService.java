@@ -126,6 +126,7 @@ public class GeneraFacturaService {
                 .setFechaEmision(Utils.localDateTimeToXMLGregorianCalendar(LocalDateTime.now()))
                 .setLeyenda(leyenda.get().getLeyenda())
                 .setNitClienteExcepcion(ventaRequest.getNitInvalido())
+                .setCafc(ventaRequest.getCafc())
                 .build();
 
         FacturaElectronicaCompraVenta facturaElectronicaCompraVenta = new FacturaElectronicaCompraVenta();
@@ -212,38 +213,6 @@ public class GeneraFacturaService {
         File archivoComprimido = this.obtenerArchivoComprimido(tempFacturaXml);
         byte[] comprimidoByte = this.compresionArchivo(archivoComprimido);
         return comprimidoByte;
-    }
-
-    public byte[] comprimirPaqueteFacturas(List<File> xmlFiles) throws IOException {
-        // Crear un archivo temporal para almacenar todos los XMLs
-        File tempFile = File.createTempFile("paquete_facturas", ".xml");
-        try (FileOutputStream fos = new FileOutputStream(tempFile)) {
-            for (File xmlFile : xmlFiles) {
-                byte[] xmlBytes = Files.readAllBytes(xmlFile.toPath());
-                fos.write(xmlBytes); // Escribir cada XML en el archivo temporal
-                fos.write("\n".getBytes(StandardCharsets.UTF_8)); // Separar los XMLs con una nueva línea
-            }
-        }
-
-        // Comprimir el archivo temporal usando GZIP
-        File compressedFile = new File(tempFile.getAbsolutePath() + ".zip");
-        try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(new FileOutputStream(compressedFile));
-             FileInputStream fileInputStream = new FileInputStream(tempFile)) {
-            byte[] buffer = new byte[1024];
-            int len;
-            while ((len = fileInputStream.read(buffer)) != -1) {
-                gzipOutputStream.write(buffer, 0, len);
-            }
-        }
-
-        // Leer el archivo comprimido en un array de bytes
-        byte[] compressedBytes = Files.readAllBytes(compressedFile.toPath());
-
-        // Eliminar los archivos temporales
-        tempFile.delete();
-        compressedFile.delete();
-
-        return compressedBytes;
     }
 
     public void limpiarFacturasTemporales() {
