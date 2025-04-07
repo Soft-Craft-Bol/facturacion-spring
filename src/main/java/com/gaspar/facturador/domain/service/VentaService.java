@@ -83,18 +83,32 @@ public class VentaService {
 
         BigDecimal montoTotal = BigDecimal.ZERO;
         List<VentasDetalleEntity> detalles = new ArrayList<>();
+
         for (var item : request.getDetalle()) {
-            SucursalItemEntity sucursalItem = sucursalItemCrudRepository.findBySucursalIdAndItemId(puntoVenta.getSucursal().getId(), (int) item.getIdProducto().longValue())
+            SucursalItemEntity sucursalItem = sucursalItemCrudRepository.findBySucursalIdAndItemId(
+                            puntoVenta.getSucursal().getId(),
+                            (int) item.getIdProducto().longValue())
                     .orElseThrow(() -> new IllegalArgumentException("Producto con ID " + item.getIdProducto() + " no encontrado en la sucursal"));
 
             if (BigDecimal.valueOf(sucursalItem.getCantidad()).compareTo(item.getCantidad()) < 0) {
                 throw new IllegalArgumentException("No hay suficiente stock para el producto con ID " + item.getIdProducto());
             }
 
+            // Obtener el precio unitario del ItemEntity
+            BigDecimal precioUnitario = sucursalItem.getItem().getPrecioUnitario();
+            if (precioUnitario == null) {
+                throw new IllegalArgumentException("El producto con ID " + item.getIdProducto() + " no tiene precio unitario definido");
+            }
+
+            // Calcular subtotal con el precio real
+            BigDecimal subtotal = item.getCantidad().multiply(precioUnitario);
+            BigDecimal montoItem = subtotal.subtract(item.getMontoDescuento());
+
+            montoTotal = montoTotal.add(montoItem);
+
+            // Actualizar stock
             sucursalItem.setCantidad(sucursalItem.getCantidad() - item.getCantidad().intValue());
             sucursalItemCrudRepository.save(sucursalItem);
-
-            montoTotal = montoTotal.add(item.getCantidad().multiply(BigDecimal.valueOf(10)).subtract(item.getMontoDescuento()));
 
             VentasDetalleEntity detalle = new VentasDetalleEntity();
             detalle.setVenta(venta);
@@ -102,6 +116,7 @@ public class VentaService {
             detalle.setCantidad(item.getCantidad());
             detalle.setMontoDescuento(item.getMontoDescuento());
             detalle.setDescripcionProducto(sucursalItem.getItem().getDescripcion());
+            detalle.setPrecioUnitario(precioUnitario); // Guardar el precio unitario
 
             detalles.add(detalle);
         }
@@ -118,6 +133,7 @@ public class VentaService {
         return ventasRepository.save(venta);
     }
 
+
     public Page<VentaHoyDTO> getVentasDeHoy(int page, int size) {
         LocalDate hoy = LocalDate.now();
         Pageable pageable = PageRequest.of(page, size);
@@ -130,34 +146,31 @@ public class VentaService {
         VentaHoyDTO dto = new VentaHoyDTO();
         dto.setIdVenta(venta.getId());
         dto.setCodigoCliente(venta.getCliente());
-        dto.setNombreRazonSocial(venta.getCliente()); // Asumiendo que el cliente es la razón social
+        dto.setNombreRazonSocial(venta.getCliente());
 
-        // Convertir java.util.Date a LocalDateTime
         Date fechaVenta = venta.getFecha();
         LocalDateTime fechaEmision = fechaVenta.toInstant()
                 .atZone(ZoneId.systemDefault())
                 .toLocalDateTime();
         dto.setFechaEmision(fechaEmision);
 
-        // Priorizar el estado de la factura si existe
         if (venta.getFactura() != null) {
-            dto.setEstado(venta.getFactura().getEstado()); // Estado de la factura
-            dto.setCuf(venta.getFactura().getCuf()); // CUF de la factura
+            dto.setEstado(venta.getFactura().getEstado());
+            dto.setCuf(venta.getFactura().getCuf());
         } else {
-            dto.setEstado(venta.getEstado()); // Estado de la venta
+            dto.setEstado(venta.getEstado());
         }
 
         dto.setTipoComprobante(venta.getTipoComprobante());
 
-        // Mapear detalles de la venta
         dto.setDetalles(venta.getDetalles().stream().map(detalle -> {
             VentaHoyDTO.VentaDetalleDTO detalleDTO = new VentaHoyDTO.VentaDetalleDTO();
             detalleDTO.setDescripcion(detalle.getDescripcionProducto());
-            detalleDTO.setSubTotal(detalle.getCantidad().multiply(BigDecimal.valueOf(10))); // Asumiendo un precio unitario de 10
+            // Usar el precio unitario guardado en el detalle
+            detalleDTO.setSubTotal(detalle.getCantidad().multiply(detalle.getPrecioUnitario()));
             return detalleDTO;
         }).collect(Collectors.toList()));
 
-        // Mapear información del punto de venta, sucursal y vendedor
         dto.setNombrePuntoVenta(venta.getPuntoVenta().getNombre());
         dto.setIdPuntoVenta(venta.getPuntoVenta().getId());
         dto.setNombreSucursal(venta.getPuntoVenta().getSucursal().getNombre());

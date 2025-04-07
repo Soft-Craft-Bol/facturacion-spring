@@ -144,6 +144,8 @@ public class CabeceraCompraVenta {
         this.cufd = cufd;
     }
 
+    public void setCafc(String cafc) { this.cafc = cafc; }
+
     public static class Builder {
 
         private final CabeceraCompraVenta cabeceraCompraVenta;
@@ -174,6 +176,9 @@ public class CabeceraCompraVenta {
             }
             cabeceraCompraVenta.numeroDocumento = cliente.getNumeroDocumento().toString();
             cabeceraCompraVenta.codigoCliente = cliente.getCodigoCliente();
+
+            // Si el cliente tiene CAFC almacenado (opcional)
+            //cabeceraCompraVenta.cafc = cliente.getCafc();
 
             return this;
         }
@@ -218,6 +223,11 @@ public class CabeceraCompraVenta {
 
         public Builder setNitClienteExcepcion(Boolean permitirNitInvalido) {
             cabeceraCompraVenta.codigoExcepcion = (permitirNitInvalido != null && permitirNitInvalido) ? 1 : 0;
+            return this;
+        }
+
+        public Builder setCafc(String cafc) {
+            cabeceraCompraVenta.cafc = cafc;
             return this;
         }
 

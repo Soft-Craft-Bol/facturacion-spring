@@ -1,10 +1,13 @@
 package com.gaspar.facturador.application.rest.controller;
 
 import bo.gob.impuestos.siat.api.servicio.facturacion.compra.venta.RespuestaRecepcion;
+import com.gaspar.facturador.application.request.ValidacionPaqueteRequest;
 import com.gaspar.facturador.application.request.VentaRequest;
 import com.gaspar.facturador.application.response.FacturaResponse;
 import com.gaspar.facturador.application.response.PaquetesResponse;
+import com.gaspar.facturador.application.response.ValidacionPaqueteResponse;
 import com.gaspar.facturador.application.rest.dto.AnulacionRequest;
+import com.gaspar.facturador.application.rest.dto.EnvioPaqueteRequest;
 import com.gaspar.facturador.application.rest.dto.ReversionAnulacionRequest;
 import com.gaspar.facturador.domain.service.FacturacionService;
 import com.gaspar.facturador.persistence.dto.FacturaDTO;
@@ -13,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.rmi.RemoteException;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,13 +37,25 @@ public class FacturacionController {
         return new ResponseEntity<>(facturaResponse, HttpStatus.CREATED);
     }
 
+    @PostMapping("/contigencia")
+    public ResponseEntity<FacturaResponse> emitirContingencia(@Valid @RequestBody VentaRequest ventaRequest) throws Exception {
+        FacturaResponse facturaResponse = this.facturacionService.emitirContingencia(ventaRequest);
+        return new ResponseEntity<>(facturaResponse, HttpStatus.CREATED);
+    }
+
     @PostMapping("/enviar-paquete")
-    public ResponseEntity<PaquetesResponse> enviarPaqueteFacturas(@Valid @RequestBody VentaRequest ventasRequest) throws Exception {
-        PaquetesResponse paquetesResponse = this.facturacionService.recibirPaquetes(ventasRequest);
+    public ResponseEntity<PaquetesResponse> enviarPaqueteFacturas(@Valid @RequestBody EnvioPaqueteRequest envioPaqueteRequest) throws Exception {
+        PaquetesResponse paquetesResponse = this.facturacionService.enviarPaquetes(envioPaqueteRequest);
         return ResponseEntity.ok(paquetesResponse);
     }
 
+    @PostMapping("/validar")
+    public ResponseEntity<ValidacionPaqueteResponse> validarPaquete(
+            @Valid @RequestBody ValidacionPaqueteRequest validacionPaqueteRequest) throws RemoteException {
 
+        ValidacionPaqueteResponse response = facturacionService.validarRecepcionPaquete(validacionPaqueteRequest);
+        return ResponseEntity.ok(response);
+    }
 
     @PostMapping("/anular")
     public ResponseEntity<RespuestaRecepcion> anularFactura(@Valid @RequestBody AnulacionRequest anulacionRequest) throws Exception {

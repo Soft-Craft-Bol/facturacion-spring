@@ -27,4 +27,5 @@ public class VentasDetalleEntity {
     private BigDecimal cantidad;
     private BigDecimal montoDescuento;
     private String descripcionProducto;
+    private BigDecimal precioUnitario;
 }
