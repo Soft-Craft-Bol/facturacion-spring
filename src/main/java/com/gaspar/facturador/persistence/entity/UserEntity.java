@@ -1,6 +1,8 @@
 package com.gaspar.facturador.persistence.entity;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.annotation.Nullable;
 import lombok.*;
 
 import jakarta.persistence.*;
@@ -60,6 +62,17 @@ public class UserEntity {
             inverseJoinColumns = @JoinColumn(name = "role_id")
     )
     private Set<RoleEntity> roles = new HashSet<>();
+
+    @ManyToMany
+    @JoinTable(
+            name = "user_punto_venta",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "punto_venta_id")
+    )
+    @Nullable
+    private Set<PuntoVentaEntity> puntosVenta = new HashSet<>();
+
+
 
     public boolean isEnabled() { // Agregado para Spring Security
         return enabled;

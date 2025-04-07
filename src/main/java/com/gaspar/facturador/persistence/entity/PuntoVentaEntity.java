@@ -7,6 +7,9 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Getter
 @Setter
 @Entity
@@ -28,4 +31,7 @@ public class PuntoVentaEntity {
     @ManyToOne
     @JoinColumn(name = "id_sucursal", nullable = false)
     private SucursalEntity sucursal;
+
+//    @ManyToMany(mappedBy = "puntosVenta")
+//    private Set<UserEntity> users = new HashSet<>();
 }

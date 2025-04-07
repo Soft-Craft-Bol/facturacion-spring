@@ -34,7 +34,8 @@ public class ItemEntity {
     @Column(length = 1024)
     private String imagen;
 
-    private BigDecimal cantidad;//esta es la cantidad total
+    private BigDecimal cantidad;
+
     @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<SucursalItemEntity> sucursalItems;
@@ -43,9 +44,12 @@ public class ItemEntity {
     @JsonIgnore
     private List<DespachoItemEntity> despachoItems;
 
+    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<PromocionEntity> promocionItems;
+
     @PrePersist
     protected void onCreate() {
         this.codigo = UUID.randomUUID().toString();
     }
-
 }

@@ -6,6 +6,7 @@ import com.gaspar.facturador.application.rest.dto.AuthResponse;
 import com.gaspar.facturador.persistence.crud.RoleRepository;
 import com.gaspar.facturador.persistence.crud.UserRepository;
 import com.gaspar.facturador.persistence.dto.UserDTO;
+import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
 import com.gaspar.facturador.persistence.entity.RoleEntity;
 import com.gaspar.facturador.persistence.entity.RoleEnum;
 import com.gaspar.facturador.persistence.entity.UserEntity;
@@ -99,6 +100,8 @@ public class UserDetailServiceImpl implements UserDetailsService {
             throw new IllegalArgumentException("The roles specified do not exist.");
         }
 
+        Set<PuntoVentaEntity> puntosVenta = new HashSet<>(createRoleRequest.puntosVenta());
+
         UserEntity userEntity = UserEntity.builder()
                 .username(username)
                 .password(passwordEncoder.encode(password))
@@ -108,6 +111,7 @@ public class UserDetailServiceImpl implements UserDetailsService {
                 .lastName(createRoleRequest.apellido())
                 .photo(createRoleRequest.photo())
                 .roles(roleEntityList)
+                .puntosVenta(puntosVenta)
                 .enabled(true)
                 .accountNonLocked(true)
                 .accountNonExpired(true)
@@ -127,15 +131,13 @@ public class UserDetailServiceImpl implements UserDetailsService {
         Authentication authentication = new UsernamePasswordAuthenticationToken(userSaved, null, authorities);
 
         String accessToken = jwtUtils.createToken(authentication);
-        // incluir foto en la respuesta
         String photo = userSaved.getPhoto();
 
-        return new AuthResponse(username, "User created successfully", accessToken, true, photo);
+        return new AuthResponse(username, "User created successfully", accessToken, true, photo, userSaved.getPuntosVenta());
     }
 
 
     public AuthResponse loginUser(AuthLoginRequest authLoginRequest) {
-
         String username = authLoginRequest.username();
         String password = authLoginRequest.password();
 
@@ -144,13 +146,12 @@ public class UserDetailServiceImpl implements UserDetailsService {
 
         String accessToken = jwtUtils.createToken(authentication);
 
-        // incluir foto en la respuesta
         UserEntity userEntity = userRepository.findUserEntityByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("El usuario " + username + " no existe."));
         String photo = userEntity.getPhoto();
+        Set<PuntoVentaEntity> puntosVenta = userEntity.getPuntosVenta();
 
-        AuthResponse authResponse = new AuthResponse(username, "User loged succesfully", accessToken, true, photo);
-        return authResponse;
+        return new AuthResponse(username, "User logged in successfully", accessToken, true, photo, puntosVenta);
     }
 
     public Authentication authenticate(String username, String password) {
