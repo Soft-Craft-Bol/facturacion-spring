@@ -1,28 +1,29 @@
 package com.gaspar.facturador.persistence.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 
-import java.util.Date;
+import java.math.BigDecimal;
 
 @Entity
-@Table(name = "producciones")
+@Table(name = "receta_insumo")
 @Data
-public class ProduccionEntity {
+public class RecetaInsumoEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Date fecha;
-
-    private Integer cantidadProducida;
-
     @ManyToOne
     @JoinColumn(name = "receta_id")
+    @JsonIgnore
     private RecetasEntity receta;
 
     @ManyToOne
-    @JoinColumn(name = "producto_id")
-    private ItemEntity producto;
+    @JoinColumn(name = "insumo_id")
+    private InsumoEntity insumo;
+
+    private BigDecimal cantidad; // Ej: 300 gramos
+
 }
