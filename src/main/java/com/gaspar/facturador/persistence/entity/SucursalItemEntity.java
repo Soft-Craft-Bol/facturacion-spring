@@ -1,5 +1,6 @@
 package com.gaspar.facturador.persistence.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -16,11 +17,11 @@ public class SucursalItemEntity {
     private Integer id;
 
     @ManyToOne
-    @JoinColumn(name = "sucursal_id", nullable = false)
+    @JoinColumn(name = "sucursal_id")
     private SucursalEntity sucursal;
 
     @ManyToOne
-    @JoinColumn(name = "item_id", nullable = false)
+    @JoinColumn(name = "item_id")
     private ItemEntity item;
 
     @Column(nullable = false)

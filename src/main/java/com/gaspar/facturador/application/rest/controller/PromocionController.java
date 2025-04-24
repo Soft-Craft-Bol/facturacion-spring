@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/promocion")
@@ -20,14 +21,30 @@ public class PromocionController {
         return ResponseEntity.ok(promociones);
     }
     @PostMapping
-    public ResponseEntity<PromocionEntity> savePromocion(@RequestBody PromocionEntity promocion) {
-        if (promocion.getItem() == null || promocion.getItem().getId() == null ||
-                promocion.getSucursal() == null || promocion.getSucursal().getId() == null) {
-            return ResponseEntity.badRequest().body(null);
+    public ResponseEntity<?> savePromocion(@RequestBody PromocionEntity promocionEntity,
+                                           @RequestParam(defaultValue = "false") boolean confirmar) {
+        if (promocionEntity.getItem() == null || promocionEntity.getItem().getId() == null ||
+                promocionEntity.getSucursal() == null || promocionEntity.getSucursal().getId() == null) {
+            return ResponseEntity.badRequest().body("Item o Sucursal no pueden ser nulos");
         }
-        PromocionEntity promocionEntity = promocionCrudRepository.save(promocion);
-        return ResponseEntity.ok(promocionEntity);
+        List<PromocionEntity> existentes = promocionCrudRepository.findByItemIdAndSucursalId(
+                promocionEntity.getItem().getId(), promocionEntity.getSucursal().getId());
+
+        if (!existentes.isEmpty() && !confirmar) {
+            return ResponseEntity.status(409).body("Ya existe una promoción para este producto en esta sucursal. ¿Desea actualizarla?");
+        }
+
+        if (!existentes.isEmpty() && confirmar) {
+            // Tomamos la primera para actualizar
+            PromocionEntity existentePromocion = existentes.get(0);
+            existentePromocion.setDescuento(promocionEntity.getDescuento());
+            promocionEntity = existentePromocion;
+        }
+
+        PromocionEntity guardado = promocionCrudRepository.save(promocionEntity);
+        return ResponseEntity.ok(guardado);
     }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePromocion(@PathVariable Long id) {
         if (!promocionCrudRepository.existsById(id)) {

@@ -6,6 +6,7 @@ import com.gaspar.facturador.persistence.crud.ItemCrudRepository;
 import com.gaspar.facturador.persistence.crud.SucursalItemCrudRepository;
 import com.gaspar.facturador.persistence.crud.UserRepository;
 import com.gaspar.facturador.persistence.crud.VentaCrudRepository;
+import com.gaspar.facturador.persistence.dto.TotalVentasPorDiaDTO;
 import com.gaspar.facturador.persistence.dto.VentaHoyDTO;
 import com.gaspar.facturador.persistence.entity.*;
 import com.gaspar.facturador.persistence.entity.enums.TipoComprobanteEnum;
@@ -21,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -178,6 +180,10 @@ public class VentaService {
         dto.setNombreUsuario(venta.getVendedor().getUsername());
 
         return dto;
+    }
+
+    public List<TotalVentasPorDiaDTO> obtenerTotalesVentasPorDia() {
+        return ventasRepository.findVentasAgrupadasPorDia();
     }
 
 }

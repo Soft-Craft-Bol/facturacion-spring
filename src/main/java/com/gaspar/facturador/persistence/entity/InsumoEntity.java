@@ -19,10 +19,13 @@ public class InsumoEntity {
     private String marca;
     private BigDecimal precio;
     private String unidades;
+    private Integer cantidad;
     private String descripcion;
     //private Date ultimaAdquisicion;
     private String imagen;
     @OneToMany(mappedBy = "insumo", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<SucursalInsumoEntity> sucursalInsumo;
+
+
 }
