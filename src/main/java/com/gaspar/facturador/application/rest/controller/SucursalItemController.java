@@ -6,13 +6,16 @@ import com.gaspar.facturador.persistence.crud.ItemCrudRepository;
 import com.gaspar.facturador.persistence.crud.SucursalCrudRepository;
 import com.gaspar.facturador.persistence.crud.SucursalItemCrudRepository;
 import com.gaspar.facturador.persistence.entity.ItemEntity;
+import com.gaspar.facturador.persistence.entity.PromocionEntity;
 import com.gaspar.facturador.persistence.entity.SucursalEntity;
 import com.gaspar.facturador.persistence.entity.SucursalItemEntity;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -155,7 +158,7 @@ public class SucursalItemController {
             sucursalInfo.setId(sucursalItem.getSucursal().getId());
             sucursalInfo.setNombre(sucursalItem.getSucursal().getNombre());
             sucursalInfo.setDepartamento(sucursalItem.getSucursal().getDepartamento());
-            sucursalInfo.setCantidad(sucursalItem.getCantidad());
+            sucursalInfo.setCantidad((sucursalItem.getCantidad()));
             return sucursalInfo;
         }).collect(Collectors.toList());
 
@@ -163,35 +166,46 @@ public class SucursalItemController {
 
         return ResponseEntity.ok(itemDTO);
     }
+
     @GetMapping("/items-with-sucursales")
-    public ResponseEntity<List<ItemWithSucursalesDTO>> findAllItemsWithSucursales() {
-        List<ItemEntity> items = StreamSupport.stream(itemCrudRepository.findAll().spliterator(), false)
+    public ResponseEntity<Page<ItemWithSucursalesDTO>> findAllItemsWithSucursales(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("descripcion").ascending());
+
+        Page<ItemEntity> itemsPage = search != null && !search.isEmpty()
+                ? itemCrudRepository.findItemsWithSucursales(search, pageable)
+                : itemCrudRepository.findAll(pageable); // Para el caso sin búsqueda
+
+        // Mapeo directo desde las relaciones ya cargadas
+        List<ItemWithSucursalesDTO> dtos = itemsPage.getContent().stream()
+                .map(item -> {
+                    ItemWithSucursalesDTO dto = new ItemWithSucursalesDTO();
+                    // Mapeo básico
+                    dto.setId(item.getId());
+                    dto.setCodigo(item.getCodigo());
+                    dto.setDescripcion(item.getDescripcion());
+                    dto.setUnidadMedida(item.getUnidadMedida());
+                    dto.setPrecioUnitario(item.getPrecioUnitario());
+                    dto.setCodigoProductoSin(item.getCodigoProductoSin());
+                    dto.setImagen(item.getImagen());
+
+                    // Mapeo de sucursales desde las relaciones ya cargadas
+                    dto.setSucursales(item.getSucursalItems().stream()
+                            .map(si -> new SucursalInfoDTO(
+                                    si.getSucursal().getId(),
+                                    si.getSucursal().getNombre(),
+                                    si.getSucursal().getDepartamento(),
+                                    si.getCantidad()))
+                            .collect(Collectors.toList()));
+
+                    return dto;
+                })
                 .collect(Collectors.toList());
-        List<ItemWithSucursalesDTO> itemsWithSucursales = items.stream().map(item -> {
-            List<SucursalItemEntity> sucursalItems = sucursalItemCrudRepository.findByItemId(item.getId());
-            ItemWithSucursalesDTO itemDTO = new ItemWithSucursalesDTO();
-            itemDTO.setId(item.getId());
-            itemDTO.setCodigo(item.getCodigo());
-            itemDTO.setDescripcion(item.getDescripcion());
-            itemDTO.setUnidadMedida(item.getUnidadMedida());
-            itemDTO.setPrecioUnitario(item.getPrecioUnitario());
-            itemDTO.setCodigoProductoSin(item.getCodigoProductoSin());
-            itemDTO.setImagen(item.getImagen());
 
-            List<SucursalInfoDTO> sucursales = sucursalItems.stream().map(sucursalItem -> {
-                SucursalInfoDTO sucursalInfo = new SucursalInfoDTO();
-                sucursalInfo.setId(sucursalItem.getSucursal().getId());
-                sucursalInfo.setNombre(sucursalItem.getSucursal().getNombre());
-                sucursalInfo.setDepartamento(sucursalItem.getSucursal().getDepartamento());
-                sucursalInfo.setCantidad(sucursalItem.getCantidad());
-                return sucursalInfo;
-            }).collect(Collectors.toList());
-
-            itemDTO.setSucursales(sucursales);
-            return itemDTO;
-        }).collect(Collectors.toList());
-
-        return ResponseEntity.ok(itemsWithSucursales);
+        return ResponseEntity.ok(new PageImpl<>(dtos, pageable, itemsPage.getTotalElements()));
     }
 
 }

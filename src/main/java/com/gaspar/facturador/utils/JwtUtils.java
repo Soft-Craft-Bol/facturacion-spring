@@ -47,7 +47,7 @@ public class JwtUtils {
                 .withSubject(username) // A quién pertenece el token
                 .withClaim("authorities", authorities) // Roles/autoridades del usuario
                 .withIssuedAt(new Date()) // Fecha de emisión
-                .withExpiresAt(new Date(System.currentTimeMillis() + 1800000)) // Expira en 30 minutos
+                .withExpiresAt(new Date(System.currentTimeMillis() + 86400000)) // Expira en 30 minutos
                 .withJWTId(UUID.randomUUID().toString()) // ID único del token
                 .withNotBefore(new Date(System.currentTimeMillis())) // No válido antes de ahora
                 .sign(algorithm); // Firma el token
