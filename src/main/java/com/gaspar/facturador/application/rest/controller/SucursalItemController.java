@@ -2,6 +2,7 @@ package com.gaspar.facturador.application.rest.controller;
 
 import com.gaspar.facturador.application.response.*;
 import com.gaspar.facturador.application.rest.util.SucursalItemUtility;
+import com.gaspar.facturador.domain.service.ItemService;
 import com.gaspar.facturador.persistence.crud.ItemCrudRepository;
 import com.gaspar.facturador.persistence.crud.SucursalCrudRepository;
 import com.gaspar.facturador.persistence.crud.SucursalItemCrudRepository;
@@ -33,6 +34,12 @@ public class SucursalItemController {
     @Autowired
     private ItemCrudRepository itemCrudRepository;
 
+    public final ItemService itemService;
+
+    public SucursalItemController(ItemService itemService) {
+        this.itemService = itemService;
+    }
+
     @GetMapping
     public ResponseEntity<List<SucursalDTO>> findAll() {
         List<SucursalItemEntity> sucursalItems = (List<SucursalItemEntity>) sucursalItemCrudRepository.findAll();
@@ -41,7 +48,7 @@ public class SucursalItemController {
     //obtener items por sucursal
     @GetMapping("/sucursal/{sucursalId}")
     public ResponseEntity<SucursalDTO> findBySucursal(@PathVariable Integer sucursalId) {
-        List<SucursalItemEntity> items = sucursalItemCrudRepository.findBySucursalId(sucursalId);
+        List<SucursalItemEntity> items = sucursalItemCrudRepository.findBySucursal_Id(sucursalId);
         if (items.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
@@ -81,7 +88,7 @@ public class SucursalItemController {
             return ResponseEntity.notFound().build();
         }
 
-        Optional<SucursalItemEntity> sucursalItems = sucursalItemCrudRepository.findBySucursalIdAndItemId(sucursalId, itemId);
+        Optional<SucursalItemEntity> sucursalItems = sucursalItemCrudRepository.findBySucursal_IdAndItem_Id(sucursalId, itemId);
         if (!sucursalItems.isEmpty()) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(null);
         }
@@ -96,7 +103,7 @@ public class SucursalItemController {
 
     @DeleteMapping("/sucursal/{sucursalId}/item/{itemId}")
     public ResponseEntity<Void> removeItemFromScurusal(@PathVariable Integer sucursalId, @PathVariable Integer itemId) {
-        Optional<SucursalItemEntity> sucursalItemOptional = sucursalItemCrudRepository.findBySucursalIdAndItemId(sucursalId, itemId);
+        Optional<SucursalItemEntity> sucursalItemOptional = sucursalItemCrudRepository.findBySucursal_IdAndItem_Id(sucursalId, itemId);
         if (!sucursalItemOptional.isPresent()) {
             return ResponseEntity.notFound().build();
         }
@@ -106,7 +113,7 @@ public class SucursalItemController {
 
     @PutMapping("/sucursal/{sucursalId}/item/{itemId}/increase")
     public ResponseEntity<SucursalItemEntity> increaseQuantity(@PathVariable Integer sucursalId, @PathVariable Integer itemId, @RequestParam Integer cantidad) {
-        Optional<SucursalItemEntity> sucursalItemOptional = sucursalItemCrudRepository.findBySucursalIdAndItemId(sucursalId, itemId);
+        Optional<SucursalItemEntity> sucursalItemOptional = sucursalItemCrudRepository.findBySucursal_IdAndItem_Id(sucursalId, itemId);
 
         if (!sucursalItemOptional.isPresent()) {
             return ResponseEntity.notFound().build();
@@ -120,7 +127,7 @@ public class SucursalItemController {
 
     @PutMapping("/sucursal/{sucursalId}/item/{itemId}/decrease")
     public ResponseEntity<SucursalItemEntity> decreaseQuantity(@PathVariable Integer sucursalId, @PathVariable Integer itemId, @RequestParam Integer cantidad) {
-        Optional<SucursalItemEntity> sucursalItemOptional = sucursalItemCrudRepository.findBySucursalIdAndItemId(sucursalId, itemId);
+        Optional<SucursalItemEntity> sucursalItemOptional = sucursalItemCrudRepository.findBySucursal_IdAndItem_Id(sucursalId, itemId);
 
         if (!sucursalItemOptional.isPresent()) {
             return ResponseEntity.notFound().build();
@@ -158,7 +165,7 @@ public class SucursalItemController {
             sucursalInfo.setId(sucursalItem.getSucursal().getId());
             sucursalInfo.setNombre(sucursalItem.getSucursal().getNombre());
             sucursalInfo.setDepartamento(sucursalItem.getSucursal().getDepartamento());
-            sucursalInfo.setCantidad((sucursalItem.getCantidad()));
+            sucursalInfo.setCantidad(sucursalItem.getCantidad());
             return sucursalInfo;
         }).collect(Collectors.toList());
 
@@ -171,41 +178,24 @@ public class SucursalItemController {
     public ResponseEntity<Page<ItemWithSucursalesDTO>> findAllItemsWithSucursales(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String search) {
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String codigo,
+            @RequestParam(required = false) Boolean conDescuento,
+            @RequestParam(required = false) Integer sucursalId,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDirection) {
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("descripcion").ascending());
+        // Configuración de ordenación
+        Sort.Direction direction = Sort.Direction.fromOptionalString(sortDirection).orElse(Sort.Direction.ASC);
+        Sort sort = sortBy != null ? Sort.by(direction, sortBy) : Sort.by("descripcion").ascending();
 
-        Page<ItemEntity> itemsPage = search != null && !search.isEmpty()
-                ? itemCrudRepository.findItemsWithSucursales(search, pageable)
-                : itemCrudRepository.findAll(pageable); // Para el caso sin búsqueda
+        Pageable pageable = PageRequest.of(page, size, sort);
 
-        // Mapeo directo desde las relaciones ya cargadas
-        List<ItemWithSucursalesDTO> dtos = itemsPage.getContent().stream()
-                .map(item -> {
-                    ItemWithSucursalesDTO dto = new ItemWithSucursalesDTO();
-                    // Mapeo básico
-                    dto.setId(item.getId());
-                    dto.setCodigo(item.getCodigo());
-                    dto.setDescripcion(item.getDescripcion());
-                    dto.setUnidadMedida(item.getUnidadMedida());
-                    dto.setPrecioUnitario(item.getPrecioUnitario());
-                    dto.setCodigoProductoSin(item.getCodigoProductoSin());
-                    dto.setImagen(item.getImagen());
+        // Llamada al servicio con todos los parámetros
+        Page<ItemWithSucursalesDTO> itemsPage = itemService.findItemsWithSucursales(
+                search, codigo, conDescuento, sucursalId, pageable);
 
-                    // Mapeo de sucursales desde las relaciones ya cargadas
-                    dto.setSucursales(item.getSucursalItems().stream()
-                            .map(si -> new SucursalInfoDTO(
-                                    si.getSucursal().getId(),
-                                    si.getSucursal().getNombre(),
-                                    si.getSucursal().getDepartamento(),
-                                    si.getCantidad()))
-                            .collect(Collectors.toList()));
-
-                    return dto;
-                })
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(new PageImpl<>(dtos, pageable, itemsPage.getTotalElements()));
+        return ResponseEntity.ok(itemsPage);
     }
 
 }

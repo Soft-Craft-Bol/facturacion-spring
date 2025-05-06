@@ -20,9 +20,18 @@ public class ClienteEntity {
     private Long numeroDocumento;
     private String complemento;
     private String codigoCliente;
+    private String celular;
 
     @Column(unique = true)
     private String email;
+
+    public String getCelular() {
+        return celular;
+    }
+
+    public void setCelular(String celular) {
+        this.celular = celular;
+    }
 
     public Integer getId() {
         return id;

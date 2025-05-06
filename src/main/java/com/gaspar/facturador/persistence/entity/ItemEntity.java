@@ -7,8 +7,6 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Set;
-import java.util.UUID;
 
 @Entity
 @Data
@@ -25,7 +23,8 @@ public class ItemEntity {
     @Column(length = 500)
     private String descripcion;
 
-    private Integer unidadMedida;
+    @Column(nullable = false, columnDefinition = "integer default 1")
+    private Integer unidadMedida = 1;
 
     private BigDecimal precioUnitario;
 
@@ -48,8 +47,4 @@ public class ItemEntity {
     @JsonIgnore
     private List<PromocionEntity> promocionItems;
 
-    @PrePersist
-    protected void onCreate() {
-        this.codigo = UUID.randomUUID().toString();
-    }
 }

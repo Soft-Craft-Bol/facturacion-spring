@@ -87,7 +87,7 @@ public class VentaService {
         List<VentasDetalleEntity> detalles = new ArrayList<>();
 
         for (var item : request.getDetalle()) {
-            SucursalItemEntity sucursalItem = sucursalItemCrudRepository.findBySucursalIdAndItemId(
+            SucursalItemEntity sucursalItem = sucursalItemCrudRepository.findBySucursal_IdAndItem_Id(
                             puntoVenta.getSucursal().getId(),
                             (int) item.getIdProducto().longValue())
                     .orElseThrow(() -> new IllegalArgumentException("Producto con ID " + item.getIdProducto() + " no encontrado en la sucursal"));

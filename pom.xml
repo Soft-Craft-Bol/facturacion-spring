@@ -154,6 +154,13 @@
 			<classifier>jakarta</classifier>
 			<scope>provided</scope>
 		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+			<version>3.2.3</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>

@@ -34,6 +34,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.rmi.RemoteException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -56,13 +57,14 @@ public class FacturacionService {
     private final ICufdRepository cufdRepository;
     private final VerificacionPaqueteService verificacionPaqueteService;
     private final VentaService ventaService;
+    private final CufdService cufdService;
 
 
     public FacturacionService(
             AppConfig appConfig, GeneraFacturaService generaFacturaService,
             EnvioFacturaService envioFacturaService, EnvioPaquetesService envioPaquetesService, AnulacionFacturaService anulacionFacturaService, ReversionFacturaService reversionFacturaService, FacturaRepository facturaRepository,
             IPuntoVentaRepository puntoVentaRepository,
-            ICufdRepository cufdRepository, VerificacionPaqueteService verificacionPaqueteService, VentaService ventaService
+            ICufdRepository cufdRepository, VerificacionPaqueteService verificacionPaqueteService, VentaService ventaService, CufdService cufdService
     ) {
         this.appConfig = appConfig;
         this.generaFacturaService = generaFacturaService;
@@ -75,6 +77,7 @@ public class FacturacionService {
         this.cufdRepository = cufdRepository;
         this.verificacionPaqueteService = verificacionPaqueteService;
         this.ventaService = ventaService;
+        this.cufdService = cufdService;
     }
 
     public FacturaResponse emitirFactura(VentaRequest ventaRequest) throws Exception {
@@ -83,7 +86,16 @@ public class FacturacionService {
         if (puntoVenta.isEmpty()) throw new ProcessException("Punto venta no encontrado");
 
         Optional<CufdEntity> cufd = cufdRepository.findActual(puntoVenta.get());
-        if (cufd.isEmpty()) throw new ProcessException("Cufd vigente no encontrado");
+
+        if (cufd.isEmpty() || cufd.get().getFechaVigencia().isBefore(LocalDateTime.now())) {
+            this.cufdService.obtenerCufd(ventaRequest.getIdPuntoVenta());
+            cufd = cufdRepository.findActual(puntoVenta.get());
+
+            // Validar nuevamente después de obtener uno nuevo
+            if (cufd.isEmpty() || cufd.get().getFechaVigencia().isBefore(LocalDateTime.now())) {
+                throw new ProcessException("No se pudo obtener un CUFD vigente");
+            }
+        }
 
         // Generar la factura
         FacturaElectronicaCompraVenta factura = this.generaFacturaService.llenarDatos(ventaRequest, cufd.get());

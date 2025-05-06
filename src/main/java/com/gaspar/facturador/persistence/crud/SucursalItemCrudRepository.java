@@ -7,6 +7,7 @@ import java.util.*;
 
 public interface SucursalItemCrudRepository extends CrudRepository<SucursalItemEntity, Integer> {
     List<SucursalItemEntity> findByItemId(Integer itemId);
-    List<SucursalItemEntity> findBySucursalId(Integer sucursalId);
-    Optional<SucursalItemEntity> findBySucursalIdAndItemId(Integer sucursalId, Integer itemId);
+    List<SucursalItemEntity> findBySucursal_Id(Integer sucursalId);
+    Optional<SucursalItemEntity> findBySucursal_IdAndItem_Id(Integer sucursalId, Integer itemId);
+
 }

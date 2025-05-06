@@ -5,6 +5,7 @@ import com.gaspar.facturador.persistence.entity.ItemEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.repository.CrudRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface InsumoCrudRepository extends CrudRepository<InsumoEntity,Long>{
@@ -12,4 +13,7 @@ public interface InsumoCrudRepository extends CrudRepository<InsumoEntity,Long>{
 
     @Override
     long count();
+    List<InsumoEntity> findByActivoTrue();
+    List<InsumoEntity> findByActivoFalse();
+
 }

@@ -6,6 +6,7 @@ import lombok.Data;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
+import java.util.Date;
 
 @Data
 @Entity
@@ -25,5 +26,12 @@ public class SucursalInsumoEntity {
 
     @Column(nullable = false)
     private BigDecimal cantidad;
+
+    private Integer stockMinimo;
+
+    private Date fechaIngreso;
+    private Date fechaVencimiento;
+    private Date ultimaAdquisicion;
+
 
 }

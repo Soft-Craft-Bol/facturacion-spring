@@ -31,12 +31,19 @@ public class ClienteController {
         try {
             Long numeroDocumento = Long.parseLong(cliente.getNumeroDocumento().toString());
             cliente.setNumeroDocumento(numeroDocumento);
+
+            // Validar que el celular no sea nulo (opcional)
+            if(cliente.getCelular() == null || cliente.getCelular().trim().isEmpty()) {
+                return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            }
+
         } catch (NumberFormatException e) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
         ClienteEntity savedCliente = clienteRepository.save(cliente);
         return new ResponseEntity<>(savedCliente, HttpStatus.CREATED);
     }
+
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<Void> deleteCliente(@PathVariable Integer id) {
         Optional<ClienteEntity> cliente = clienteRepository.findById(id);
@@ -47,9 +54,10 @@ public class ClienteController {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
+
     @GetMapping("/limited")
     public ResponseEntity<List<ClienteEntity>> getLimitedClientes() {
         List<ClienteEntity> clientes = clienteRepository.findAll().stream().limit(5).collect(Collectors.toList());
         return new ResponseEntity<>(clientes, HttpStatus.OK);
     }
-}   
+}

@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 
@@ -46,5 +47,13 @@ public class SucursalEntity {
 
     @Column(length = 1024)
     private String image;
+
+    @NotNull
+    @Column(precision = 10, scale = 8)
+    private BigDecimal latitud;
+
+    @NotNull
+    @Column(precision = 11, scale = 8)
+    private BigDecimal longitud;
 
 }

@@ -1,5 +1,6 @@
 package com.gaspar.facturador.application.rest.controller;
 
+import com.gaspar.facturador.application.request.SucursalInsumoRequest;
 import com.gaspar.facturador.application.response.*;
 import com.gaspar.facturador.application.rest.util.SucursalInsumoUtility;
 import com.gaspar.facturador.persistence.crud.InsumoCrudRepository;
@@ -68,24 +69,36 @@ public class SucursalInsumoController {
         return ResponseEntity.ok(sucursalDTO);
     }
     @PostMapping("/sucursal/{sucursalId}/insumo/{insumoId}")
-    public ResponseEntity<SucursalInsumoEntity> setInitialQuantity(@PathVariable Integer sucursalId, @PathVariable Long insumoId, @RequestParam BigDecimal cantidad) {
+    public ResponseEntity<SucursalInsumoEntity> setInitialQuantity(
+            @PathVariable Integer sucursalId,
+            @PathVariable Long insumoId,
+            @RequestBody SucursalInsumoRequest request) {
+
         Optional<SucursalEntity> sucursalOptional = sucursalCrudRepository.findById(sucursalId);
         Optional<InsumoEntity> insumoOptional = insumoCrudRepository.findById(insumoId);
 
-        if (!sucursalOptional.isPresent() || !insumoOptional.isPresent())
+        if (!sucursalOptional.isPresent() || !insumoOptional.isPresent()) {
             return ResponseEntity.notFound().build();
+        }
 
         Optional<SucursalInsumoEntity> sucursalInsumos = sucursalInsumoCrudRepository.findBySucursalIdAndInsumoId(sucursalId, insumoId);
-        if(!sucursalInsumos.isEmpty()){
+        if (!sucursalInsumos.isEmpty()) {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
+
         SucursalInsumoEntity sucursalInsumo = new SucursalInsumoEntity();
         sucursalInsumo.setSucursal(sucursalOptional.get());
         sucursalInsumo.setInsumo(insumoOptional.get());
-        sucursalInsumo.setCantidad(cantidad);
+        sucursalInsumo.setCantidad(request.getCantidad());
+        sucursalInsumo.setStockMinimo(request.getStockMinimo());
+        sucursalInsumo.setFechaIngreso(request.getFechaIngreso());
+        sucursalInsumo.setFechaVencimiento(request.getFechaVencimiento());
+        sucursalInsumo.setUltimaAdquisicion(request.getUltimaAdquisicion());
         SucursalInsumoEntity saved = sucursalInsumoCrudRepository.save(sucursalInsumo);
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(saved);  // Respuesta exitosa
     }
+
+
     @DeleteMapping("/sucursal/{sucursalId}/insumo/{insumoId}")
     public ResponseEntity<Void> removeInsumoFromSucursal(@PathVariable Integer sucursalId, @PathVariable Long insumoId) {
         Optional<SucursalInsumoEntity> sucursalInsumoOptional = sucursalInsumoCrudRepository.findBySucursalIdAndInsumoId(sucursalId, insumoId);

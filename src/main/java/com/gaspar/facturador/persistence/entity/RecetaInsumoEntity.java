@@ -1,14 +1,17 @@
 package com.gaspar.facturador.persistence.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.Data;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "receta_insumo")
-@Data
+@Getter
+@Setter
 public class RecetaInsumoEntity {
 
     @Id
@@ -16,14 +19,28 @@ public class RecetaInsumoEntity {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "receta_id")
-    @JsonIgnore
+    @JoinColumn(name = "receta_id", nullable = false)
+    @NotNull(message = "La receta es obligatoria")
     private RecetasEntity receta;
 
     @ManyToOne
-    @JoinColumn(name = "insumo_id")
+    @JoinColumn(name = "insumo_id", nullable = false)
+    @NotNull(message = "El insumo es obligatorio")
     private InsumoEntity insumo;
 
-    private BigDecimal cantidad; // Ej: 300 gramos
+    @Positive(message = "La cantidad debe ser positiva")
+    private BigDecimal cantidad; // Cantidad de insumo necesaria
 
+    @Column(length = 20)
+    private String unidadMedida; // kg, g, l, ml, etc.
+
+    @Positive(message = "El costo debe ser positivo")
+    private BigDecimal costo; // Costo de esta cantidad de insumo
+
+    // Método para calcular el costo automáticamente
+    public void calcularCosto() {
+        if (insumo != null && cantidad != null) {
+            this.costo = insumo.getPrecio().multiply(cantidad);
+        }
+    }
 }

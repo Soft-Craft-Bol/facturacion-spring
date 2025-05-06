@@ -53,4 +53,19 @@ public class PromocionController {
         promocionCrudRepository.deleteById(id);
         return ResponseEntity.ok().build();
     }
+    @DeleteMapping("/by-item-sucursal")
+    public ResponseEntity<Void> deletePromocionByItemAndSucursal(
+            @RequestParam Long itemId,
+            @RequestParam Long sucursalId) {
+
+        List<PromocionEntity> promociones = promocionCrudRepository
+                .findByItemIdAndSucursalId(Math.toIntExact(itemId), Math.toIntExact(sucursalId));
+
+        if (promociones.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        promocionCrudRepository.deleteAll(promociones);
+        return ResponseEntity.ok().build();
+    }
 }
