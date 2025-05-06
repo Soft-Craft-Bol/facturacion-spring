@@ -7,5 +7,6 @@ import java.util.List;
 
 public interface PromocionCrudRepository extends CrudRepository<PromocionEntity, Long> {
     List<PromocionEntity> findByItemIdAndSucursalId(Integer itemId, Integer sucursalId);
+    List<PromocionEntity> findByItemId(Integer itemId); // Para la opción 2
 }
 

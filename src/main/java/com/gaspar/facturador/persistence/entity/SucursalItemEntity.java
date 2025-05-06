@@ -27,4 +27,10 @@ public class SucursalItemEntity {
     @Column(nullable = false)
     private Integer cantidad;
 
+    public void setSucursalId(Integer sucursalId) {
+        if (sucursal == null) {
+            sucursal = new SucursalEntity();
+        }
+        sucursal.setId(sucursalId);
+    }
 }
