@@ -12,4 +12,5 @@ public class FacturaResponse {
     private String cuf;
     private Long numeroFactura;
     private String xmlContent;
+    private String mensaje;
 }

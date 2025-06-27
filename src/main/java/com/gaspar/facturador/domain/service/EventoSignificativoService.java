@@ -1,26 +1,25 @@
 package com.gaspar.facturador.domain.service;
 
 import bo.gob.impuestos.siat.api.facturacion.operaciones.*;
+import com.gaspar.facturador.application.response.EventoSignificativoDTO;
+import com.gaspar.facturador.application.response.EventoSignificativoRegistroResponse;
 import com.gaspar.facturador.application.rest.exception.ProcessException;
 import com.gaspar.facturador.config.AppConfig;
-import com.gaspar.facturador.domain.repository.ICufdRepository;
-import com.gaspar.facturador.domain.repository.ICuisRepository;
-import com.gaspar.facturador.domain.repository.IPuntoVentaRepository;
-import com.gaspar.facturador.persistence.entity.CufdEntity;
-import com.gaspar.facturador.persistence.entity.CuisEntity;
-import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
+import com.gaspar.facturador.domain.repository.*;
+import com.gaspar.facturador.persistence.entity.*;
 import com.gaspar.facturador.utils.DateUtil;
 import jakarta.xml.bind.JAXBElement;
-import javax.xml.namespace.QName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import javax.xml.datatype.DatatypeFactory;
-import javax.xml.datatype.XMLGregorianCalendar;
+import javax.xml.namespace.QName;
 import java.rmi.RemoteException;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class EventoSignificativoService {
@@ -28,94 +27,150 @@ public class EventoSignificativoService {
     private static final Logger LOGGER = LoggerFactory.getLogger(EventoSignificativoService.class);
 
     private final AppConfig appConfig;
-    private final ServicioFacturacionOperaciones servicioFacturacionOperaciones;
+    private final ServicioFacturacionOperaciones servicioOperaciones;
     private final IPuntoVentaRepository puntoVentaRepository;
     private final ICufdRepository cufdRepository;
     private final ICuisRepository cuisRepository;
+    private final IEventoSignificativoRepository eventoRepository;
 
     public EventoSignificativoService(
             AppConfig appConfig,
-            ServicioFacturacionOperaciones servicioFacturacionOperaciones,
+            ServicioFacturacionOperaciones servicioOperaciones,
             IPuntoVentaRepository puntoVentaRepository,
             ICufdRepository cufdRepository,
-            ICuisRepository cuisRepository
-    ) {
+            ICuisRepository cuisRepository,
+            IEventoSignificativoRepository eventoRepository) {
         this.appConfig = appConfig;
-        this.servicioFacturacionOperaciones = servicioFacturacionOperaciones;
+        this.servicioOperaciones = servicioOperaciones;
         this.puntoVentaRepository = puntoVentaRepository;
         this.cufdRepository = cufdRepository;
         this.cuisRepository = cuisRepository;
+        this.eventoRepository = eventoRepository;
     }
 
-    public RespuestaListaEventos registrarEventoSignificativo(
+    @Transactional
+    public EventoSignificativoRegistroResponse registrarEvento(
             Long idPuntoVenta,
-            String descripcion,
-            Integer codigoMotivoEvento,
+            Integer codigoMotivo,
             String cufdEvento,
-            LocalDateTime fechaHoraInicioEvento,
-            LocalDateTime fechaHoraFinEvento
-    ) throws RemoteException {
-        // Verificar la comunicación con el SIAT
-        RespuestaComunicacion respuestaComunicacion = servicioFacturacionOperaciones.verificarComunicacion();
-        if (!Boolean.TRUE.equals(respuestaComunicacion.isTransaccion())) {
-            throw new ProcessException("No se pudo conectar con los servidores del S.I.N.");
-        }
+            LocalDateTime fechaInicio,
+            LocalDateTime fechaFin) throws RemoteException {
 
-        // Obtener el punto de venta
-        Optional<PuntoVentaEntity> puntoVenta = puntoVentaRepository.findById(Math.toIntExact(idPuntoVenta));
-        if (puntoVenta.isEmpty()) {
-            throw new ProcessException("Punto de venta no encontrado");
-        }
+        // 1. Validar conexión con SIAT
+        verificarComunicacionSIAT();
 
-        // Obtener el CUFD vigente desde el repositorio
-        Optional<CufdEntity> cufd = cufdRepository.findActual(puntoVenta.get());
-        if (cufd.isEmpty()) {
-            throw new ProcessException("CUFD vigente no encontrado");
-        }
+        // 2. Obtener entidades necesarias
+        PuntoVentaEntity puntoVenta = puntoVentaRepository.findById(Math.toIntExact(idPuntoVenta))
+                .orElseThrow(() -> new ProcessException("Punto de venta no encontrado"));
 
-        // Obtener el CUIS vigente
-        Optional<CuisEntity> cuis = cuisRepository.findActual(puntoVenta.get());
-        if (cuis.isEmpty()) {
-            throw new ProcessException("CUIS vigente no encontrado");
-        }
+        CufdEntity cufd = cufdRepository.findActual(puntoVenta)
+                .orElseThrow(() -> new ProcessException("CUFD vigente no encontrado"));
 
-        // Crear la solicitud de evento significativo
-        SolicitudEventoSignificativo solicitudEventoSignificativo = new SolicitudEventoSignificativo();
-        solicitudEventoSignificativo.setCodigoAmbiente(appConfig.getCodigoAmbiente());
+        CuisEntity cuis = cuisRepository.findActual(puntoVenta)
+                .orElseThrow(() -> new ProcessException("CUIS vigente no encontrado"));
+
+        // 3. Registrar evento en SIAT
+        RespuestaListaEventos respuesta = servicioOperaciones.registroEventoSignificativo(
+                crearSolicitudEvento(puntoVenta, cuis, cufd, codigoMotivo, cufdEvento, fechaInicio, fechaFin));
+
+        validarRespuestaSIAT(respuesta);
+
+        // 4. Guardar evento localmente (72 horas)
+        EventoSignificativoEntity evento = new EventoSignificativoEntity();
+        evento.setPuntoVenta(puntoVenta);
+        evento.setCodigoRecepcionEvento(respuesta.getCodigoRecepcionEventoSignificativo());
+        evento.setCodigoMotivo(codigoMotivo);
+        evento.setCufdEvento(cufdEvento);
+        evento.setFechaInicio(fechaInicio);
+        evento.setFechaFin(fechaFin);
+        evento.setEtapa("REGISTRADO");
+        evento.setFechaRegistro(LocalDateTime.now());
+        evento.setVigente(true);
+
+        eventoRepository.save(evento);
+
+        return new EventoSignificativoRegistroResponse(evento.getId(), respuesta);
+    }
+
+
+    private void verificarComunicacionSIAT() throws RemoteException {
+        RespuestaComunicacion respuesta = servicioOperaciones.verificarComunicacion();
+        if (!Boolean.TRUE.equals(respuesta.isTransaccion())) {
+            throw new ProcessException("Error de conexión con SIAT");
+        }
+    }
+
+    private SolicitudEventoSignificativo crearSolicitudEvento(
+            PuntoVentaEntity puntoVenta,
+            CuisEntity cuis,
+            CufdEntity cufd,
+            Integer codigoMotivo,
+            String cufdEvento,
+            LocalDateTime fechaInicio,
+            LocalDateTime fechaFin) {
+
+        SolicitudEventoSignificativo solicitud = new SolicitudEventoSignificativo();
+        solicitud.setCodigoAmbiente(appConfig.getCodigoAmbiente());
         JAXBElement<Integer> codigoPuntoVentaElement = new JAXBElement<>(
                 new QName("codigoPuntoVenta"),
                 Integer.class,
-                puntoVenta.get().getCodigo()
+                puntoVenta.getCodigo()
         );
-        solicitudEventoSignificativo.setCodigoPuntoVenta(codigoPuntoVentaElement);
-        solicitudEventoSignificativo.setCodigoSistema(appConfig.getCodigoSistema());
-        solicitudEventoSignificativo.setCodigoSucursal(0); // Código de sucursal (0 para central)
-        solicitudEventoSignificativo.setNit(puntoVenta.get().getSucursal().getEmpresa().getNit());
-        solicitudEventoSignificativo.setCuis(cuis.get().getCodigo());
-        solicitudEventoSignificativo.setCufd(cufd.get().getCodigo());
-        solicitudEventoSignificativo.setCufdEvento(cufdEvento); // CUFD con el que se generó el evento
-        solicitudEventoSignificativo.setCodigoMotivoEvento(codigoMotivoEvento);
-        solicitudEventoSignificativo.setDescripcion(descripcion);
+        solicitud.setCodigoPuntoVenta(codigoPuntoVentaElement);
+        solicitud.setCodigoSistema(appConfig.getCodigoSistema());
+        solicitud.setCodigoSucursal(0);
+        solicitud.setNit(puntoVenta.getSucursal().getEmpresa().getNit());
+        solicitud.setCuis(cuis.getCodigo());
+        solicitud.setCufd(cufd.getCodigo());
+        solicitud.setCufdEvento(cufdEvento);
+        solicitud.setCodigoMotivoEvento(codigoMotivo);
+        solicitud.setDescripcion(obtenerDescripcionMotivo(codigoMotivo));
+        solicitud.setFechaHoraInicioEvento(DateUtil.toXMLGregorianCalendar(fechaInicio));
+        solicitud.setFechaHoraFinEvento(DateUtil.toXMLGregorianCalendar(fechaFin));
 
-        // Convertir fechas a XMLGregorianCalendar
-        solicitudEventoSignificativo.setFechaHoraInicioEvento(DateUtil.toXMLGregorianCalendar(fechaHoraInicioEvento));
-        solicitudEventoSignificativo.setFechaHoraFinEvento(DateUtil.toXMLGregorianCalendar(fechaHoraFinEvento));
-
-        // Llamar al servicio de registro de evento significativo
-        LOGGER.info("Solicitud de registro de evento significativo: {}", solicitudEventoSignificativo);
-        RespuestaListaEventos respuesta = servicioFacturacionOperaciones.registroEventoSignificativo(solicitudEventoSignificativo);
-        LOGGER.info("Respuesta del servicio: {}", respuesta);
-
-        // Verificar la respuesta
-        if (respuesta != null && (respuesta.getCodigoRecepcionEventoSignificativo() == null || respuesta.getCodigoRecepcionEventoSignificativo() <= 0)) {
-            StringBuilder mensajeError = new StringBuilder("Error al registrar el evento significativo: ");
-            for (MensajeServicio mensaje : respuesta.getMensajesList()) {
-                mensajeError.append(mensaje.getDescripcion()).append(". ");
-            }
-            throw new ProcessException(mensajeError.toString());
-        }
-
-        return respuesta;
+        return solicitud;
     }
 
+    private void validarRespuestaSIAT(RespuestaListaEventos respuesta) {
+        if (respuesta == null || respuesta.getCodigoRecepcionEventoSignificativo() == null) {
+            throw new ProcessException("Respuesta inválida del SIAT");
+        }
+    }
+
+    private String obtenerDescripcionMotivo(Integer codigoMotivo) {
+        switch (codigoMotivo) {
+            case 1: return "Corte del servicio de Internet";
+            case 2: return "Inaccesibilidad al Servicio Web de la Administración Tributaria";
+            case 3: return "Ingreso a zonas sin Internet por despliegue de puntos de venta";
+            case 4: return "Venta en Lugares sin internet";
+            case 5: return "Virus informático o falla de software";
+            case 6: return "Cambio de infraestructura de sistema o falla de hardware";
+            case 7: return "Corte de suministro de energía eléctrica";
+            default: return "Evento significativo";
+        }
+    }
+
+    public List<EventoSignificativoDTO> obtenerEventosVigentes(Integer idPuntoVenta) {
+        PuntoVentaEntity puntoVenta = puntoVentaRepository.findById(idPuntoVenta)
+                .orElseThrow(() -> new ProcessException("Punto de venta no encontrado"));
+
+        LocalDateTime fechaLimite = LocalDateTime.now().minusHours(72);
+
+        return eventoRepository.findVigentesByPuntoVenta(puntoVenta, fechaLimite)
+                .stream()
+                .map(this::convertirADTO)
+                .collect(Collectors.toList());
+    }
+
+    private EventoSignificativoDTO convertirADTO(EventoSignificativoEntity evento) {
+        EventoSignificativoDTO dto = new EventoSignificativoDTO();
+        dto.setId(evento.getId());
+        dto.setCodigoMotivo(evento.getCodigoMotivo());
+        dto.setDescripcionMotivo(obtenerDescripcionMotivo(evento.getCodigoMotivo()));
+        dto.setCufdEvento(evento.getCufdEvento());
+        dto.setFechaInicio(evento.getFechaInicio());
+        dto.setCodigoRecepcion(evento.getCodigoRecepcionEvento());
+        dto.setFechaFin(evento.getFechaFin());
+        return dto;
+    }
 }

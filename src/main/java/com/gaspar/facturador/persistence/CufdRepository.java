@@ -46,6 +46,9 @@ public class CufdRepository implements ICufdRepository {
 
     @Override
     public List<CufdEntity> findAnteriores(PuntoVentaEntity puntoVenta) {
-        return this.cufdCrudRepository.findAllByPuntoVentaAndVigente(puntoVenta, false);
+        LocalDateTime fechaLimite = LocalDateTime.now().minusHours(72);
+        return this.cufdCrudRepository.findAnteriores(puntoVenta, fechaLimite);
     }
+
+
 }

@@ -1,6 +1,7 @@
 package com.gaspar.facturador.application.rest.controller;
 
 import com.gaspar.facturador.domain.repository.IClienteRepository;
+import com.gaspar.facturador.domain.service.ClienteService;
 import com.gaspar.facturador.persistence.entity.ClienteEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,9 +16,23 @@ import java.util.stream.Collectors;
 public class ClienteController {
 
     private final IClienteRepository clienteRepository;
+    private final ClienteService clienteService;
 
-    public ClienteController(IClienteRepository clienteRepository) {
+
+    public ClienteController(IClienteRepository clienteRepository, ClienteService clienteService) {
         this.clienteRepository = clienteRepository;
+        this.clienteService = clienteService;
+    }
+
+    @GetMapping("/buscar")
+    public ResponseEntity<ClienteEntity> buscarPorDocumento(
+            @RequestParam("documento") Long numeroDocumento) {
+        if(numeroDocumento == null) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+        Optional<ClienteEntity> cliente = clienteService.buscarPorDocumento(numeroDocumento);
+        return cliente.map(value -> new ResponseEntity<>(value, HttpStatus.OK))
+                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
     @GetMapping

@@ -16,4 +16,5 @@ public interface ICufdRepository {
     Optional<CufdEntity> findActual(PuntoVentaEntity puntoVenta);
 
     List<CufdEntity> findAnteriores(PuntoVentaEntity puntoVenta);
+
 }

@@ -47,4 +47,8 @@ public class ItemEntity {
     @JsonIgnore
     private List<PromocionEntity> promocionItems;
 
+    @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<VentasDetalleEntity> ventasDetalles;
+
 }

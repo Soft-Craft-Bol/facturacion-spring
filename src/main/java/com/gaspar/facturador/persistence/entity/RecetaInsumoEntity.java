@@ -35,12 +35,5 @@ public class RecetaInsumoEntity {
     private String unidadMedida; // kg, g, l, ml, etc.
 
     @Positive(message = "El costo debe ser positivo")
-    private BigDecimal costo; // Costo de esta cantidad de insumo
-
-    // Método para calcular el costo automáticamente
-    public void calcularCosto() {
-        if (insumo != null && cantidad != null) {
-            this.costo = insumo.getPrecio().multiply(cantidad);
-        }
-    }
+    private BigDecimal costo;
 }

@@ -57,7 +57,7 @@ public class RecetaService {
             recetaInsumo.setUnidadMedida(insumoDTO.getUnidadMedida());
 
             // Calcular el costo basado en el precio del insumo
-            recetaInsumo.setCosto(insumo.getPrecio().multiply(insumoDTO.getCantidad()));
+            //recetaInsumo.setCosto(insumo.getPrecio().multiply(insumoDTO.getCantidad()));
 
             // Guardar la relación
             recetaInsumoCrudRepository.save(recetaInsumo);
@@ -84,8 +84,8 @@ public class RecetaService {
                     insumoDTO.setCantidad(ri.getCantidad());
                     insumoDTO.setUnidadMedida(ri.getUnidadMedida());
                     insumoDTO.setNombreInsumo(ri.getInsumo().getNombre());
-                    insumoDTO.setMarcaInsumo(ri.getInsumo().getMarca());
-                    insumoDTO.setPrecioUnitario(ri.getInsumo().getPrecio());
+                    //insumoDTO.setMarcaInsumo(ri.getInsumo().getMarca());
+                    //insumoDTO.setPrecioUnitario(ri.getInsumo().getPrecio());
                     return insumoDTO;
                 })
                 .collect(Collectors.toList());
@@ -159,7 +159,7 @@ public class RecetaService {
 
             recetaInsumo.setCantidad(insumoDTO.getCantidad());
             recetaInsumo.setUnidadMedida(insumoDTO.getUnidadMedida());
-            recetaInsumo.setCosto(recetaInsumo.getInsumo().getPrecio().multiply(insumoDTO.getCantidad()));
+            //recetaInsumo.setCosto(recetaInsumo.getInsumo().getPrecio().multiply(insumoDTO.getCantidad()));
 
             if (recetaInsumo.getId() == null) {
                 receta.getRecetaInsumos().add(recetaInsumo);

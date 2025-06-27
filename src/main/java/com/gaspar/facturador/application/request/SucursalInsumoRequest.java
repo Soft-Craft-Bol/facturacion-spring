@@ -1,26 +1,22 @@
 package com.gaspar.facturador.application.request;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Data;
-
 import java.math.BigDecimal;
 import java.util.Date;
 
 @Data
 public class SucursalInsumoRequest {
-    private Integer sucursalId;
-    private Long insumoId;
+    @NotNull(message = "El ID de la sucursal es obligatorio")
+    private Long sucursalId;
+
+    @NotNull(message = "La cantidad es obligatoria")
+    @Positive(message = "La cantidad debe ser mayor a cero")
     private BigDecimal cantidad;
 
-    @NotNull(message = "El stock mínimo es requerido")
+    @Positive(message = "El stock mínimo debe ser mayor a cero")
     private Integer stockMinimo;
 
-    @NotNull(message = "La fecha de ingreso es requerida")
-    private Date fechaIngreso;
-
-    @NotNull(message = "La fecha de vencimiento es requerida")
     private Date fechaVencimiento;
-
-    @NotNull(message = "La fecha de última adquisición es requerida")
-    private Date ultimaAdquisicion;
 }

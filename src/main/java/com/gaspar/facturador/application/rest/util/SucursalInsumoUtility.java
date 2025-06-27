@@ -43,11 +43,11 @@ public class SucursalInsumoUtility {
             InsumoWithQuantityDTO insumoDTO = new InsumoWithQuantityDTO();
             insumoDTO.setId(sucursalInsumo.getInsumo().getId());
             insumoDTO.setNombre(sucursalInsumo.getInsumo().getNombre());
-            insumoDTO.setProveedor(sucursalInsumo.getInsumo().getProveedor());
-            insumoDTO.setMarca(sucursalInsumo.getInsumo().getMarca());
-            insumoDTO.setPrecio(sucursalInsumo.getInsumo().getPrecio());
+            //insumoDTO.setProveedor(sucursalInsumo.getInsumo().getProveedor());
+            //insumoDTO.setMarca(sucursalInsumo.getInsumo().getMarca());
+            //insumoDTO.setPrecio(sucursalInsumo.getInsumo().getPrecio());
             insumoDTO.setUnidades(sucursalInsumo.getInsumo().getUnidades());
-            insumoDTO.setDescripcion(sucursalInsumo.getInsumo().getDescripcion());
+            //insumoDTO.setDescripcion(sucursalInsumo.getInsumo().getDescripcion());
             insumoDTO.setImagen(sucursalInsumo.getInsumo().getImagen());
             insumoDTO.setCantidad(sucursalInsumo.getCantidad());
 

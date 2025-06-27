@@ -35,4 +35,9 @@ public class ClienteRepository implements IClienteRepository {
     public void deleteById(Integer id){
             this.clienteCrudRepository.deleteById(id);
     };
+
+    @Override
+    public Optional<ClienteEntity> findByNumeroDocumento(Long numeroDocumento) {
+        return clienteCrudRepository.findByNumeroDocumento(numeroDocumento);
+    }
 }

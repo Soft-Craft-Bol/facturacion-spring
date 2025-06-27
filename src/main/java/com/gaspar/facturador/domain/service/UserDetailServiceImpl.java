@@ -196,32 +196,31 @@ public class UserDetailServiceImpl implements UserDetailsService {
         UserEntity userEntity = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
+        // Actualizar campos básicos
         userEntity.setUsername(userDTO.getUsername());
         userEntity.setFirstName(userDTO.getFirstName());
         userEntity.setLastName(userDTO.getLastName());
         userEntity.setEmail(userDTO.getEmail());
         userEntity.setTelefono(userDTO.getTelefono());
         userEntity.setPhoto(userDTO.getPhoto());
-        userEntity.setRoles(userDTO.getRoles().stream()
-                .map(role -> roleRepository.findByRoleEnum(RoleEnum.valueOf(role))
-                        .orElseThrow(() -> new IllegalArgumentException("Role not found: " + role)))
-                .collect(Collectors.toSet()));
+
+        // Actualizar roles solo si vienen en el DTO
+        if (userDTO.getRoles() != null && !userDTO.getRoles().isEmpty()) {
+            Set<RoleEntity> roles = userDTO.getRoles().stream()
+                    .map(roleName -> {
+                        try {
+                            return roleRepository.findByRoleEnum(RoleEnum.valueOf(roleName))
+                                    .orElseThrow(() -> new IllegalArgumentException("Role not found: " + roleName));
+                        } catch (IllegalArgumentException e) {
+                            throw new IllegalArgumentException("Invalid role name: " + roleName);
+                        }
+                    })
+                    .collect(Collectors.toSet());
+            userEntity.setRoles(roles);
+        }
 
         UserEntity updatedUser = userRepository.save(userEntity);
-
-        UserDTO updatedUserDTO = new UserDTO();
-        updatedUserDTO.setId(updatedUser.getId());
-        updatedUserDTO.setUsername(updatedUser.getUsername());
-        updatedUserDTO.setFirstName(updatedUser.getFirstName());
-        updatedUserDTO.setLastName(updatedUser.getLastName());
-        updatedUserDTO.setEmail(updatedUser.getEmail());
-        updatedUserDTO.setTelefono(updatedUser.getTelefono());
-        updatedUserDTO.setPhoto(updatedUser.getPhoto());
-        updatedUserDTO.setRoles(updatedUser.getRoles().stream()
-                .map(role -> role.getRoleEnum().name())
-                .collect(Collectors.toSet()));
-
-        return updatedUserDTO;
+        return convertToDTO(updatedUser);
     }
 
     //Obtener los usuarios por su id
@@ -247,6 +246,8 @@ public class UserDetailServiceImpl implements UserDetailsService {
         List<UserEntity> users = userRepository.findByRolesRoleEnum(RoleEnum.VENDEDOR);
         return users.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
+
+
     private UserDTO convertToDTO(UserEntity user) {
         UserDTO dto = new UserDTO();
         dto.setId(user.getId());

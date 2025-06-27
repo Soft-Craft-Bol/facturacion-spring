@@ -17,6 +17,7 @@ import java.sql.Date;
 @AllArgsConstructor
 @NoArgsConstructor
 @ToString
+@Table(name = "egresos")
 public class EgresosEntity {//USAR
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
