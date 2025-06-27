@@ -1,12 +1,12 @@
 package com.gaspar.facturador.domain.service;
 
 import com.gaspar.facturador.application.request.VentaSinFacturaRequest;
+import com.gaspar.facturador.application.response.ClienteFrecuenteDTO;
+import com.gaspar.facturador.domain.repository.IClienteRepository;
 import com.gaspar.facturador.persistence.PuntoVentaRepository;
-import com.gaspar.facturador.persistence.crud.ItemCrudRepository;
-import com.gaspar.facturador.persistence.crud.SucursalItemCrudRepository;
-import com.gaspar.facturador.persistence.crud.UserRepository;
-import com.gaspar.facturador.persistence.crud.VentaCrudRepository;
+import com.gaspar.facturador.persistence.crud.*;
 import com.gaspar.facturador.persistence.dto.TotalVentasPorDiaDTO;
+import com.gaspar.facturador.persistence.dto.VentaFiltroDTO;
 import com.gaspar.facturador.persistence.dto.VentaHoyDTO;
 import com.gaspar.facturador.persistence.entity.*;
 import com.gaspar.facturador.persistence.entity.enums.TipoComprobanteEnum;
@@ -34,13 +34,15 @@ public class VentaService {
     private final PuntoVentaRepository puntoVentaRepository;
     private final ItemCrudRepository itemCrudRepository;
     private final SucursalItemCrudRepository sucursalItemCrudRepository;
+    private final ClienteCrudRepository clienteCrudRepository;
 
-    public VentaService(VentaCrudRepository ventasRepository, UserRepository userRepository, PuntoVentaRepository puntoVentaRepository, ItemCrudRepository itemCrudRepository, SucursalItemCrudRepository sucursalItemCrudRepository){
+    public VentaService(VentaCrudRepository ventasRepository, UserRepository userRepository, PuntoVentaRepository puntoVentaRepository, ItemCrudRepository itemCrudRepository, SucursalItemCrudRepository sucursalItemCrudRepository, ClienteCrudRepository clienteCrudRepository){
         this.ventasRepository = ventasRepository;
         this.userRepository = userRepository;
         this.puntoVentaRepository = puntoVentaRepository;
         this.itemCrudRepository = itemCrudRepository;
         this.sucursalItemCrudRepository=sucursalItemCrudRepository;
+        this.clienteCrudRepository = clienteCrudRepository;
     }
 
     @Transactional
@@ -60,7 +62,10 @@ public class VentaService {
 
         VentasEntity venta = new VentasEntity();
         venta.setFecha(new Date());
-        venta.setCliente(request.getCliente());
+        ClienteEntity cliente = clienteCrudRepository.findById(request.getIdCliente())
+                .orElseThrow(() -> new IllegalArgumentException("Cliente con ID " + request.getIdCliente() + " no encontrado"));
+        venta.setCliente(cliente);
+
 
         try {
             String tipoComprobante = request.getTipoComprobante().toUpperCase();
@@ -114,7 +119,10 @@ public class VentaService {
 
             VentasDetalleEntity detalle = new VentasDetalleEntity();
             detalle.setVenta(venta);
-            detalle.setIdProducto(item.getIdProducto());
+            ItemEntity producto = itemCrudRepository.findById(item.getIdProducto())
+                    .orElseThrow(() -> new IllegalArgumentException("Producto con ID " + item.getIdProducto() + " no encontrado"));
+
+            detalle.setProducto(producto);
             detalle.setCantidad(item.getCantidad());
             detalle.setMontoDescuento(item.getMontoDescuento());
             detalle.setDescripcionProducto(sucursalItem.getItem().getDescripcion());
@@ -136,19 +144,33 @@ public class VentaService {
     }
 
 
-    public Page<VentaHoyDTO> getVentasDeHoy(int page, int size) {
+    public Page<VentaHoyDTO> getVentasDeHoy(
+            int page,
+            int size,
+            Integer idPuntoVenta,
+            String estado,
+            String busqueda,
+            String tipoBusqueda) {
+
         LocalDate hoy = LocalDate.now();
         Pageable pageable = PageRequest.of(page, size);
-        Page<VentasEntity> ventasPage = ventasRepository.findByFecha(hoy, pageable);
+
+        Page<VentasEntity> ventasPage = ventasRepository.findByFechaAndFiltros(
+                hoy, idPuntoVenta, estado, busqueda, tipoBusqueda, pageable);
 
         return ventasPage.map(this::mapToVentaHoyDTO);
     }
 
+
     private VentaHoyDTO mapToVentaHoyDTO(VentasEntity venta) {
         VentaHoyDTO dto = new VentaHoyDTO();
         dto.setIdVenta(venta.getId());
-        dto.setCodigoCliente(venta.getCliente());
-        dto.setNombreRazonSocial(venta.getCliente());
+        ClienteEntity cliente = venta.getCliente();
+        if (cliente != null) {
+            dto.setCodigoCliente(cliente.getCodigoCliente());
+            dto.setNombreRazonSocial(cliente.getNombreRazonSocial());
+        }
+
 
         Date fechaVenta = venta.getFecha();
         LocalDateTime fechaEmision = fechaVenta.toInstant()
@@ -185,5 +207,92 @@ public class VentaService {
     public List<TotalVentasPorDiaDTO> obtenerTotalesVentasPorDia() {
         return ventasRepository.findVentasAgrupadasPorDia();
     }
+    public List<ClienteFrecuenteDTO> obtenerTop10ClientesFrecuentes() {
+        return ventasRepository.findTop10ClientesFrecuentes();
+    }
 
+
+    public Page<VentaFiltroDTO> filtrarVentas(
+            Long idPuntoVenta,
+            LocalDate fecha,
+            String estado,
+            String productoNombre,
+            String nombreCliente,
+            int page,
+            int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        // Convertir LocalDate a Date para la consulta
+        Date fechaInicio = fecha != null ?
+                Date.from(fecha.atStartOfDay(ZoneId.systemDefault()).toInstant()) : null;
+        Date fechaFin = fecha != null ?
+                Date.from(fecha.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()) : null;
+
+        // Consulta con filtros
+        Page<VentasEntity> ventasPage = ventasRepository.findByFiltros(
+                idPuntoVenta,
+                fechaInicio,
+                fechaFin,
+                estado,
+                productoNombre,
+                nombreCliente,
+                pageable);
+
+        return ventasPage.map(this::mapToVentaFiltroDTO);
+    }
+
+    private VentaFiltroDTO mapToVentaFiltroDTO(VentasEntity venta) {
+        VentaFiltroDTO dto = new VentaFiltroDTO();
+        dto.setIdVenta(venta.getId());
+        dto.setFechaInicio(venta.getFecha().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
+
+        // Mapear datos del punto de venta
+        if (venta.getPuntoVenta() != null) {
+            dto.setIdPuntoVenta(Long.valueOf(venta.getPuntoVenta().getId()));
+            dto.setNombrePuntoVenta(venta.getPuntoVenta().getNombre());
+            if (venta.getPuntoVenta().getSucursal() != null) {
+                dto.setNombreSucursal(venta.getPuntoVenta().getSucursal().getNombre());
+            }
+        }
+
+        // Mapear datos del vendedor
+        if (venta.getVendedor() != null) {
+            dto.setIdUsuario(venta.getVendedor().getId());
+            dto.setNombreUsuario(venta.getVendedor().getUsername());
+        }
+
+        // Mapear datos del cliente
+        if (venta.getCliente() != null) {
+            dto.setCodigoCliente(venta.getCliente().getCodigoCliente());
+            dto.setNombreCliente(venta.getCliente().getNombreRazonSocial());
+        }
+
+        dto.setTipoComprobante(venta.getTipoComprobante());
+        dto.setMetodoPago(venta.getMetodoPago());
+        dto.setEstado(venta.getEstado() != null ? venta.getEstado() :
+                (venta.getFactura() != null ? venta.getFactura().getEstado() : null));
+
+        // Mapear detalles
+        dto.setDetalles(venta.getDetalles().stream().map(detalle -> {
+            VentaFiltroDTO.VentaDetalleDTO detalleDTO = new VentaFiltroDTO.VentaDetalleDTO();
+            detalleDTO.setIdProducto(Long.valueOf(detalle.getProducto().getId()));
+            detalleDTO.setDescripcionProducto(detalle.getDescripcionProducto());
+            detalleDTO.setCantidad(detalle.getCantidad());
+            detalleDTO.setPrecioUnitario(detalle.getPrecioUnitario());
+            detalleDTO.setMontoDescuento(detalle.getMontoDescuento());
+            detalleDTO.setSubTotal(detalle.getCantidad().multiply(detalle.getPrecioUnitario())
+                    .subtract(detalle.getMontoDescuento()));
+            return detalleDTO;
+        }).collect(Collectors.toList()));
+
+        // Calcular monto total
+        BigDecimal montoTotal = dto.getDetalles().stream()
+                .map(VentaFiltroDTO.VentaDetalleDTO::getSubTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        dto.setMontoMinimo(montoTotal);
+        dto.setMontoMaximo(montoTotal);
+
+        return dto;
+    }
 }

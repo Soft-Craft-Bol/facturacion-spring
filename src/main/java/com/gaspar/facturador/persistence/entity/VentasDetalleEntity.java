@@ -23,7 +23,9 @@ public class VentasDetalleEntity {
     @JsonBackReference
     private VentasEntity venta;
 
-    private Integer idProducto;
+    @ManyToOne
+    @JoinColumn(name="id_producto", nullable = false)
+    private ItemEntity producto;
     private BigDecimal cantidad;
     private BigDecimal montoDescuento;
     private String descripcionProducto;

@@ -1,7 +1,11 @@
 package com.gaspar.facturador.application.rest.controller;
 
 import com.gaspar.facturador.application.request.VentaSinFacturaRequest;
+import com.gaspar.facturador.application.response.ClienteFrecuenteDTO;
+import com.gaspar.facturador.application.response.ProductoMasVendidoDTO;
+import com.gaspar.facturador.domain.service.ProductoService;
 import com.gaspar.facturador.persistence.PuntoVentaRepository;
+import com.gaspar.facturador.persistence.crud.VentasDetalleRepository;
 import com.gaspar.facturador.persistence.dto.TotalVentasPorDiaDTO;
 import com.gaspar.facturador.persistence.dto.VentaHoyDTO;
 import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
@@ -22,10 +26,12 @@ public class VentaController {
 
     private final VentaService ventaService;
     private final PuntoVentaRepository puntoVentaRepository;
+    private final ProductoService productoService;
 
-    public VentaController(VentaService ventaService, PuntoVentaRepository puntoVentaRepository) {
+    public VentaController(VentaService ventaService, PuntoVentaRepository puntoVentaRepository, ProductoService productoService) {
         this.ventaService = ventaService;
         this.puntoVentaRepository = puntoVentaRepository;
+        this.productoService = productoService;
     }
 
 
@@ -52,8 +58,15 @@ public class VentaController {
     @GetMapping("/hoy")
     public ResponseEntity<Page<VentaHoyDTO>> getVentasDeHoy(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        Page<VentaHoyDTO> ventas = ventaService.getVentasDeHoy(page, size);
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Integer idPuntoVenta,
+            @RequestParam(required = false) String estado,
+            @RequestParam(required = false) String busqueda,
+            @RequestParam(required = false) String tipoBusqueda) {
+
+        Page<VentaHoyDTO> ventas = ventaService.getVentasDeHoy(
+                page, size, idPuntoVenta, estado, busqueda, tipoBusqueda);
+
         return ResponseEntity.ok(ventas);
     }
 
@@ -63,4 +76,14 @@ public class VentaController {
         return ResponseEntity.ok(totales);
     }
 
+    @GetMapping("/mas-vendidos")
+    public List<ProductoMasVendidoDTO> obtenerProductosMasVendidos(@RequestParam(defaultValue = "10") int limite) {
+        return productoService.obtenerTopProductosMasVendidos(limite);
+    }
+
+    @GetMapping("/clientes-frecuentes")
+    public ResponseEntity<List<ClienteFrecuenteDTO>> obtenerClientesFrecuentes() {
+        List<ClienteFrecuenteDTO> clientesFrecuentes = ventaService.obtenerTop10ClientesFrecuentes();
+        return ResponseEntity.ok(clientesFrecuentes);
+    }
 }

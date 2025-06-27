@@ -31,7 +31,4 @@ public class SucursalInsumoEntity {
 
     private Date fechaIngreso;
     private Date fechaVencimiento;
-    private Date ultimaAdquisicion;
-
-
 }

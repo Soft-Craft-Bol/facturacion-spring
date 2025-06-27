@@ -36,7 +36,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList("https://www.inpasep.com", "http://localhost:5173"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Cache-Control", "Content-Type"));
         configuration.setAllowCredentials(true);
 
@@ -66,6 +66,7 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.GET, "/**").permitAll();
                     http.requestMatchers(HttpMethod.DELETE, "/**").permitAll();
                     http.requestMatchers(HttpMethod.PUT, "/**").permitAll();
+                    http.requestMatchers(HttpMethod.PATCH, "/**").permitAll();
 
                     // EndPoints Privados
                     http.requestMatchers(HttpMethod.GET, "/method/get").hasAuthority("READ");

@@ -44,4 +44,6 @@ public class DespachoEntity {
     protected void onCreate() {
         this.fechaEnvio = Date.valueOf(LocalDateTime.now().toLocalDate());
     }
+
+
 }

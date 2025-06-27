@@ -2,6 +2,7 @@ package com.gaspar.facturador.persistence.dto;
 
 import lombok.*;
 
+import java.util.HashSet;
 import java.util.Set;
 
 @NoArgsConstructor
@@ -17,5 +18,5 @@ public class UserDTO {
     private String email;
     private Long telefono;
     private String photo;
-    private Set<String> roles;
+    private Set<String> roles = new HashSet<>();
 }

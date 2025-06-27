@@ -9,8 +9,7 @@ import java.util.List;
 @Data
 public class VentaSinFacturaRequest {
 
-    @NotBlank(message = "El usuario no puede estar vacío")
-    private String cliente;
+    private Integer idCliente;
 
     @NotNull(message = "El ID del punto de venta es obligatorio")
     private Long idPuntoVenta;

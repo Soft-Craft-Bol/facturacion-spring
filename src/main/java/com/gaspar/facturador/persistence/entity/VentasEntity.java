@@ -32,7 +32,9 @@ public class VentasEntity {
 
     private String estado;
 
-    private String cliente;
+    @ManyToOne
+    @JoinColumn(name = "cliente_id", nullable = false)
+    private ClienteEntity cliente;
 
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference

@@ -158,7 +158,7 @@ public class GeneraFacturaService {
         return Utils.obtenerCUF(datosFacturaCUF, cufd.getCodigoControl());
     }
 
-    public byte[] obtenerArchivo(FacturaElectronicaCompraVenta factura) throws Exception {
+    public byte[] obtenerArchivo(FacturaElectronicaCompraVenta factura, boolean guardarArchivos) throws Exception {
         // 1. Generar XML
         byte[] xml = this.getXmlBytes(factura);
         // 2. Firmar XML
@@ -167,7 +167,7 @@ public class GeneraFacturaService {
         XmlObject xmlFacturaObj = XmlObject.Factory.parse(new String(xmlFirmado));
         this.validarContraXSD(xmlFacturaObj);
         // 4. Comprimir XML
-        byte[] xmlComprimidoZip = this.comprimirXMLFactura(xmlFirmado, factura.getCabecera().getCuf());
+        byte[] xmlComprimidoZip = this.comprimirXMLFactura(xmlFirmado, factura.getCabecera().getCuf(), guardarArchivos);
 
         return xmlComprimidoZip;
     }
@@ -208,11 +208,20 @@ public class GeneraFacturaService {
         }
     }
 
-    private byte[] comprimirXMLFactura(byte[] xmlFacturaFirmada, String cuf) throws Exception {
-        File tempFacturaXml = this.escribirArchivo(xmlFacturaFirmada, cuf);
-        File archivoComprimido = this.obtenerArchivoComprimido(tempFacturaXml);
-        byte[] comprimidoByte = this.compresionArchivo(archivoComprimido);
-        return comprimidoByte;
+    private byte[] comprimirXMLFactura(byte[] xmlFacturaFirmada, String cuf, boolean guardarArchivos) throws Exception {
+        if (guardarArchivos) {
+            File tempFacturaXml = this.escribirArchivo(xmlFacturaFirmada, cuf);
+            File archivoComprimido = this.obtenerArchivoComprimido(tempFacturaXml);
+            byte[] comprimidoByte = this.compresionArchivo(archivoComprimido);
+            return comprimidoByte;
+        } else {
+            // Comprimir en memoria sin guardar archivos
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream)) {
+                gzipOutputStream.write(xmlFacturaFirmada);
+            }
+            return byteArrayOutputStream.toByteArray();
+        }
     }
 
     public void limpiarFacturasTemporales() {

@@ -43,7 +43,6 @@ public class EnvioPaquetesService {
             long codigoEvento,
             String cafc
     ) throws RemoteException {
-        // Verificar la comunicación con el SIAT
         RespuestaComunicacion respuestaComunicacion = servicioFacturacion.verificarComunicacion();
         if (!respuestaComunicacion.isTransaccion()) {
             throw new ProcessException("No se pudo conectar con los servidores del S.I.N.");
@@ -59,8 +58,6 @@ public class EnvioPaquetesService {
 
         // Calcular el hash del archivo
         String sha2 = Utils.obtenerSHA2(comprimidoByte);
-        System.out.println("Hash generado: " + sha2);
-
 
         // Crear la solicitud de recepción masiva
         SolicitudRecepcionPaquete solicitudRecepcionPaquete = new SolicitudRecepcionPaquete();
@@ -83,21 +80,18 @@ public class EnvioPaquetesService {
         solicitudRecepcionPaquete.setHashArchivo(sha2);
         solicitudRecepcionPaquete.setArchivo(comprimidoByte);
 
-
         RespuestaRecepcion respuestaRecepcion = servicioFacturacion.recepcionPaqueteFactura(solicitudRecepcionPaquete);
 
         // Verificar la respuesta
         if (respuestaRecepcion != null) {
-            System.out.println("Código estado SIAT: " + respuestaRecepcion.getCodigoEstado());
-            String codigoRecepcion = respuestaRecepcion.getCodigoRecepcion(); // o el método correcto según la clase
-            System.out.println("Código de recepción: " + codigoRecepcion);
-            if (respuestaRecepcion.getMensajesList() != null && !respuestaRecepcion.getMensajesList().isEmpty()) {
-                StringBuilder mensajeError = new StringBuilder("Error al enviar el paquete de facturas: ");
+            if (respuestaRecepcion.getMensajesList() != null) {
+
                 for (MensajeRecepcion mensaje : respuestaRecepcion.getMensajesList()) {
-                    mensajeError.append(mensaje.getDescripcion()).append(". ");
+                    System.out.println("  Tipo: " + mensaje.getClass());
                 }
-                System.out.println(mensajeError.toString()); // Imprimir en consola
-                throw new ProcessException(mensajeError.toString());
+                if (respuestaRecepcion.getCodigoEstado() == 902) {
+                    System.out.println("ADVERTENCIA: El paquete fue recibido con observaciones");
+                }
             }
         } else {
             System.out.println("Error: La respuesta de SIAT es nula.");

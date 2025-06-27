@@ -15,18 +15,18 @@ import com.gaspar.facturador.domain.DetalleCompraVenta;
 import com.gaspar.facturador.domain.FacturaElectronicaCompraVenta;
 import com.gaspar.facturador.domain.helpers.Utils;
 import com.gaspar.facturador.domain.repository.ICufdRepository;
+import com.gaspar.facturador.domain.repository.IEventoSignificativoRepository;
 import com.gaspar.facturador.domain.repository.IPuntoVentaRepository;
 import com.gaspar.facturador.domain.service.emision.EnvioFacturaService;
 import com.gaspar.facturador.domain.service.emision.GeneraFacturaService;
 import com.gaspar.facturador.persistence.FacturaRepository;
 import com.gaspar.facturador.persistence.dto.FacturaDetalleDTO;
-import com.gaspar.facturador.persistence.entity.CufdEntity;
-import com.gaspar.facturador.persistence.entity.FacturaDetalleEntity;
-import com.gaspar.facturador.persistence.entity.FacturaEntity;
-import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
+import com.gaspar.facturador.persistence.entity.*;
 import com.gaspar.facturador.utils.FacturaCompressor;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import com.gaspar.facturador.persistence.dto.FacturaDTO;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.io.IOException;
@@ -55,6 +55,7 @@ public class FacturacionService {
     private final FacturaRepository facturaRepository;
     private final IPuntoVentaRepository puntoVentaRepository;
     private final ICufdRepository cufdRepository;
+    private final IEventoSignificativoRepository eventoRepository;
     private final VerificacionPaqueteService verificacionPaqueteService;
     private final VentaService ventaService;
     private final CufdService cufdService;
@@ -64,7 +65,7 @@ public class FacturacionService {
             AppConfig appConfig, GeneraFacturaService generaFacturaService,
             EnvioFacturaService envioFacturaService, EnvioPaquetesService envioPaquetesService, AnulacionFacturaService anulacionFacturaService, ReversionFacturaService reversionFacturaService, FacturaRepository facturaRepository,
             IPuntoVentaRepository puntoVentaRepository,
-            ICufdRepository cufdRepository, VerificacionPaqueteService verificacionPaqueteService, VentaService ventaService, CufdService cufdService
+            ICufdRepository cufdRepository, IEventoSignificativoRepository eventoRepository, VerificacionPaqueteService verificacionPaqueteService, VentaService ventaService, CufdService cufdService
     ) {
         this.appConfig = appConfig;
         this.generaFacturaService = generaFacturaService;
@@ -75,122 +76,157 @@ public class FacturacionService {
         this.facturaRepository = facturaRepository;
         this.puntoVentaRepository = puntoVentaRepository;
         this.cufdRepository = cufdRepository;
+        this.eventoRepository = eventoRepository;
         this.verificacionPaqueteService = verificacionPaqueteService;
         this.ventaService = ventaService;
         this.cufdService = cufdService;
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public FacturaResponse emitirFactura(VentaRequest ventaRequest) throws Exception {
+        // 1. Validar punto de venta
+        PuntoVentaEntity puntoVenta = puntoVentaRepository.findById(ventaRequest.getIdPuntoVenta())
+                .orElseThrow(() -> new ProcessException("Punto venta no encontrado"));
 
-        Optional<PuntoVentaEntity> puntoVenta = this.puntoVentaRepository.findById(ventaRequest.getIdPuntoVenta());
-        if (puntoVenta.isEmpty()) throw new ProcessException("Punto venta no encontrado");
+        // 2. Obtener CUFD vigente
+        CufdEntity cufd = obtenerCufdVigente(puntoVenta);
 
-        Optional<CufdEntity> cufd = cufdRepository.findActual(puntoVenta.get());
+        // 3. Generar factura electrónica
+        FacturaElectronicaCompraVenta factura = generaFacturaService.llenarDatos(ventaRequest, cufd);
 
-        if (cufd.isEmpty() || cufd.get().getFechaVigencia().isBefore(LocalDateTime.now())) {
-            this.cufdService.obtenerCufd(ventaRequest.getIdPuntoVenta());
-            cufd = cufdRepository.findActual(puntoVenta.get());
+        // 4. Generar XML para posible diagnóstico de errores
+        String xmlContent = new String(generaFacturaService.getXmlBytes(factura));
 
-            // Validar nuevamente después de obtener uno nuevo
-            if (cufd.isEmpty() || cufd.get().getFechaVigencia().isBefore(LocalDateTime.now())) {
-                throw new ProcessException("No se pudo obtener un CUFD vigente");
+        try {
+            // 5. Enviar factura al SIAT
+            byte[] xmlComprimidoZip = generaFacturaService.obtenerArchivo(factura, false);
+            RespuestaRecepcion respuesta = envioFacturaService.enviar(puntoVenta, cufd, xmlComprimidoZip);
+
+            // 6. Validar respuesta del SIAT
+            if (respuesta.getCodigoEstado() != 908) {
+                String mensajeError = "Error al enviar factura al SIAT: " +
+                        respuesta.getCodigoEstado() + " - " +
+                        respuesta.getMensajesList().stream()
+                                .map(MensajeRecepcion::getDescripcion)
+                                .collect(Collectors.joining(", "));
+                throw new ProcessException(mensajeError);
             }
+
+            // 7. Persistir factura en base de datos local
+            FacturaEntity facturaEntity = persistirFactura(factura);
+
+            // 8. Registrar venta
+            registrarVenta(ventaRequest, facturaEntity.getId());
+
+            // 9. Retornar respuesta exitosa
+            return construirRespuestaExitosa(factura, xmlContent, respuesta);
+
+        } catch (Exception e) {
+            // Manejar excepciones específicas de envío de factura
+            String mensajeError = "Error al enviar factura al SIAT: " + e.getMessage();
+            throw new ProcessException(mensajeError);
+        } finally {
+            // Limpiar la lista de facturas temporales
+            generaFacturaService.limpiarFacturasTemporales();
+        }
+    }
+
+    private CufdEntity obtenerCufdVigente(PuntoVentaEntity puntoVenta) throws Exception {
+        Optional<CufdEntity> cufdOpt = cufdRepository.findActual(puntoVenta);
+
+        if (cufdOpt.isEmpty() || cufdOpt.get().getFechaVigencia().isBefore(LocalDateTime.now())) {
+            cufdService.obtenerCufd(puntoVenta.getId());
+            cufdOpt = cufdRepository.findActual(puntoVenta);
         }
 
-        // Generar la factura
-        FacturaElectronicaCompraVenta factura = this.generaFacturaService.llenarDatos(ventaRequest, cufd.get());
+        return cufdOpt.orElseThrow(() -> new ProcessException("No se pudo obtener un CUFD vigente"));
+    }
 
+    private FacturaEntity persistirFactura(FacturaElectronicaCompraVenta factura) {
+        FacturaEntity entity = new FacturaEntity();
 
-        // Convertir FacturaElectronicaCompraVenta a FacturaEntity
-        FacturaEntity facturaEntity = new FacturaEntity();
-        facturaEntity.setNitEmisor(factura.getCabecera().getNitEmisor());
-        facturaEntity.setRazonSocialEmisor(factura.getCabecera().getRazonSocialEmisor());
-        facturaEntity.setMunicipio(factura.getCabecera().getMunicipio());
-        facturaEntity.setTelefono(factura.getCabecera().getTelefono());
-        facturaEntity.setNumeroFactura(factura.getCabecera().getNumeroFactura());
-        facturaEntity.setCuf(factura.getCabecera().getCuf());
-        facturaEntity.setCufd(factura.getCabecera().getCufd());
-        facturaEntity.setCodigoSucursal(factura.getCabecera().getCodigoSucursal());
-        facturaEntity.setDireccion(factura.getCabecera().getDireccion());
-        facturaEntity.setCodigoPuntoVenta(factura.getCabecera().getCodigoPuntoVenta());
-        facturaEntity.setFechaEmision(Utils.xMLGregorianCalendarToLocalDateTime(factura.getCabecera().getFechaEmision()));
-        facturaEntity.setNombreRazonSocial(factura.getCabecera().getNombreRazonSocial());
-        facturaEntity.setCodigoTipoDocumentoIdentidad(factura.getCabecera().getCodigoTipoDocumentoIdentidad());
-        facturaEntity.setNumeroDocumento(factura.getCabecera().getNumeroDocumento());
-        facturaEntity.setComplemento(factura.getCabecera().getComplemento());
-        facturaEntity.setCodigoCliente(factura.getCabecera().getCodigoCliente());
-        facturaEntity.setCodigoMetodoPago(factura.getCabecera().getCodigoMetodoPago());
-        facturaEntity.setNumeroTarjeta(factura.getCabecera().getNumeroTarjeta());
-        facturaEntity.setMontoTotal(factura.getCabecera().getMontoTotal());
-        facturaEntity.setMontoTotalSujetoIva(factura.getCabecera().getMontoTotalSujetoIva());
-        facturaEntity.setMontoGiftCard(factura.getCabecera().getMontoGiftCard());
-        facturaEntity.setDescuentoAdicional(factura.getCabecera().getDescuentoAdicional());
-        facturaEntity.setCodigoExcepcion(factura.getCabecera().getCodigoExcepcion());
-        facturaEntity.setCafc(factura.getCabecera().getCafc());
-        facturaEntity.setCodigoMoneda(factura.getCabecera().getCodigoMoneda());
-        facturaEntity.setTipoCambio(factura.getCabecera().getTipoCambio());
-        facturaEntity.setMontoTotalMoneda(factura.getCabecera().getMontoTotalMoneda());
-        facturaEntity.setLeyenda(factura.getCabecera().getLeyenda());
-        facturaEntity.setUsuario(factura.getCabecera().getUsuario());
-        facturaEntity.setCodigoDocumentoSector(factura.getCabecera().getCodigoDocumentoSector());
-        facturaEntity.setEstado("EMITIDA"); // Estado inicial
+        // Mapear cabecera
+        entity.setNitEmisor(factura.getCabecera().getNitEmisor());
+        entity.setRazonSocialEmisor(factura.getCabecera().getRazonSocialEmisor());
+        entity.setMunicipio(factura.getCabecera().getMunicipio());
+        entity.setTelefono(factura.getCabecera().getTelefono());
+        entity.setNumeroFactura(factura.getCabecera().getNumeroFactura());
+        entity.setCuf(factura.getCabecera().getCuf());
+        entity.setCufd(factura.getCabecera().getCufd());
+        entity.setCodigoSucursal(factura.getCabecera().getCodigoSucursal());
+        entity.setDireccion(factura.getCabecera().getDireccion());
+        entity.setCodigoPuntoVenta(factura.getCabecera().getCodigoPuntoVenta());
+        entity.setFechaEmision(Utils.xMLGregorianCalendarToLocalDateTime(factura.getCabecera().getFechaEmision()));
+        entity.setNombreRazonSocial(factura.getCabecera().getNombreRazonSocial());
+        entity.setCodigoTipoDocumentoIdentidad(factura.getCabecera().getCodigoTipoDocumentoIdentidad());
+        entity.setNumeroDocumento(factura.getCabecera().getNumeroDocumento());
+        entity.setComplemento(factura.getCabecera().getComplemento());
+        entity.setCodigoCliente(factura.getCabecera().getCodigoCliente());
+        entity.setCodigoMetodoPago(factura.getCabecera().getCodigoMetodoPago());
+        entity.setNumeroTarjeta(factura.getCabecera().getNumeroTarjeta());
+        entity.setMontoTotal(factura.getCabecera().getMontoTotal());
+        entity.setMontoTotalSujetoIva(factura.getCabecera().getMontoTotalSujetoIva());
+        entity.setMontoGiftCard(factura.getCabecera().getMontoGiftCard());
+        entity.setDescuentoAdicional(factura.getCabecera().getDescuentoAdicional());
+        entity.setCodigoExcepcion(factura.getCabecera().getCodigoExcepcion());
+        entity.setCafc(factura.getCabecera().getCafc());
+        entity.setCodigoMoneda(factura.getCabecera().getCodigoMoneda());
+        entity.setTipoCambio(factura.getCabecera().getTipoCambio());
+        entity.setMontoTotalMoneda(factura.getCabecera().getMontoTotalMoneda());
+        entity.setLeyenda(factura.getCabecera().getLeyenda());
+        entity.setUsuario(factura.getCabecera().getUsuario());
+        entity.setCodigoDocumentoSector(factura.getCabecera().getCodigoDocumentoSector());
+        entity.setEstado("EMITIDA");
 
-        // Convertir detalles
-        List<FacturaDetalleEntity> detalles = new ArrayList<>();
-        for (DetalleCompraVenta detalle : factura.getDetalle()) {
-            FacturaDetalleEntity detalleEntity = new FacturaDetalleEntity();
-            detalleEntity.setActividadEconomica(detalle.getActividadEconomica());
-            detalleEntity.setCodigoProductoSin(detalle.getCodigoProductoSin());
-            detalleEntity.setCodigoProducto(detalle.getCodigoProducto());
-            detalleEntity.setDescripcion(detalle.getDescripcion());
-            detalleEntity.setCantidad(detalle.getCantidad());
-            detalleEntity.setUnidadMedida(detalle.getUnidadMedida());
-            detalleEntity.setPrecioUnitario(detalle.getPrecioUnitario());
-            detalleEntity.setMontoDescuento(detalle.getMontoDescuento());
-            detalleEntity.setSubTotal(detalle.getSubTotal());
-            detalleEntity.setNumeroSerie(detalle.getNumeroSerie());
-            detalleEntity.setNumeroImei(detalle.getNumeroImei());
-            detalleEntity.setFactura(facturaEntity);
-            detalles.add(detalleEntity);
-        }
-        facturaEntity.setDetalleList(detalles);
+        // Mapear detalles
+        List<FacturaDetalleEntity> detalles = factura.getDetalle().stream()
+                .map(detalle -> {
+                    FacturaDetalleEntity detalleEntity = new FacturaDetalleEntity();
+                    detalleEntity.setActividadEconomica(detalle.getActividadEconomica());
+                    detalleEntity.setCodigoProductoSin(detalle.getCodigoProductoSin());
+                    detalleEntity.setCodigoProducto(detalle.getCodigoProducto());
+                    detalleEntity.setDescripcion(detalle.getDescripcion());
+                    detalleEntity.setCantidad(detalle.getCantidad());
+                    detalleEntity.setUnidadMedida(detalle.getUnidadMedida());
+                    detalleEntity.setPrecioUnitario(detalle.getPrecioUnitario());
+                    detalleEntity.setMontoDescuento(detalle.getMontoDescuento());
+                    detalleEntity.setSubTotal(detalle.getSubTotal());
+                    detalleEntity.setNumeroSerie(detalle.getNumeroSerie());
+                    detalleEntity.setNumeroImei(detalle.getNumeroImei());
+                    detalleEntity.setFactura(entity);
+                    return detalleEntity;
+                })
+                .collect(Collectors.toList());
 
-        // Guardar la factura y sus detalles
-        FacturaEntity facturaGuardada = facturaRepository.save(facturaEntity);
+        entity.setDetalleList(detalles);
+        return facturaRepository.save(entity);
+    }
 
-        // Obtener el ID de la factura recién creada
-        Long idFactura = facturaGuardada.getId();
+    private void registrarVenta(VentaRequest ventaRequest, Long idFactura) {
+        VentaSinFacturaRequest venta = new VentaSinFacturaRequest();
+        venta.setIdPuntoVenta(ventaRequest.getIdPuntoVenta().longValue());
+        venta.setIdCliente(ventaRequest.getIdCliente());
+        venta.setTipoComprobante(ventaRequest.getTipoComprobante());
+        venta.setMetodoPago(ventaRequest.getMetodoPago());
+        venta.setUsername(ventaRequest.getUsername());
+        venta.setDetalle(ventaRequest.getDetalle());
+        venta.setIdfactura(idFactura);
 
+        ventaService.saveVenta(venta);
+    }
 
-        // Convertir VentaRequest a VentaSinFacturaRequest
-        VentaSinFacturaRequest ventaSinFacturaRequest = new VentaSinFacturaRequest();
-        ventaSinFacturaRequest.setIdPuntoVenta(Long.valueOf(ventaRequest.getIdPuntoVenta()));
-        ventaSinFacturaRequest.setCliente(String.valueOf(ventaRequest.getIdCliente()));
-        ventaSinFacturaRequest.setTipoComprobante(ventaRequest.getTipoComprobante());
-        ventaSinFacturaRequest.setMetodoPago(ventaRequest.getMetodoPago());
-        ventaSinFacturaRequest.setUsername(ventaRequest.getUsername());
-        ventaSinFacturaRequest.setDetalle(ventaRequest.getDetalle());
-        ventaSinFacturaRequest.setIdfactura(idFactura);
+    private FacturaResponse construirRespuestaExitosa(
+            FacturaElectronicaCompraVenta factura,
+            String xmlContent,
+            RespuestaRecepcion respuesta) {
 
-        // Guardar la venta en la tabla de ventas
-        ventaService.saveVenta(ventaSinFacturaRequest);
-
-        // Obtener el XML sin firmar
-        byte[] xmlBytes = this.generaFacturaService.getXmlBytes(factura);
-        String xmlContent = new String(xmlBytes);
-
-        // Continuar con el flujo normal
-        byte[] xmlComprimidoZip = this.generaFacturaService.obtenerArchivo(factura);
-        RespuestaRecepcion respuestaRecepcion = this.envioFacturaService.enviar(puntoVenta.get(), cufd.get(), xmlComprimidoZip);
-
-        // Construir la respuesta
-        FacturaResponse facturaResponse = new FacturaResponse();
-        facturaResponse.setCodigoEstado(respuestaRecepcion.getCodigoEstado());
-        facturaResponse.setCuf(factura.getCabecera().getCuf());
-        facturaResponse.setNumeroFactura(factura.getCabecera().getNumeroFactura());
-        facturaResponse.setXmlContent(xmlContent);
-
-        return facturaResponse;
+        FacturaResponse response = new FacturaResponse();
+        response.setCodigoEstado(respuesta.getCodigoEstado());
+        response.setCuf(factura.getCabecera().getCuf());
+        response.setNumeroFactura(factura.getCabecera().getNumeroFactura());
+        response.setXmlContent(xmlContent);
+        response.setMensaje("Factura emitida correctamente");
+        return response;
     }
 
     public FacturaResponse emitirContingencia(VentaRequest ventaRequest) throws Exception {
@@ -204,10 +240,8 @@ public class FacturacionService {
         FacturaElectronicaCompraVenta factura = this.generaFacturaService.llenarDatos(ventaRequest, cufd.get());
         byte[] xmlBytes = this.generaFacturaService.getXmlBytes(factura);
         String xmlContent = new String(xmlBytes);
-
         // Continuar con el flujo normal
-        byte[] xmlComprimidoZip = this.generaFacturaService.obtenerArchivo(factura);
-
+        byte[] xmlComprimidoZip = this.generaFacturaService.obtenerArchivo(factura, true);
         // Construir la respuesta
         FacturaResponse facturaResponse = new FacturaResponse();
         facturaResponse.setCuf(factura.getCabecera().getCuf());
@@ -217,141 +251,199 @@ public class FacturacionService {
         return facturaResponse;
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public PaquetesResponse enviarPaquetes(EnvioPaqueteRequest envioPaqueteRequest) throws IOException {
-        Optional<PuntoVentaEntity> puntoVenta = this.puntoVentaRepository.findById(envioPaqueteRequest.idPuntoVenta());
-        if (puntoVenta.isEmpty()) throw new ProcessException("Punto de venta no encontrado");
+        try {
+            // 1. Validar y obtener entidades necesarias
+            PuntoVentaEntity puntoVenta = puntoVentaRepository.findById(envioPaqueteRequest.idPuntoVenta())
+                    .orElseThrow(() -> new ProcessException("Punto de venta no encontrado"));
 
-        Optional<CufdEntity> cufd = cufdRepository.findActual(puntoVenta.get());
-        if (cufd.isEmpty()) throw new ProcessException("CUFD vigente no encontrado");
+            CufdEntity cufd = cufdRepository.findActual(puntoVenta)
+                    .orElseThrow(() -> new ProcessException("CUFD vigente no encontrado"));
 
-        int cantidadFacturas = Math.toIntExact(FacturaCompressor.getCantidadArchivosXML());
+            // 2. Obtener el evento significativo relacionado
+            EventoSignificativoEntity evento = eventoRepository.findByCodigoRecepcionEventoAndPuntoVenta(
+                            envioPaqueteRequest.codigoEvento(),
+                            puntoVenta)
+                    .orElseThrow(() -> new ProcessException("Evento significativo no encontrado o no vigente"));
 
+            // 3. Comprimir y enviar paquete
+            byte[] xmlsComprimidosZip = FacturaCompressor.comprimirPaqueteFacturas();
+            int cantidadFacturas = Math.toIntExact(FacturaCompressor.getCantidadArchivosXML());
 
-        byte[] xmlsComprimidosZip = FacturaCompressor.comprimirPaqueteFacturas();
+            RespuestaRecepcion respuestaRecepcion = envioPaquetesService.enviarPaqueteFacturas(
+                    puntoVenta,
+                    cufd,
+                    xmlsComprimidosZip,
+                    cantidadFacturas,
+                    envioPaqueteRequest.codigoEvento(),
+                    envioPaqueteRequest.cafc()
+            );
 
-        RespuestaRecepcion respuestaRecepcion = envioPaquetesService.enviarPaqueteFacturas(
-                puntoVenta.get(),
-                cufd.get(),
-                xmlsComprimidosZip,
-                cantidadFacturas,
-                envioPaqueteRequest.codigoEvento(),
-                envioPaqueteRequest.cafc()
-        );
+            // 4. Crear respuesta
+            PaquetesResponse paquetesResponse = new PaquetesResponse();
+            paquetesResponse.setCodigoEstado(respuestaRecepcion.getCodigoEstado());
+            paquetesResponse.setCodigoRecepcion(respuestaRecepcion.getCodigoRecepcion());
+            paquetesResponse.setCodigoEvento(envioPaqueteRequest.codigoEvento());
+            paquetesResponse.setCantidadFacturasAlmacenadas(cantidadFacturas);
 
-        // Crear y personalizar la respuesta
-        PaquetesResponse paquetesResponse = new PaquetesResponse();
-        paquetesResponse.setCodigoEstado(respuestaRecepcion.getCodigoEstado());
-        paquetesResponse.setCodigoRecepcion(respuestaRecepcion.getCodigoRecepcion());
-        paquetesResponse.setCodigoEvento(envioPaqueteRequest.codigoEvento());
-        paquetesResponse.setCantidadFacturasAlmacenadas(cantidadFacturas);
+            // 5. Determinar si la respuesta es exitosa
+            boolean envioExitoso = (respuestaRecepcion.getCodigoEstado() == 901 ||
+                    respuestaRecepcion.getCodigoEstado() == 902) &&
+                    respuestaRecepcion.getCodigoRecepcion() != null;
 
-        // Personalizar mensajes según el código de estado
-        if (respuestaRecepcion.getCodigoEstado() == 901) {
-            paquetesResponse.setMensaje("Paquete recibido correctamente por el SIAT. Estado: PENDIENTE DE PROCESAMIENTO");
-        } else if (respuestaRecepcion.getCodigoEstado() == 902) {
-            paquetesResponse.setMensaje("Paquete recibido con observaciones. Estado: PENDIENTE DE VALIDACIÓN");
-        } else if (respuestaRecepcion.getCodigoEstado() == 903) {
-            paquetesResponse.setMensaje("Paquete rechazado por el SIAT");
-        } else {
-            paquetesResponse.setMensaje("Estado del paquete desconocido");
-        }
-
-        // Si hay mensajes adicionales del SIAT, concatenarlos
-        if (respuestaRecepcion.getMensajesList() != null && !respuestaRecepcion.getMensajesList().isEmpty()) {
-            String mensajeOriginal = paquetesResponse.getMensaje();
-            StringBuilder mensajeDetallado = new StringBuilder(mensajeOriginal);
-            mensajeDetallado.append(" Detalles: ");
-            for (MensajeRecepcion mensaje : respuestaRecepcion.getMensajesList()) {
-                mensajeDetallado.append(mensaje.getDescripcion()).append(". ");
+            // 6. Actualizar evento significativo si el envío fue exitoso
+            if (envioExitoso) {
+                evento.setCodigoRecepcionPaquete(respuestaRecepcion.getCodigoRecepcion());
+                evento.setCodigoEventoPaquete(envioPaqueteRequest.codigoEvento());
+                evento.setCantidadFacturas(cantidadFacturas);
+                evento.setEtapa("PAQUETE_ENVIADO");
+                evento.setVigente(false); // Marcamos como no vigente después del envío
+                eventoRepository.save(evento);
             }
-            paquetesResponse.setMensaje(mensajeDetallado.toString());
+
+            // 7. Personalizar mensajes según el código de estado
+            String mensajeBase;
+            if (respuestaRecepcion.getCodigoEstado() == 901) {
+                mensajeBase = "Paquete recibido correctamente por el SIAT. Estado: PENDIENTE DE PROCESAMIENTO";
+            } else if (respuestaRecepcion.getCodigoEstado() == 902) {
+                mensajeBase = "Paquete recibido con observaciones. Estado: PENDIENTE DE VALIDACIÓN";
+            } else if (respuestaRecepcion.getCodigoEstado() == 903) {
+                mensajeBase = "Paquete rechazado por el SIAT";
+            } else {
+                mensajeBase = "Estado del paquete desconocido";
+            }
+            paquetesResponse.setMensaje(mensajeBase);
+
+            // 8. Agregar mensajes adicionales del SIAT si existen
+            if (respuestaRecepcion.getMensajesList() != null && !respuestaRecepcion.getMensajesList().isEmpty()) {
+                StringBuilder mensajeDetallado = new StringBuilder(mensajeBase);
+                mensajeDetallado.append(" Detalles: ");
+                for (MensajeRecepcion mensaje : respuestaRecepcion.getMensajesList()) {
+                    mensajeDetallado.append(mensaje.getDescripcion()).append(". ");
+                }
+                paquetesResponse.setMensaje(mensajeDetallado.toString());
+            }
+
+            // 9. Limpieza de archivos temporales
+            this.generaFacturaService.limpiarFacturasTemporales();
+            if (envioExitoso) {
+                limpiarArchivosTemporales();
+            }
+
+            return paquetesResponse;
+        } finally {
+            limpiarArchivosPorTiempo();
         }
-
-        // Limpiar la lista de facturas temporales
-        this.generaFacturaService.limpiarFacturasTemporales();
-
-        return paquetesResponse;
     }
 
-    public PaquetesResponse recibirPaquetes(VentaRequest ventasRequest) throws Exception {
-        Optional<PuntoVentaEntity> puntoVenta = this.puntoVentaRepository.findById(ventasRequest.getIdPuntoVenta());
-        if (puntoVenta.isEmpty()) throw new ProcessException("Punto de venta no encontrado");
+    /**
+     * Limpia archivos temporales de paquetes cuando el envío fue exitoso
+     */
+    private void limpiarArchivosTemporales() {
+        String directorioPaquetes = appConfig.getPathFiles() + "/facturas/paquetes/";
+        File directorio = new File(directorioPaquetes);
 
-        Optional<CufdEntity> cufd = cufdRepository.findActual(puntoVenta.get());
-        if (cufd.isEmpty()) throw new ProcessException("CUFD vigente no encontrado");
+        if (directorio.exists() && directorio.isDirectory()) {
+            File[] archivos = directorio.listFiles((dir, name) ->
+                    name.endsWith(".xml") || name.endsWith(".zip"));
 
-        int cantidadFacturas = Math.toIntExact(ventasRequest.getCantidadFacturas());
-        if (cantidadFacturas <= 0) throw new ProcessException("La cantidad de facturas debe ser mayor a 0");
-
-        FacturaElectronicaCompraVenta factura = this.generaFacturaService.llenarDatos(ventasRequest, cufd.get());
-        this.generaFacturaService.obtenerArchivo(factura);
-
-        byte[] xmlsComprimidosZip = FacturaCompressor.comprimirPaqueteFacturas();
-
-        RespuestaRecepcion respuestaRecepcion = envioPaquetesService.enviarPaqueteFacturas(
-                puntoVenta.get(),
-                cufd.get(),
-                xmlsComprimidosZip,
-                cantidadFacturas,
-                ventasRequest.getCodigoEvento(),
-                ventasRequest.getCafc()
-        );
-
-        // Crear y personalizar la respuesta
-        PaquetesResponse paquetesResponse = new PaquetesResponse();
-        paquetesResponse.setCodigoEstado(respuestaRecepcion.getCodigoEstado());
-        paquetesResponse.setCodigoRecepcion(respuestaRecepcion.getCodigoRecepcion());
-        paquetesResponse.setCodigoEvento(ventasRequest.getCodigoEvento());
-        paquetesResponse.setCantidadFacturasAlmacenadas(cantidadFacturas);
-
-        // Personalizar mensajes según el código de estado
-        if (respuestaRecepcion.getCodigoEstado() == 901) {
-            paquetesResponse.setMensaje("Paquete recibido correctamente por el SIAT. Estado: PENDIENTE DE PROCESAMIENTO");
-        } else if (respuestaRecepcion.getCodigoEstado() == 902) {
-            paquetesResponse.setMensaje("Paquete recibido con observaciones. Estado: PENDIENTE DE VALIDACIÓN");
-        } else if (respuestaRecepcion.getCodigoEstado() == 903) {
-            paquetesResponse.setMensaje("Paquete rechazado por el SIAT");
-        } else {
-            paquetesResponse.setMensaje("Estado del paquete desconocido");
-        }
-
-        // Si hay mensajes adicionales del SIAT, concatenarlos
-        if (respuestaRecepcion.getMensajesList() != null && !respuestaRecepcion.getMensajesList().isEmpty()) {
-            String mensajeOriginal = paquetesResponse.getMensaje();
-            StringBuilder mensajeDetallado = new StringBuilder(mensajeOriginal);
-            mensajeDetallado.append(" Detalles: ");
-            for (MensajeRecepcion mensaje : respuestaRecepcion.getMensajesList()) {
-                mensajeDetallado.append(mensaje.getDescripcion()).append(". ");
+            if (archivos != null) {
+                for (File archivo : archivos) {
+                    try {
+                        if (archivo.delete()) {
+                            System.out.println("Archivo eliminado exitosamente: " + archivo.getName());
+                        } else {
+                            System.err.println("No se pudo eliminar el archivo: " + archivo.getName());
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Error al eliminar archivo temporal: " +
+                                archivo.getName() + " - " + e.getMessage());
+                    }
+                }
             }
-            paquetesResponse.setMensaje(mensajeDetallado.toString());
         }
+    }
 
-        // Limpiar la lista de facturas temporales
-        this.generaFacturaService.limpiarFacturasTemporales();
+    /**
+     * Limpia archivos que tengan más de 72 horas de antigüedad
+     */
+    private void limpiarArchivosPorTiempo() {
+        String directorioPaquetes = appConfig.getPathFiles() + "/facturas/paquetes/";
+        File directorio = new File(directorioPaquetes);
 
-        return paquetesResponse;
+        if (directorio.exists() && directorio.isDirectory()) {
+            File[] archivos = directorio.listFiles((dir, name) ->
+                    name.endsWith(".xml") || name.endsWith(".zip"));
+
+            if (archivos != null) {
+                long tiempoLimite = System.currentTimeMillis() - (72 * 60 * 60 * 1000); // 72 horas en milisegundos
+
+                for (File archivo : archivos) {
+                    try {
+                        if (archivo.lastModified() < tiempoLimite) {
+                            if (archivo.delete()) {
+                                System.out.println("Archivo eliminado por antigüedad (>72h): " + archivo.getName());
+                            } else {
+                                System.err.println("No se pudo eliminar archivo antiguo: " + archivo.getName());
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Error al verificar/eliminar archivo por tiempo: " +
+                                archivo.getName() + " - " + e.getMessage());
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Método alternativo para usar con Scheduled Task (opcional)
+     * Debe ser llamado periódicamente para limpiar archivos antiguos
+     */
+    @Scheduled(fixedRate = 3600000) // Ejecutar cada hora
+    public void limpiezaProgramadaArchivos() {
+        try {
+            limpiarArchivosPorTiempo();
+        } catch (Exception e) {
+            System.err.println("Error en limpieza programada: " + e.getMessage());
+        }
     }
 
     public ValidacionPaqueteResponse validarRecepcionPaquete(ValidacionPaqueteRequest request) throws RemoteException {
         try {
+            // 1. Obtener punto de venta y CUFD
             PuntoVentaEntity puntoVenta = puntoVentaRepository.findById(request.getIdPuntoVenta())
                     .orElseThrow(() -> new ProcessException("Punto de venta no encontrado con ID: " + request.getIdPuntoVenta()));
 
             CufdEntity cufd = cufdRepository.findActual(puntoVenta)
                     .orElseThrow(() -> new ProcessException("No se encontró un CUFD vigente para el punto de venta"));
 
+            // 2. Buscar el evento significativo relacionado con el código de recepción
+            EventoSignificativoEntity evento = eventoRepository.findByCodigoRecepcionPaqueteAndPuntoVenta(
+                            request.getCodigoRecepcion(),
+                            puntoVenta)
+                    .orElseThrow(() -> new ProcessException("No se encontró evento significativo con código de recepción: " + request.getCodigoRecepcion()));
+
+            // 3. Validar el paquete con SIAT
             RespuestaRecepcion respuesta = verificacionPaqueteService.validarRecepcionPaquete(
                     puntoVenta,
                     cufd,
                     request.getCodigoRecepcion()
             );
-            // Mapear respuesta exitosa
+
+            // 4. Actualizar el evento con la respuesta de validación
+            evento.setCodigoEstadoValidacion(respuesta.getCodigoEstado());
+            evento.setEstadoValidacion("EXITO");
+            evento.setFechaProcesamiento(LocalDateTime.now());
+            evento.setEtapa("VALIDADO");
+
+            eventoRepository.save(evento);
+
             return mapToSuccessResponse(respuesta);
         } catch (ProcessException e) {
-            // Mapear respuesta fallida
             return mapToErrorResponse(e.getMessage());
         } catch (RemoteException e) {
-            // Manejar errores de conexión
             return mapToErrorResponse("Error de comunicación con el servicio de validación: " + e.getMessage());
         }
     }
