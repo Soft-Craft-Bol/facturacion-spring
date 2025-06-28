@@ -196,15 +196,12 @@ public class UserDetailServiceImpl implements UserDetailsService {
         UserEntity userEntity = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        // Actualizar campos básicos
         userEntity.setUsername(userDTO.getUsername());
         userEntity.setFirstName(userDTO.getFirstName());
         userEntity.setLastName(userDTO.getLastName());
         userEntity.setEmail(userDTO.getEmail());
         userEntity.setTelefono(userDTO.getTelefono());
         userEntity.setPhoto(userDTO.getPhoto());
-
-        // Actualizar roles solo si vienen en el DTO
         if (userDTO.getRoles() != null && !userDTO.getRoles().isEmpty()) {
             Set<RoleEntity> roles = userDTO.getRoles().stream()
                     .map(roleName -> {

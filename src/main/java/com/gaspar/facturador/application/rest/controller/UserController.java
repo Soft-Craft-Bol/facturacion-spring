@@ -28,9 +28,15 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
     @PutMapping("/{id}")
-    public ResponseEntity<UserDTO> updateUser(@PathVariable Long id, @RequestBody UserDTO userDTO) {
-        UserDTO updatedUser = userDetailService.updateUser(id, userDTO);
-        return ResponseEntity.ok(updatedUser);
+    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody UserDTO userDTO) {
+        try {
+            UserDTO updatedUser = userDetailService.updateUser(id, userDTO);
+            return ResponseEntity.ok(updatedUser);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Internal Server Error: " + e.getMessage());
+        }
     }
 
     //Obtener usuarios por id
