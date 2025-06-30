@@ -1,5 +1,6 @@
 package com.gaspar.facturador.application.rest.controller;
 
+import com.gaspar.facturador.application.request.CierreCaja2Request;
 import com.gaspar.facturador.application.request.CierreCajaRequest;
 import com.gaspar.facturador.application.response.CierreCajaResponse;
 import com.gaspar.facturador.domain.service.CierreCajaService;
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/cierres-caja")
+@RequestMapping("/cierres-caja")
 @RequiredArgsConstructor
 public class CierreCajaController {
 
@@ -29,7 +30,7 @@ public class CierreCajaController {
     @PutMapping("/{cierreId}/cerrar")
     public ResponseEntity<CierreCajaResponse> cerrarCierre(
             @PathVariable Long cierreId,
-            @Valid @RequestBody CierreCajaRequest request) throws ChangeSetPersister.NotFoundException {
+            @Valid @RequestBody CierreCaja2Request request) {
         CierreCajaResponse response = cierreCajaService.finalizarCierre(cierreId, request);
         return ResponseEntity.ok(response);
     }

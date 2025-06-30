@@ -55,13 +55,13 @@ public class InsumoController {
 
     @GetMapping
     public ResponseEntity<Page<InsumoResponse>> getAllInsumos(
-            @PageableDefault(size = 10) Pageable pageable) {
+            @PageableDefault(size = 100) Pageable pageable) {
         return ResponseEntity.ok(insumoService.getAllInsumos(pageable));
     }
 
     @GetMapping("/activos")
     public ResponseEntity<Page<InsumoResponse>> getInsumosActivos(
-            @PageableDefault(size = 10) Pageable pageable) {
+            @PageableDefault(size = 100) Pageable pageable) {
         return ResponseEntity.ok(insumoService.getInsumosActivos(pageable));
     }
 

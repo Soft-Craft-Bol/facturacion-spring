@@ -21,28 +21,28 @@ public class CierreCajasEnity {
     @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "fecha_apertura", nullable = false)
+    @Column(name = "fecha_apertura")
     private LocalDateTime fechaApertura;
 
-    @Column(name = "fecha_cierre", nullable = false)
+    @Column(name = "fecha_cierre")
     private LocalDateTime fechaCierre;
 
-    @Column(name = "monto_inicial", nullable = false)
+    @Column(name = "monto_inicial")
     private BigDecimal montoInicial;
 
-    @Column(name = "monto_final", nullable = false)
+    @Column(name = "monto_final")
     private BigDecimal totalVentas;
 
-    @Column(name = "total_gastos", nullable = false)
+    @Column(name = "total_gastos")
     private BigDecimal totalGastos;
 
-    @Column(name = "total_esperados", nullable = false)
+    @Column(name = "total_esperados")
     private BigDecimal totalEsperados;
 
-    @Column(name = "total_contados", nullable = false)
+    @Column(name = "total_contados")
     private BigDecimal totalContados;
 
-    @Column(name = "diferencia", nullable = false)
+    @Column(name = "diferencia")
     private BigDecimal diferencia;
 
     @Column(name = "total_efectivo")

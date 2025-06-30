@@ -21,7 +21,8 @@ public class ExceptionResponse {
 
     public ExceptionResponse(String message, List<String> details) {
         this.timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME);
-        this.message = message;
-        this.details = details;
+        this.message = message != null ? message : "Sin mensaje";
+        this.details = details != null ? details : List.of();
     }
+
 }
