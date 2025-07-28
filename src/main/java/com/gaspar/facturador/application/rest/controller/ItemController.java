@@ -35,6 +35,7 @@ public class ItemController {
     }
     @PostMapping
     public ResponseEntity<ItemEntity> createItem(@RequestBody ItemEntity item) {
+        item.setId(null);
         ItemEntity createdItem = itemRepository.save(item);
         return new ResponseEntity<>(createdItem, HttpStatus.CREATED);
     }
@@ -50,7 +51,6 @@ public class ItemController {
             updatedItem.setPrecioUnitario(itemDetails.getPrecioUnitario());
             updatedItem.setCodigoProductoSin(itemDetails.getCodigoProductoSin());
             updatedItem.setImagen(itemDetails.getImagen());
-            updatedItem.setCantidad(itemDetails.getCantidad());
             itemRepository.save(updatedItem);
             return new ResponseEntity<>(updatedItem, HttpStatus.OK);
         } else {
@@ -80,7 +80,7 @@ public class ItemController {
         Optional<ItemEntity> itemOptional = itemRepository.findById(id);
         if (itemOptional.isPresent()) {
             ItemEntity item = itemOptional.get();
-            item.setCantidad(item.getCantidad().add(cantidad));
+            //item.setCantidad(item.getCantidad().add(cantidad));
             itemRepository.save(item);
             return new ResponseEntity<>(item, HttpStatus.OK);
         } else {

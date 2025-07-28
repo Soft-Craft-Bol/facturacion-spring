@@ -15,6 +15,7 @@ public class InsumoRequest {
     private TipoInsumo tipo;
 
     private BigDecimal precioActual;
+    private BigDecimal cantidad;
     private String unidades;
     private String imagen;
 }

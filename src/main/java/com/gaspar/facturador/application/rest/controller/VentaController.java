@@ -5,7 +5,6 @@ import com.gaspar.facturador.application.response.ClienteFrecuenteDTO;
 import com.gaspar.facturador.application.response.ProductoMasVendidoDTO;
 import com.gaspar.facturador.domain.service.ProductoService;
 import com.gaspar.facturador.persistence.PuntoVentaRepository;
-import com.gaspar.facturador.persistence.crud.VentasDetalleRepository;
 import com.gaspar.facturador.persistence.dto.TotalVentasPorDiaDTO;
 import com.gaspar.facturador.persistence.dto.VentaHoyDTO;
 import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
@@ -13,11 +12,15 @@ import com.gaspar.facturador.persistence.entity.VentasEntity;
 import com.gaspar.facturador.domain.service.VentaService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.sql.Date;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -86,4 +89,16 @@ public class VentaController {
         List<ClienteFrecuenteDTO> clientesFrecuentes = ventaService.obtenerTop10ClientesFrecuentes();
         return ResponseEntity.ok(clientesFrecuentes);
     }
+
+    @GetMapping("/resumen-pagos")
+    public ResponseEntity<Map<String, Object>> obtenerResumenPorTipoYMetodo(
+            @RequestParam("inicio") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
+            @RequestParam("fin") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin) {
+        Date fechaInicio = Date.valueOf(inicio);
+        Date fechaFin = Date.valueOf(fin.plusDays(1));
+        Map<String, Object> resumen = ventaService.obtenerResumenVentasConYsinFacturacion(fechaInicio, fechaFin);
+        return ResponseEntity.ok(resumen);
+    }
+
+
 }

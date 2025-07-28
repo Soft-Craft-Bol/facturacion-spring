@@ -11,10 +11,14 @@ import com.gaspar.facturador.persistence.entity.ItemEntity;
 import com.gaspar.facturador.persistence.entity.RecetaInsumoEntity;
 import com.gaspar.facturador.persistence.entity.RecetasEntity;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -99,10 +103,22 @@ public class RecetaService {
         return recetasCrudRepository.findAllWithInsumos();
     }
 
+
     @Transactional(readOnly = true)
     public RecetasEntity obtenerRecetaConInsumos(Integer id) {
         return recetasCrudRepository.findByIdWithInsumos(id)
                 .orElseThrow(() -> new RuntimeException("Receta no encontrada con ID: " + id));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<RecetaDTO> listarRecetasPaginadas(String nombre, Integer productoId, Pageable pageable) {
+        Page<RecetasEntity> recetasPage = recetasCrudRepository.findByFilters(
+                nombre,
+                productoId,
+                pageable
+        );
+
+        return recetasPage.map(this::convertirADTO);
     }
 
     @Transactional(readOnly = true)
@@ -119,50 +135,71 @@ public class RecetaService {
     public void actualizarReceta(Integer id, RecetaDTO recetaDTO) {
         RecetasEntity recetaExistente = obtenerRecetaConInsumos(id);
 
+        // Validar que el producto existe
+        ItemEntity producto = itemCrudRepository.findById(recetaDTO.getProductoId())
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + recetaDTO.getProductoId()));
+
         // Actualizar campos básicos
         recetaExistente.setNombre(recetaDTO.getNombre());
         recetaExistente.setDescripcion(recetaDTO.getDescripcion());
         recetaExistente.setCantidadUnidades(recetaDTO.getCantidadUnidades());
         recetaExistente.setPesoUnitario(recetaDTO.getPesoUnitario());
+        recetaExistente.setProducto(producto);
+        recetaExistente.setRendimiento(recetaDTO.getRendimiento());
+        recetaExistente.setInstrucciones(recetaDTO.getInstrucciones());
+        recetaExistente.setTiempoProduccionMinutos(recetaDTO.getTiempoProduccionMinutos());
 
-        // Actualizar producto si cambió
-        if (!recetaExistente.getProducto().getId().equals(recetaDTO.getProductoId())) {
-            ItemEntity nuevoProducto = itemCrudRepository.findById(recetaDTO.getProductoId())
-                    .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
-            recetaExistente.setProducto(nuevoProducto);
-        }
-
-        // Actualizar insumos
+        // Manejar insumos
         actualizarInsumosReceta(recetaExistente, recetaDTO.getInsumos());
 
+        // Guardar cambios
         recetasCrudRepository.save(recetaExistente);
     }
 
     private void actualizarInsumosReceta(RecetasEntity receta, List<InsumoRecetaDTO> insumosDTO) {
-        // Eliminar insumos que ya no están en la receta
-        receta.getRecetaInsumos().removeIf(ri ->
-                insumosDTO.stream().noneMatch(i -> i.getInsumoId().equals(ri.getInsumo().getId()))
-        );
+        // Obtener IDs de insumos que vienen en el DTO
+        Set<Long> insumosActualizadosIds = insumosDTO.stream()
+                .map(InsumoRecetaDTO::getInsumoId)
+                .collect(Collectors.toSet());
 
-        // Actualizar o agregar nuevos insumos
+        // Eliminar insumos que no están en el DTO
+        List<RecetaInsumoEntity> insumosAEliminar = receta.getRecetaInsumos().stream()
+                .filter(ri -> !insumosActualizadosIds.contains(ri.getInsumo().getId()))
+                .collect(Collectors.toList());
+
+        insumosAEliminar.forEach(ri -> {
+            receta.getRecetaInsumos().remove(ri);
+            recetaInsumoCrudRepository.delete(ri);
+        });
+
+        // Actualizar o agregar insumos
         for (InsumoRecetaDTO insumoDTO : insumosDTO) {
-            RecetaInsumoEntity recetaInsumo = receta.getRecetaInsumos().stream()
+            // Buscar si el insumo ya existe en la receta
+            Optional<RecetaInsumoEntity> insumoExistenteOpt = receta.getRecetaInsumos().stream()
                     .filter(ri -> ri.getInsumo().getId().equals(insumoDTO.getInsumoId()))
-                    .findFirst()
-                    .orElseGet(() -> {
-                        RecetaInsumoEntity nuevo = new RecetaInsumoEntity();
-                        nuevo.setReceta(receta);
-                        nuevo.setInsumo(insumoCrudRepository.findById(insumoDTO.getInsumoId())
-                                .orElseThrow(() -> new RuntimeException("Insumo no encontrado")));
-                        return nuevo;
-                    });
+                    .findFirst();
 
-            recetaInsumo.setCantidad(insumoDTO.getCantidad());
-            recetaInsumo.setUnidadMedida(insumoDTO.getUnidadMedida());
-            //recetaInsumo.setCosto(recetaInsumo.getInsumo().getPrecio().multiply(insumoDTO.getCantidad()));
+            if (insumoExistenteOpt.isPresent()) {
+                // Actualizar insumo existente
+                RecetaInsumoEntity insumoExistente = insumoExistenteOpt.get();
+                insumoExistente.setCantidad(insumoDTO.getCantidad());
+                insumoExistente.setUnidadMedida(insumoDTO.getUnidadMedida());
+                // Recalcular costo si es necesario
+                // insumoExistente.setCosto(insumoExistente.getInsumo().getPrecioActual().multiply(insumoDTO.getCantidad()));
+            } else {
+                // Agregar nuevo insumo
+                InsumoEntity insumo = insumoCrudRepository.findById(insumoDTO.getInsumoId())
+                        .orElseThrow(() -> new RuntimeException("Insumo no encontrado con ID: " + insumoDTO.getInsumoId()));
 
-            if (recetaInsumo.getId() == null) {
-                receta.getRecetaInsumos().add(recetaInsumo);
+                RecetaInsumoEntity nuevoInsumo = new RecetaInsumoEntity();
+                nuevoInsumo.setReceta(receta);
+                nuevoInsumo.setInsumo(insumo);
+                nuevoInsumo.setCantidad(insumoDTO.getCantidad());
+                nuevoInsumo.setUnidadMedida(insumoDTO.getUnidadMedida());
+                // Calcular costo inicial
+                // nuevoInsumo.setCosto(insumo.getPrecioActual().multiply(insumoDTO.getCantidad()));
+
+                receta.getRecetaInsumos().add(nuevoInsumo);
             }
         }
     }

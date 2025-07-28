@@ -1,6 +1,7 @@
 package com.gaspar.facturador.persistence.crud;
 
 import com.gaspar.facturador.application.response.ClienteFrecuenteDTO;
+import com.gaspar.facturador.persistence.dto.ReporteVentasDTO;
 import com.gaspar.facturador.persistence.dto.TotalVentasPorDiaDTO;
 import com.gaspar.facturador.persistence.entity.VentasEntity;
 import org.springframework.data.domain.Page;
@@ -18,6 +19,7 @@ import java.util.List;
 public interface VentaCrudRepository extends JpaRepository<VentasEntity, Long> {
     // Métodos base
     Page<VentasEntity> findByFechaBetween(Date fechaInicio, Date fechaFin, Pageable pageable);
+    List<VentasEntity> findByFechaBetween(Date fechaInicio, Date fechaFin);
 
     // Métodos con filtros combinados
     Page<VentasEntity> findByFechaBetweenAndPuntoVentaId(Date fechaInicio, Date fechaFin, Integer idPuntoVenta, Pageable pageable);
@@ -81,7 +83,7 @@ public interface VentaCrudRepository extends JpaRepository<VentasEntity, Long> {
     SELECT 
         to_char(fecha, 'YYYY-MM-DD') as fecha, 
         SUM(monto) as total
-    FROM ventas_entity
+    FROM ventas
     GROUP BY to_char(fecha, 'YYYY-MM-DD')
     ORDER BY fecha
     """, nativeQuery = true)
@@ -118,4 +120,6 @@ public interface VentaCrudRepository extends JpaRepository<VentasEntity, Long> {
             @Param("productoNombre") String productoNombre,
             @Param("nombreCliente") String nombreCliente,
             Pageable pageable);
+
+
 }

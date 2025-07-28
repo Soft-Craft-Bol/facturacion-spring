@@ -1,17 +1,21 @@
 package com.gaspar.facturador.domain.service;
 
+import com.gaspar.facturador.application.request.UpdateUserRequest;
 import com.gaspar.facturador.application.rest.dto.AuthCreateUserRequest;
 import com.gaspar.facturador.application.rest.dto.AuthLoginRequest;
 import com.gaspar.facturador.application.rest.dto.AuthResponse;
+import com.gaspar.facturador.persistence.crud.HorarioCrudRepository;
+import com.gaspar.facturador.persistence.crud.PuntoVentaCrudRepository;
 import com.gaspar.facturador.persistence.crud.RoleRepository;
 import com.gaspar.facturador.persistence.crud.UserRepository;
+import com.gaspar.facturador.persistence.dto.HorarioDTO;
+import com.gaspar.facturador.persistence.dto.PuntoVentaDTO;
 import com.gaspar.facturador.persistence.dto.UserDTO;
-import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
-import com.gaspar.facturador.persistence.entity.RoleEntity;
-import com.gaspar.facturador.persistence.entity.RoleEnum;
-import com.gaspar.facturador.persistence.entity.UserEntity;
+import com.gaspar.facturador.persistence.entity.*;
 import com.gaspar.facturador.utils.JwtUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -45,6 +49,12 @@ public class UserDetailServiceImpl implements UserDetailsService {
 
     @Autowired
     private RoleRepository roleRepository;
+
+    @Autowired
+    private HorarioCrudRepository horarioCrudRepository;
+
+    @Autowired
+    private PuntoVentaCrudRepository puntoVentaRepository;
 
     @Override
     public UserDetails loadUserByUsername(String username) {
@@ -82,7 +92,6 @@ public class UserDetailServiceImpl implements UserDetailsService {
         Long telefono = Long.valueOf(createRoleRequest.telefono());
         List<String> rolesRequest = createRoleRequest.roleRequest().roleListName();
 
-        // Convertir los nombres de roles a valores de RoleEnum
         List<RoleEnum> roleEnums = rolesRequest.stream()
                 .map(role -> {
                     try {
@@ -93,14 +102,16 @@ public class UserDetailServiceImpl implements UserDetailsService {
                 })
                 .collect(Collectors.toList());
 
-        // Obtener los roles desde la base de datos
         Set<RoleEntity> roleEntityList = new HashSet<>(roleRepository.findRoleEntitiesByRoleEnumIn(roleEnums));
 
         if (roleEntityList.isEmpty()) {
             throw new IllegalArgumentException("The roles specified do not exist.");
         }
 
-        Set<PuntoVentaEntity> puntosVenta = new HashSet<>(createRoleRequest.puntosVenta());
+        // Modificación importante: Manejar puntosVenta nulos
+        Set<PuntoVentaEntity> puntosVenta = createRoleRequest.puntosVenta() != null
+                ? new HashSet<>(createRoleRequest.puntosVenta())
+                : new HashSet<>();
 
         UserEntity userEntity = UserEntity.builder()
                 .username(username)
@@ -118,6 +129,7 @@ public class UserDetailServiceImpl implements UserDetailsService {
                 .credentialsNonExpired(true)
                 .build();
 
+        // Resto del método permanece igual...
         UserEntity userSaved = userRepository.save(userEntity);
 
         ArrayList<SimpleGrantedAuthority> authorities = new ArrayList<>();
@@ -133,7 +145,7 @@ public class UserDetailServiceImpl implements UserDetailsService {
         String accessToken = jwtUtils.createToken(authentication);
         String photo = userSaved.getPhoto();
 
-        return new AuthResponse(username, "User created successfully", accessToken, true, photo, userSaved.getPuntosVenta());
+        return new AuthResponse( userSaved.getId(), username, "User created successfully", accessToken, true, photo, userSaved.getPuntosVenta());
     }
 
 
@@ -151,7 +163,7 @@ public class UserDetailServiceImpl implements UserDetailsService {
         String photo = userEntity.getPhoto();
         Set<PuntoVentaEntity> puntosVenta = userEntity.getPuntosVenta();
 
-        return new AuthResponse(username, "User logged in successfully", accessToken, true, photo, puntosVenta);
+        return new AuthResponse( userEntity.getId(), username, "User logged in successfully", accessToken, true, photo, puntosVenta);
     }
 
     public Authentication authenticate(String username, String password) {
@@ -168,10 +180,15 @@ public class UserDetailServiceImpl implements UserDetailsService {
         return new UsernamePasswordAuthenticationToken(username, password, userDetails.getAuthorities());
     }
 
-    public List<UserDTO> getAllUsers() {
-        return userRepository.findAll().stream()
-                .filter(user -> user.getRoles().stream()
-                .noneMatch(role -> role.getRoleEnum() == RoleEnum.USER || role.getRoleEnum() == RoleEnum.CLIENTE))
+    public Page<UserDTO> getAllUsers(Pageable pageable) {
+        Set<RoleEnum> desiredRoles = Set.of(
+                RoleEnum.ADMIN,
+                RoleEnum.PANADERO,
+                RoleEnum.MAESTRO,
+                RoleEnum.VENDEDOR
+        );
+
+        return userRepository.findByRolesIn(desiredRoles, pageable)
                 .map(user -> {
                     UserDTO dto = new UserDTO();
                     dto.setId(user.getId());
@@ -185,42 +202,13 @@ public class UserDetailServiceImpl implements UserDetailsService {
                             .map(role -> role.getRoleEnum().name())
                             .collect(Collectors.toSet()));
                     return dto;
-                })
-                .collect(Collectors.toList());
+                });
     }
     public void deleteById(long id){
         userRepository.deleteById(id);
     }
 
-    public UserDTO updateUser(Long id, UserDTO userDTO) {
-        UserEntity userEntity = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        userEntity.setUsername(userDTO.getUsername());
-        userEntity.setFirstName(userDTO.getFirstName());
-        userEntity.setLastName(userDTO.getLastName());
-        userEntity.setEmail(userDTO.getEmail());
-        userEntity.setTelefono(userDTO.getTelefono());
-        userEntity.setPhoto(userDTO.getPhoto());
-        if (userDTO.getRoles() != null && !userDTO.getRoles().isEmpty()) {
-            Set<RoleEntity> roles = userDTO.getRoles().stream()
-                    .map(roleName -> {
-                        try {
-                            return roleRepository.findByRoleEnum(RoleEnum.valueOf(roleName))
-                                    .orElseThrow(() -> new IllegalArgumentException("Role not found: " + roleName));
-                        } catch (IllegalArgumentException e) {
-                            throw new IllegalArgumentException("Invalid role name: " + roleName);
-                        }
-                    })
-                    .collect(Collectors.toSet());
-            userEntity.setRoles(roles);
-        }
-
-        UserEntity updatedUser = userRepository.save(userEntity);
-        return convertToDTO(updatedUser);
-    }
-
-    //Obtener los usuarios por su id
     public UserDTO getUserById(Long id) {
         UserEntity userEntity = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
@@ -233,8 +221,28 @@ public class UserDetailServiceImpl implements UserDetailsService {
         userDTO.setEmail(userEntity.getEmail());
         userDTO.setTelefono(userEntity.getTelefono());
         userDTO.setPhoto(userEntity.getPhoto());
+
         userDTO.setRoles(userEntity.getRoles().stream()
                 .map(role -> role.getRoleEnum().name())
+                .collect(Collectors.toSet()));
+
+        userDTO.setPuntosVenta(userEntity.getPuntosVenta().stream()
+                .map(pv -> new PuntoVentaDTO(
+                        pv.getId(),
+                        pv.getNombre()
+                ))
+                .collect(Collectors.toSet()));
+
+        List<HorarioEntity> horarios = horarioCrudRepository.findByIdPanadero(id);
+        userDTO.setHorarios(horarios.stream()
+                .map(h -> new HorarioDTO(
+                        h.getId(),
+                        h.getHoraEntrada(),
+                        h.getHoraSalida(),
+                        h.getFechaEntrada(),
+                        h.getFechaSalida(),
+                        h.getDias()
+                ))
                 .collect(Collectors.toSet()));
 
         return userDTO;
@@ -244,6 +252,57 @@ public class UserDetailServiceImpl implements UserDetailsService {
         return users.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
+    public UserDTO updateUser(Long id, UpdateUserRequest updateRequest) {
+        UserEntity userEntity = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        // Actualizar campos básicos
+        if (updateRequest.getUsername() != null) {
+            userEntity.setUsername(updateRequest.getUsername());
+        }
+        if (updateRequest.getFirstName() != null) {
+            userEntity.setFirstName(updateRequest.getFirstName());
+        }
+        if (updateRequest.getLastName() != null) {
+            userEntity.setLastName(updateRequest.getLastName());
+        }
+        if (updateRequest.getEmail() != null) {
+            userEntity.setEmail(updateRequest.getEmail());
+        }
+        if (updateRequest.getTelefono() != null) {
+            userEntity.setTelefono(updateRequest.getTelefono());
+        }
+        if (updateRequest.getPhoto() != null) {
+            userEntity.setPhoto(updateRequest.getPhoto());
+        }
+
+        // Actualizar contraseña solo si se proporciona
+        if (updateRequest.getPassword() != null && !updateRequest.getPassword().isEmpty()) {
+            userEntity.setPassword(passwordEncoder.encode(updateRequest.getPassword()));
+        }
+
+        // Actualizar roles si se proporcionan
+        if (updateRequest.getRoles() != null && !updateRequest.getRoles().isEmpty()) {
+            Set<RoleEntity> newRoles = updateRequest.getRoles().stream()
+                    .map(roleName -> roleRepository.findByRoleEnum(RoleEnum.valueOf(roleName))
+                            .orElseThrow(() -> new IllegalArgumentException("Rol no válido: " + roleName)))
+                    .collect(Collectors.toSet());
+            userEntity.setRoles(newRoles);
+        }
+
+        if (updateRequest.getPuntosVentaIds() != null) {
+            Set<PuntoVentaEntity> puntosVenta = new HashSet<>();
+
+            for (Long pvId : updateRequest.getPuntosVentaIds()) {
+                puntoVentaRepository.findById(Math.toIntExact(pvId)).ifPresent(puntosVenta::add);
+            }
+
+            userEntity.setPuntosVenta(puntosVenta);
+        }
+
+        UserEntity updatedUser = userRepository.save(userEntity);
+        return convertToDTO(updatedUser);
+    }
 
     private UserDTO convertToDTO(UserEntity user) {
         UserDTO dto = new UserDTO();
@@ -254,9 +313,18 @@ public class UserDetailServiceImpl implements UserDetailsService {
         dto.setEmail(user.getEmail());
         dto.setTelefono(user.getTelefono());
         dto.setPhoto(user.getPhoto());
+
         dto.setRoles(user.getRoles().stream()
                 .map(role -> role.getRoleEnum().name())
                 .collect(Collectors.toSet()));
+
+        dto.setPuntosVenta(user.getPuntosVenta().stream()
+                .map(pv -> new PuntoVentaDTO(pv.getId(), pv.getNombre()))
+                .collect(Collectors.toSet()));
+
         return dto;
     }
+
+
+
 }

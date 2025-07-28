@@ -3,6 +3,7 @@ package com.gaspar.facturador.persistence.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -20,8 +21,8 @@ public class MovimientoProduccionEntity {
 
     private Long sucursalId;
 
-    private Integer cantidad; // Cantidad de lotes producidos
-    private Integer unidadesProduccidas; // Cantidad total de unidades
+    private BigDecimal cantidad; // Cantidad de lotes producidos
+    private BigDecimal unidadesProduccidas; // Cantidad total de unidades
 
     private LocalDateTime fechaProduccion;
     private String observaciones;

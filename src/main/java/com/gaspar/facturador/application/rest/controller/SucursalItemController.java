@@ -1,6 +1,7 @@
 package com.gaspar.facturador.application.rest.controller;
 
 import com.gaspar.facturador.application.response.*;
+import com.gaspar.facturador.application.rest.dto.ProductoSucursalDto;
 import com.gaspar.facturador.application.rest.util.SucursalItemUtility;
 import com.gaspar.facturador.domain.service.ItemService;
 import com.gaspar.facturador.persistence.crud.ItemCrudRepository;
@@ -196,6 +197,59 @@ public class SucursalItemController {
                 search, codigo, conDescuento, sucursalId, pageable);
 
         return ResponseEntity.ok(itemsPage);
+    }
+
+    @GetMapping("/con-recetas")
+    public ResponseEntity<Page<ProductoConRecetaResponse>> listarProductosConRecetaInfo(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Boolean tieneReceta,
+            Pageable pageable) {
+
+        Page<ProductoConRecetaResponse> productos = itemService.listarProductosConRecetaInfo(search, tieneReceta, pageable);
+        return ResponseEntity.ok(productos);
+    }
+
+    @GetMapping("/by-punto-venta/{puntoVentaId}")
+    public ResponseEntity<ProductosPaginadosResponse> getProductosByPuntoVentaId(
+            @PathVariable Integer puntoVentaId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Integer codigoProductoSin,
+            @RequestParam(required = false) Boolean conDescuento,
+            @RequestParam(required = false) Boolean sinStock,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "cantidad,desc") String sort) {  // Cambiado a "cantidad,desc"
+
+        // Procesar el parámetro de ordenamiento
+        String[] sortParams = sort.split(",");
+        String sortField = sortParams[0];
+        String sortDirection = sortParams.length > 1 ? sortParams[1] : "desc";
+
+        // Mapear campos del DTO a campos de la entidad
+        Map<String, String> fieldMapping = new HashMap<>();
+        fieldMapping.put("cantidadDisponible", "cantidad");  // Mapeo DTO -> Entidad
+        fieldMapping.put("precioConDescuento", "item.precioUnitario");
+        fieldMapping.put("descripcion", "item.descripcion");
+        fieldMapping.put("codigo", "item.codigo");
+        fieldMapping.put("tieneDescuento", "item.promocionItems");
+
+        String entityField = fieldMapping.getOrDefault(sortField, sortField);
+        Sort.Direction direction = Sort.Direction.fromString(sortDirection);
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, entityField));
+
+        Page<ProductoSucursalDto> productosPage = itemService.getProductosByPuntoVentaId(
+                puntoVentaId, search, codigoProductoSin, conDescuento, sinStock, pageable);
+
+        ProductosPaginadosResponse response = new ProductosPaginadosResponse();
+        response.setProductos(productosPage.getContent());
+        response.setPaginaActual(productosPage.getNumber());
+        response.setTotalPaginas(productosPage.getTotalPages());
+        response.setTotalElementos(productosPage.getTotalElements());
+
+        return ResponseEntity.ok(response);
     }
 
 }

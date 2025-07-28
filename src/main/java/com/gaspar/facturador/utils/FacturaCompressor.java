@@ -1,45 +1,51 @@
 package com.gaspar.facturador.utils;
 
+import com.gaspar.facturador.config.AppConfig;
+import org.apache.commons.compress.archivers.tar.*;
+import org.springframework.stereotype.Component;
+
 import java.io.*;
 import java.nio.file.*;
 import java.util.zip.*;
-import org.apache.commons.compress.archivers.tar.*;
 
+@Component
 public class FacturaCompressor {
-    private static final String FACTURAS_DIR = "D:/CursosDeSpring/facturador/facturas/paquetes";
-    private static final String OUTPUT_FILE = "D:/CursosDeSpring/facturador/facturas/paquetes/facturas_paquete.tar.gz";
 
-    // Variable para almacenar el conteo de archivos XML
-    private static int cantidadArchivosXML = 0;
+    private final AppConfig appConfig;
 
-    public static byte[] comprimirPaqueteFacturas() throws IOException {
-        File facturasDir = new File(FACTURAS_DIR);
+    private int cantidadArchivosXML = 0;
+
+    public FacturaCompressor(AppConfig appConfig) {
+        this.appConfig = appConfig;
+    }
+
+    public byte[] comprimirPaqueteFacturas() throws IOException {
+        String facturasDirPath = appConfig.getPathFiles() + "/facturas/paquetes";
+        String outputFilePath = facturasDirPath + "/facturas_paquete.tar.gz";
+
+        File facturasDir = new File(facturasDirPath);
         if (!facturasDir.exists() || !facturasDir.isDirectory()) {
-            throw new IOException("El directorio de facturas no existe");
+            throw new IOException("El directorio de facturas no existe: " + facturasDirPath);
         }
 
-        // Contar archivos XML antes de procesarlos
         cantidadArchivosXML = contarArchivosXML(facturasDir);
 
-        // Si no hay archivos XML, lanzar excepción
         if (cantidadArchivosXML == 0) {
             throw new IOException("No se encontraron archivos XML para comprimir");
         }
 
-        File tarFile = new File(FACTURAS_DIR, "facturas_paquete.tar");
-        File gzipFile = new File(OUTPUT_FILE);
+        File tarFile = new File(facturasDir, "facturas_paquete.tar");
+        File gzipFile = new File(outputFilePath);
 
-        // Crear el archivo TAR
+        // Crear TAR
         try (FileOutputStream fos = new FileOutputStream(tarFile);
              TarArchiveOutputStream tarOut = new TarArchiveOutputStream(fos)) {
-
-            // Agregar archivos XML al TAR
             for (File file : facturasDir.listFiles((dir, name) -> name.endsWith(".xml"))) {
                 addToTar(tarOut, file);
             }
         }
 
-        // Comprimir el TAR a GZIP
+        // Comprimir TAR en GZIP
         try (FileInputStream fis = new FileInputStream(tarFile);
              FileOutputStream fos = new FileOutputStream(gzipFile);
              GZIPOutputStream gzipOut = new GZIPOutputStream(fos)) {
@@ -50,21 +56,18 @@ public class FacturaCompressor {
             }
         }
 
-        // Leer el archivo comprimido en un array de bytes
         byte[] compressedData = Files.readAllBytes(gzipFile.toPath());
 
-        // Eliminar archivos temporales
         tarFile.delete();
         return compressedData;
     }
 
-    // Método para contar archivos XML en el directorio
-    private static int contarArchivosXML(File directorio) {
+    private int contarArchivosXML(File directorio) {
         File[] archivosXML = directorio.listFiles((dir, name) -> name.endsWith(".xml"));
         return archivosXML != null ? archivosXML.length : 0;
     }
 
-    private static void addToTar(TarArchiveOutputStream tarOut, File file) throws IOException {
+    private void addToTar(TarArchiveOutputStream tarOut, File file) throws IOException {
         TarArchiveEntry entry = new TarArchiveEntry(file, file.getName());
         entry.setSize(file.length());
         tarOut.putArchiveEntry(entry);
@@ -72,8 +75,7 @@ public class FacturaCompressor {
         tarOut.closeArchiveEntry();
     }
 
-    // Método para obtener la cantidad de archivos XML procesados
-    public static int getCantidadArchivosXML() {
+    public int getCantidadArchivosXML() {
         return cantidadArchivosXML;
     }
 }

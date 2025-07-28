@@ -16,4 +16,5 @@ public class InsumoSucursalResponse {
     private BigDecimal cantidad;
     private Integer stockMinimo;
     private Date fechaVencimiento;
+    private Boolean activo;
 }

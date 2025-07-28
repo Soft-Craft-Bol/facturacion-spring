@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -33,8 +34,6 @@ public class ItemEntity {
     @Column(length = 1024)
     private String imagen;
 
-    private BigDecimal cantidad;
-
     @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<SucursalItemEntity> sucursalItems;
@@ -50,5 +49,9 @@ public class ItemEntity {
     @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<VentasDetalleEntity> ventasDetalles;
+
+    @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<RecetasEntity> recetas = new ArrayList<>();
 
 }

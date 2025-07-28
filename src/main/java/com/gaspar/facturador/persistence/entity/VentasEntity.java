@@ -16,6 +16,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
+@Table(name = "ventas")
 public class VentasEntity {
 
     @Id
@@ -31,6 +32,16 @@ public class VentasEntity {
     private BigDecimal monto;
 
     private String estado;
+
+    @Column(name = "monto_recibido", precision = 10, scale = 2)
+    private BigDecimal montoRecibido;
+
+    @Column(name = "monto_devuelto", precision = 10, scale = 2)
+    private BigDecimal montoDevuelto;
+
+    @ManyToOne
+    @JoinColumn(name = "caja_id")
+    private CajasEntity caja;
 
     @ManyToOne
     @JoinColumn(name = "cliente_id", nullable = false)

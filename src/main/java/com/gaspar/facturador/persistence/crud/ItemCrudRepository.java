@@ -15,7 +15,7 @@ import java.util.Optional;
 
 @Repository
 public interface ItemCrudRepository extends JpaRepository<ItemEntity, Integer>, JpaSpecificationExecutor<ItemEntity> {
-    @EntityGraph(attributePaths = {"sucursalItems.sucursal", "promocionItems"})
+    @EntityGraph(attributePaths = {"sucursalItems.sucursal", "promocionItems", "recetas"})
     @Query("SELECT i FROM ItemEntity i WHERE LOWER(i.descripcion) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
     Page<ItemEntity> findItemsWithSucursales(@Param("searchTerm") String searchTerm, Pageable pageable);
 

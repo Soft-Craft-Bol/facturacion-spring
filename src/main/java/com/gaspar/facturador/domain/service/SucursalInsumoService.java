@@ -52,7 +52,7 @@ public class SucursalInsumoService {
 
     @Transactional
     public void updateStockInsumo(Long sucursalId, Long insumoId, BigDecimal cantidad) throws ChangeSetPersister.NotFoundException {
-        SucursalInsumoEntity sucursalInsumo = sucursalInsumoRepository.findBySucursalIdAndInsumoId(Math.toIntExact(sucursalId), insumoId)
+        SucursalInsumoEntity sucursalInsumo = sucursalInsumoRepository.findBySucursalIdAndInsumoId(sucursalId, insumoId)
                 .orElseThrow(() -> new ChangeSetPersister.NotFoundException());
 
         BigDecimal nuevaCantidad = sucursalInsumo.getCantidad().add(cantidad);

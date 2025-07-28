@@ -2,7 +2,6 @@ package com.gaspar.facturador.domain.service;
 
 import com.gaspar.facturador.application.request.VentaSinFacturaRequest;
 import com.gaspar.facturador.application.response.ClienteFrecuenteDTO;
-import com.gaspar.facturador.domain.repository.IClienteRepository;
 import com.gaspar.facturador.persistence.PuntoVentaRepository;
 import com.gaspar.facturador.persistence.crud.*;
 import com.gaspar.facturador.persistence.dto.TotalVentasPorDiaDTO;
@@ -21,10 +20,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -62,6 +58,11 @@ public class VentaService {
 
         VentasEntity venta = new VentasEntity();
         venta.setFecha(new Date());
+
+        CajasEntity caja = new CajasEntity();
+        caja.setId(request.getCajaId());
+        venta.setCaja(caja);
+
         ClienteEntity cliente = clienteCrudRepository.findById(request.getIdCliente())
                 .orElseThrow(() -> new IllegalArgumentException("Cliente con ID " + request.getIdCliente() + " no encontrado"));
         venta.setCliente(cliente);
@@ -85,8 +86,11 @@ public class VentaService {
             throw new IllegalArgumentException("Método de pago no válido: " + request.getMetodoPago());
         }
 
+        venta.setMontoRecibido(request.getMontoRecibido());
+        venta.setMontoDevuelto(request.getMontoDevuelto());
         venta.setVendedor(vendedor);
         venta.setPuntoVenta(puntoVenta);
+
 
         BigDecimal montoTotal = BigDecimal.ZERO;
         List<VentasDetalleEntity> detalles = new ArrayList<>();
@@ -242,6 +246,128 @@ public class VentaService {
         return ventasPage.map(this::mapToVentaFiltroDTO);
     }
 
+    public Map<String, Object> obtenerResumenVentasConYsinFacturacion(Date fechaInicio, Date fechaFin) {
+        List<VentasEntity> ventas = ventasRepository.findByFechaBetween(fechaInicio, fechaFin);
+
+        // Definir las categorías principales
+        Map<String, BigDecimal> facturacion = new HashMap<>();
+        Map<String, BigDecimal> sinFacturacion = new HashMap<>();
+        Map<String, BigDecimal> total = new HashMap<>();
+
+        // Inicializar categorías principales
+        String[] categoriasPrincipales = {
+                "efectivo", "billetera_movil", "tarjeta", "transferencia",
+                "pago_online", "gift_card", "otros", "cheque", "vales",
+                "debito_automatico", "deposito_en_cuenta", "canal_de_pago"
+        };
+
+        for (String categoria : categoriasPrincipales) {
+            facturacion.put(categoria, BigDecimal.ZERO);
+            sinFacturacion.put(categoria, BigDecimal.ZERO);
+            total.put(categoria, BigDecimal.ZERO);
+        }
+
+        BigDecimal subtotalFacturacion = BigDecimal.ZERO;
+        BigDecimal subtotalSinFacturacion = BigDecimal.ZERO;
+
+        for (VentasEntity venta : ventas) {
+            if (venta.getMetodoPago() == null) continue;
+
+            BigDecimal monto = venta.getMonto() != null ? venta.getMonto() : BigDecimal.ZERO;
+            String categoriaPrincipal = determinarCategoriaPrincipal(venta.getMetodoPago());
+
+            if (venta.getFactura() != null) {
+                facturacion.put(categoriaPrincipal,
+                        facturacion.get(categoriaPrincipal).add(monto));
+                subtotalFacturacion = subtotalFacturacion.add(monto);
+            } else {
+                sinFacturacion.put(categoriaPrincipal,
+                        sinFacturacion.get(categoriaPrincipal).add(monto));
+                subtotalSinFacturacion = subtotalSinFacturacion.add(monto);
+            }
+
+            total.put(categoriaPrincipal,
+                    total.get(categoriaPrincipal).add(monto));
+        }
+
+        BigDecimal totalGeneral = subtotalFacturacion.add(subtotalSinFacturacion);
+
+        // Armar el JSON final
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        Map<String, Object> facturacionMap = new LinkedHashMap<>(facturacion);
+        facturacionMap.put("subtotal", subtotalFacturacion);
+
+        Map<String, Object> sinFacturacionMap = new LinkedHashMap<>(sinFacturacion);
+        sinFacturacionMap.put("subtotal", subtotalSinFacturacion);
+
+        Map<String, Object> totalMap = new LinkedHashMap<>(total);
+        totalMap.put("general", totalGeneral);
+
+        result.put("facturacion", replaceZeroWithNull(facturacionMap));
+        result.put("sin_facturacion", replaceZeroWithNull(sinFacturacionMap));
+        result.put("total", replaceZeroWithNull(totalMap));
+
+        return result;
+    }
+
+    private String determinarCategoriaPrincipal(TipoPagoEnum metodoPago) {
+        String descripcion = metodoPago.getDescripcion().toLowerCase();
+
+        // Primero verificar los casos más específicos
+        if (descripcion.contains("billetera movil") || descripcion.contains("billetera_movil")) {
+            return "billetera_movil";
+        }
+        if (descripcion.contains("transferencia bancaria") || descripcion.contains("transferencia swift")) {
+            return "transferencia";
+        }
+        if (descripcion.contains("pago online") || descripcion.contains("pago_onine")) {
+            return "pago_online";
+        }
+        if (descripcion.contains("gift card") || descripcion.contains("gift-card") || descripcion.contains("gift")) {
+            return "gift_card";
+        }
+        if (descripcion.contains("canal de pago") || descripcion.contains("canal_pago")) {
+            return "canal_de_pago";
+        }
+        if (descripcion.contains("deposito en cuenta") || descripcion.contains("deposito_en_cuenta")) {
+            return "deposito_en_cuenta";
+        }
+        if (descripcion.contains("debito automatico") || descripcion.contains("debito_automatico")) {
+            return "debito_automatico";
+        }
+
+        // Luego los casos generales
+        if (descripcion.contains("efectivo")) {
+            return "efectivo";
+        }
+        if (descripcion.contains("tarjeta")) {
+            return "tarjeta";
+        }
+        if (descripcion.contains("cheque")) {
+            return "cheque";
+        }
+        if (descripcion.contains("vales")) {
+            return "vales";
+        }
+
+        return "otros";
+    }
+
+    // Método auxiliar para convertir ceros en null (se mantiene igual)
+    private Map<String, Object> replaceZeroWithNull(Map<String, ?> input) {
+        Map<String, Object> cleaned = new LinkedHashMap<>();
+        input.forEach((k, v) -> {
+            if (v instanceof BigDecimal && ((BigDecimal) v).compareTo(BigDecimal.ZERO) == 0) {
+                cleaned.put(k, null);
+            } else {
+                cleaned.put(k, v);
+            }
+        });
+        return cleaned;
+    }
+
+
     private VentaFiltroDTO mapToVentaFiltroDTO(VentasEntity venta) {
         VentaFiltroDTO dto = new VentaFiltroDTO();
         dto.setIdVenta(venta.getId());
@@ -295,4 +421,7 @@ public class VentaService {
 
         return dto;
     }
+
+
+
 }

@@ -1,10 +1,18 @@
 package com.gaspar.facturador.domain.service;
 
 import com.gaspar.facturador.application.response.ItemWithSucursalesDTO;
+import com.gaspar.facturador.application.response.ProductoConRecetaResponse;
 import com.gaspar.facturador.application.response.SucursalInfoDTO;
+import com.gaspar.facturador.application.rest.dto.ProductoSucursalDto;
+import com.gaspar.facturador.application.rest.dto.PromocionInfo;
 import com.gaspar.facturador.persistence.crud.ItemCrudRepository;
-import com.gaspar.facturador.persistence.entity.ItemEntity;
-import com.gaspar.facturador.persistence.entity.PromocionEntity;
+import com.gaspar.facturador.persistence.crud.PromocionCrudRepository;
+import com.gaspar.facturador.persistence.crud.PuntoVentaCrudRepository;
+import com.gaspar.facturador.persistence.crud.SucursalItemCrudRepository;
+import com.gaspar.facturador.persistence.entity.*;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -24,6 +33,12 @@ public class ItemService {
 
     @Autowired
     private final ItemCrudRepository itemCrudRepository;
+    @Autowired
+    private final PuntoVentaCrudRepository puntoVentaCrudRepository;
+    @Autowired
+    private final SucursalItemCrudRepository sucursalItemCrudRepository;
+    @Autowired
+    private final PromocionCrudRepository promocionCrudRepository;
 
     @Transactional(readOnly = true)
     public Page<ItemWithSucursalesDTO> findItemsWithSucursales(
@@ -68,6 +83,54 @@ public class ItemService {
         });
 
         return itemsPage.map(this::convertToDto);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductoConRecetaResponse> listarProductosConRecetaInfo(
+            String searchTerm,
+            Boolean tieneReceta,
+            Pageable pageable) {
+
+        Specification<ItemEntity> spec = Specification.where(null);
+
+        if (searchTerm != null && !searchTerm.isEmpty()) {
+            spec = spec.and((root, query, cb) ->
+                    cb.or(
+                            cb.like(cb.lower(root.get("descripcion")), "%" + searchTerm.toLowerCase() + "%"),
+                            cb.like(cb.lower(root.get("codigo")), "%" + searchTerm.toLowerCase() + "%")
+                    )
+            );
+        }
+
+        if (tieneReceta != null) {
+            spec = spec.and((root, query, cb) -> {
+                Join<ItemEntity, RecetasEntity> recetasJoin = root.join("recetas", JoinType.LEFT);
+                if (tieneReceta) {
+                    return cb.isNotEmpty(root.get("recetas"));
+                } else {
+                    return cb.isEmpty(root.get("recetas"));
+                }
+            });
+        }
+
+        Page<ItemEntity> itemsPage = itemCrudRepository.findAll(spec, pageable);
+
+        return itemsPage.map(item -> {
+            ProductoConRecetaResponse dto = new ProductoConRecetaResponse();
+            dto.setId(item.getId());
+            dto.setCodigo(item.getCodigo());
+            dto.setDescripcion(item.getDescripcion());
+            dto.setUnidadMedida(item.getUnidadMedida());
+            dto.setPrecioUnitario(item.getPrecioUnitario());
+            dto.setCodigoProductoSin(item.getCodigoProductoSin());
+            dto.setImagen(item.getImagen());
+
+            boolean tieneRecetas = !item.getRecetas().isEmpty();
+            dto.setTieneReceta(tieneRecetas);
+            dto.setCantidadRecetas(tieneRecetas ? item.getRecetas().size() : 0);
+
+            return dto;
+        });
     }
 
     private ItemWithSucursalesDTO convertToDto(ItemEntity item) {
@@ -129,5 +192,122 @@ public class ItemService {
                 .collect(Collectors.toList()));
 
         return dto;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductoSucursalDto> getProductosByPuntoVentaId(
+            Integer puntoVentaId,
+            String searchTerm,
+            Integer codigoProductoSin,
+            Boolean conDescuento,
+            Boolean sinStock,
+            Pageable pageable) {
+
+        // 1. Obtener la sucursal
+        PuntoVentaEntity puntoVenta = puntoVentaCrudRepository.findById(puntoVentaId)
+                .orElseThrow(() -> new EntityNotFoundException("Punto de venta no encontrado"));
+        SucursalEntity sucursal = puntoVenta.getSucursal();
+
+        // 2. Crear especificación para los filtros
+        Specification<SucursalItemEntity> spec = Specification.where(
+                (root, query, cb) -> cb.equal(root.get("sucursal").get("id"), sucursal.getId())
+        );
+
+        // Filtro por término de búsqueda (código o descripción)
+        if (searchTerm != null && !searchTerm.isEmpty()) {
+            spec = spec.and((root, query, cb) -> {
+                Join<SucursalItemEntity, ItemEntity> itemJoin = root.join("item");
+                return cb.or(
+                        cb.like(cb.lower(itemJoin.get("codigo")), "%" + searchTerm.toLowerCase() + "%"),
+                        cb.like(cb.lower(itemJoin.get("descripcion")), "%" + searchTerm.toLowerCase() + "%")
+                );
+            });
+        }
+
+        // Filtro por código producto SIN
+        if (codigoProductoSin != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.join("item").get("codigoProductoSin"), codigoProductoSin));
+        }
+
+        // Filtro por descuento
+        if (conDescuento != null) {
+            spec = spec.and((root, query, cb) -> {
+                Join<SucursalItemEntity, PromocionEntity> promocionJoin = root.join("item")
+                        .join("promocionItems", JoinType.LEFT);
+
+                if (conDescuento) {
+                    return cb.isNotNull(promocionJoin.get("id"));
+                } else {
+                    return cb.isNull(promocionJoin.get("id"));
+                }
+            });
+        }
+
+        // Filtro por stock
+        if (sinStock != null) {
+            spec = spec.and((root, query, cb) -> {
+                if (sinStock) {
+                    return cb.lessThanOrEqualTo(root.get("cantidad"), 0);
+                } else {
+                    return cb.greaterThan(root.get("cantidad"), 0);
+                }
+            });
+        }
+
+        // 3. Obtener los items paginados
+        Page<SucursalItemEntity> sucursalItemsPage = sucursalItemCrudRepository.findAll(spec, pageable);
+
+        // 4. Transformar a DTO
+        return sucursalItemsPage.map(sucursalItem -> {
+            ItemEntity item = sucursalItem.getItem();
+            ProductoSucursalDto dto = new ProductoSucursalDto();
+
+            // Mapeo de propiedades básicas
+            dto.setId(item.getId());
+            dto.setCodigo(item.getCodigo());
+            dto.setDescripcion(item.getDescripcion());
+            dto.setUnidadMedida(item.getUnidadMedida());
+            dto.setPrecioUnitario(item.getPrecioUnitario());
+            dto.setCodigoProductoSin(item.getCodigoProductoSin());
+            dto.setImagen(item.getImagen());
+            dto.setCantidadDisponible(sucursalItem.getCantidad());
+
+            // Info de sucursal
+            dto.setSucursalId(sucursal.getId());
+            dto.setSucursalNombre(sucursal.getNombre());
+            dto.setSucursalDireccion(sucursal.getDireccion());
+
+            // Info de promoción
+            PromocionInfo promocion = getActivePromocionForItemInSucursal(item.getId(), sucursal.getId());
+            dto.setTieneDescuento(promocion != null);
+            dto.setPrecioConDescuento(promocion != null ?
+                    promocion.getPrecioPromocional() : item.getPrecioUnitario());
+
+            return dto;
+        });
+    }
+
+    private PromocionInfo getActivePromocionForItemInSucursal(Integer itemId, Integer sucursalId) {
+        Optional<PromocionEntity> promocionOpt = promocionCrudRepository
+                .findOneByItemIdAndSucursalId(itemId, sucursalId);
+
+        if (promocionOpt.isPresent()) {
+            PromocionEntity promocion = promocionOpt.get();
+            ItemEntity item = promocion.getItem();
+
+            PromocionInfo info = new PromocionInfo();
+            info.setPromocionId(promocion.getId());
+            info.setPorcentajeDescuento(promocion.getDescuento());
+
+            BigDecimal descuento = item.getPrecioUnitario()
+                    .multiply(BigDecimal.valueOf(promocion.getDescuento()))
+                    .divide(BigDecimal.valueOf(100));
+            BigDecimal precioPromocional = item.getPrecioUnitario().subtract(descuento);
+            info.setPrecioPromocional(precioPromocional);
+
+            return info;
+        }
+        return null;
     }
 }

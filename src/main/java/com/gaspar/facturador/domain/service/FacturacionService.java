@@ -59,13 +59,14 @@ public class FacturacionService {
     private final VerificacionPaqueteService verificacionPaqueteService;
     private final VentaService ventaService;
     private final CufdService cufdService;
+    private final FacturaCompressor facturaCompressor;
 
 
     public FacturacionService(
             AppConfig appConfig, GeneraFacturaService generaFacturaService,
             EnvioFacturaService envioFacturaService, EnvioPaquetesService envioPaquetesService, AnulacionFacturaService anulacionFacturaService, ReversionFacturaService reversionFacturaService, FacturaRepository facturaRepository,
             IPuntoVentaRepository puntoVentaRepository,
-            ICufdRepository cufdRepository, IEventoSignificativoRepository eventoRepository, VerificacionPaqueteService verificacionPaqueteService, VentaService ventaService, CufdService cufdService
+            ICufdRepository cufdRepository, IEventoSignificativoRepository eventoRepository, VerificacionPaqueteService verificacionPaqueteService, VentaService ventaService, CufdService cufdService, FacturaCompressor facturaCompressor
     ) {
         this.appConfig = appConfig;
         this.generaFacturaService = generaFacturaService;
@@ -80,29 +81,24 @@ public class FacturacionService {
         this.verificacionPaqueteService = verificacionPaqueteService;
         this.ventaService = ventaService;
         this.cufdService = cufdService;
+        this.facturaCompressor = facturaCompressor;
     }
 
     @Transactional(rollbackFor = Exception.class)
     public FacturaResponse emitirFactura(VentaRequest ventaRequest) throws Exception {
-        // 1. Validar punto de venta
         PuntoVentaEntity puntoVenta = puntoVentaRepository.findById(ventaRequest.getIdPuntoVenta())
                 .orElseThrow(() -> new ProcessException("Punto venta no encontrado"));
 
-        // 2. Obtener CUFD vigente
         CufdEntity cufd = obtenerCufdVigente(puntoVenta);
 
-        // 3. Generar factura electrónica
         FacturaElectronicaCompraVenta factura = generaFacturaService.llenarDatos(ventaRequest, cufd);
 
-        // 4. Generar XML para posible diagnóstico de errores
         String xmlContent = new String(generaFacturaService.getXmlBytes(factura));
 
         try {
-            // 5. Enviar factura al SIAT
             byte[] xmlComprimidoZip = generaFacturaService.obtenerArchivo(factura, false);
             RespuestaRecepcion respuesta = envioFacturaService.enviar(puntoVenta, cufd, xmlComprimidoZip);
 
-            // 6. Validar respuesta del SIAT
             if (respuesta.getCodigoEstado() != 908) {
                 String mensajeError = "Error al enviar factura al SIAT: " +
                         respuesta.getCodigoEstado() + " - " +
@@ -112,21 +108,16 @@ public class FacturacionService {
                 throw new ProcessException(mensajeError);
             }
 
-            // 7. Persistir factura en base de datos local
             FacturaEntity facturaEntity = persistirFactura(factura);
 
-            // 8. Registrar venta
             registrarVenta(ventaRequest, facturaEntity.getId());
 
-            // 9. Retornar respuesta exitosa
             return construirRespuestaExitosa(factura, xmlContent, respuesta);
 
         } catch (Exception e) {
-            // Manejar excepciones específicas de envío de factura
             String mensajeError = "Error al enviar factura al SIAT: " + e.getMessage();
             throw new ProcessException(mensajeError);
         } finally {
-            // Limpiar la lista de facturas temporales
             generaFacturaService.limpiarFacturasTemporales();
         }
     }
@@ -211,6 +202,9 @@ public class FacturacionService {
         venta.setUsername(ventaRequest.getUsername());
         venta.setDetalle(ventaRequest.getDetalle());
         venta.setIdfactura(idFactura);
+        venta.setMontoRecibido(ventaRequest.getMontoRecibido());
+        venta.setMontoDevuelto(ventaRequest.getMontoDevuelto());
+        venta.setCajaId(ventaRequest.getCajasId());
 
         ventaService.saveVenta(venta);
     }
@@ -268,8 +262,8 @@ public class FacturacionService {
                     .orElseThrow(() -> new ProcessException("Evento significativo no encontrado o no vigente"));
 
             // 3. Comprimir y enviar paquete
-            byte[] xmlsComprimidosZip = FacturaCompressor.comprimirPaqueteFacturas();
-            int cantidadFacturas = Math.toIntExact(FacturaCompressor.getCantidadArchivosXML());
+            byte[] xmlsComprimidosZip = facturaCompressor.comprimirPaqueteFacturas();
+            int cantidadFacturas = facturaCompressor.getCantidadArchivosXML();
 
             RespuestaRecepcion respuestaRecepcion = envioPaquetesService.enviarPaqueteFacturas(
                     puntoVenta,
@@ -283,6 +277,7 @@ public class FacturacionService {
             // 4. Crear respuesta
             PaquetesResponse paquetesResponse = new PaquetesResponse();
             paquetesResponse.setCodigoEstado(respuestaRecepcion.getCodigoEstado());
+
             paquetesResponse.setCodigoRecepcion(respuestaRecepcion.getCodigoRecepcion());
             paquetesResponse.setCodigoEvento(envioPaqueteRequest.codigoEvento());
             paquetesResponse.setCantidadFacturasAlmacenadas(cantidadFacturas);

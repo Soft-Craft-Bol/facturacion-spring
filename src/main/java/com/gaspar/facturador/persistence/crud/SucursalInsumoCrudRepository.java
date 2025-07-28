@@ -7,10 +7,9 @@ import org.springframework.data.repository.CrudRepository;
 import java.util.List;
 import java.util.Optional;
 
-public interface SucursalInsumoCrudRepository extends JpaRepository<SucursalInsumoEntity,Long> {
+public interface SucursalInsumoCrudRepository extends JpaRepository<SucursalInsumoEntity, Long> {
     List<SucursalInsumoEntity> findByInsumoId(Long insumoId);
     List<SucursalInsumoEntity> findBySucursalId(Long sucursalId);
-    Optional<SucursalInsumoEntity> findBySucursalIdAndInsumoId(Integer sucursalId, Long insumoId);
+    Optional<SucursalInsumoEntity> findBySucursalIdAndInsumoId(Long sucursalId, Long insumoId);
     boolean existsBySucursalIdAndInsumoId(Long sucursalId, Long insumoId);
-    //SucursalInsumoEntity findBySucursalIdAndInsumoId(Long sucursalId, Long insumoId);
 }

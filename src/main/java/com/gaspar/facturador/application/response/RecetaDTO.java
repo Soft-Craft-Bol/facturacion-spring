@@ -10,6 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.util.List;
 
 @Data
@@ -43,4 +44,8 @@ public class RecetaDTO {
     private BigDecimal rendimiento;
     private String instrucciones;
     private Integer tiempoProduccionMinutos;
+
+    // Campos de auditoría para mostrar
+    private Date fechaCreacion;
+    private Date fechaActualizacion;
 }

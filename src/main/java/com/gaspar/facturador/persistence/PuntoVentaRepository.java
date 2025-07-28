@@ -15,6 +15,8 @@ public class PuntoVentaRepository implements IPuntoVentaRepository {
         this.puntoVentaCrudRepository = puntoVentaCrudRepository;
     }
 
+
+
     @Override
     public Optional<PuntoVentaEntity> findById(Integer id) {
         return this.puntoVentaCrudRepository.findById(id);

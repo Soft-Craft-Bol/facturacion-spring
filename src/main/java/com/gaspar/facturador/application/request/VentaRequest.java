@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 
@@ -42,4 +43,7 @@ public class VentaRequest {
     private String metodoPago;
 
     private String cafc;
+    private BigDecimal montoRecibido;
+    private BigDecimal montoDevuelto;
+    private Long cajasId;
 }

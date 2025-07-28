@@ -1,12 +1,17 @@
 package com.gaspar.facturador.application.rest.controller;
 
 import com.gaspar.facturador.application.response.ProduccionDTO;
+import com.gaspar.facturador.application.rest.dto.ProduccionFilterDTO;
+import com.gaspar.facturador.application.rest.dto.ProduccionPageDTO;
+import com.gaspar.facturador.application.rest.dto.ProduccionResponseDTO;
 import com.gaspar.facturador.domain.service.ProduccionService;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/produccion")
@@ -27,4 +32,44 @@ public class ProduccionController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ProduccionResponseDTO> obtenerProduccionPorId(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(produccionService.obtenerProduccionPorId(id));
+    }
+
+    @GetMapping
+    public ResponseEntity<ProduccionPageDTO> listarProduccionesPaginadas(
+            @PageableDefault(size = 10) Pageable pageable,
+            @RequestParam(required = false) Long recetaId,
+            @RequestParam(required = false) Integer productoId,
+            @RequestParam(required = false) Integer sucursalId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin) {
+
+        ProduccionFilterDTO filtros = new ProduccionFilterDTO();
+        filtros.setRecetaId(recetaId);
+        filtros.setProductoId(productoId);
+        filtros.setSucursalId(sucursalId);
+        filtros.setFechaInicio(fechaInicio);
+        filtros.setFechaFin(fechaFin);
+
+        return ResponseEntity.ok(produccionService.listarProduccionesPaginadas(pageable, filtros));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ProduccionResponseDTO> actualizarProduccion(
+            @PathVariable Long id,
+            @RequestBody ProduccionDTO produccionDTO) {
+        return ResponseEntity.ok(produccionService.actualizarProduccion(id, produccionDTO));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminarProduccion(
+            @PathVariable Long id) {
+        produccionService.eliminarProduccion(id);
+        return ResponseEntity.noContent().build();
+    }
+
 }
