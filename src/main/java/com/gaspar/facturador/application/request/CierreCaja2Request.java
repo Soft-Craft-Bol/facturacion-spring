@@ -6,15 +6,17 @@ import lombok.Data;
 import java.math.BigDecimal;
 
 @Data
-public class CierreCajaRequest {
+public class CierreCaja2Request {
+    @NotNull(message = "El ID de caja es obligatorio")
     private Long cajaId;
 
-    private BigDecimal montoInicial;
-
+    @NotNull(message = "El total de ventas es obligatorio")
     private BigDecimal totalVentas;
 
+    @NotNull(message = "El total de gastos es obligatorio")
     private BigDecimal totalGastos;
 
+    @NotNull(message = "El total de efectivo es obligatorio")
     private BigDecimal totalEfectivo;
 
     private BigDecimal totalTarjeta;

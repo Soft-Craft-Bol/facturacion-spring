@@ -1,5 +1,6 @@
 package com.gaspar.facturador.domain.service;
 
+import com.gaspar.facturador.application.request.CierreCaja2Request;
 import com.gaspar.facturador.application.request.CierreCajaRequest;
 import com.gaspar.facturador.application.response.CierreCajaResponse;
 import com.gaspar.facturador.application.rest.exception.CierreCajaException;
@@ -7,6 +8,7 @@ import com.gaspar.facturador.persistence.crud.CajaRepository;
 import com.gaspar.facturador.persistence.crud.CierreCajaRepository;
 import com.gaspar.facturador.persistence.entity.CajasEntity;
 import com.gaspar.facturador.persistence.entity.CierreCajasEnity;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.stereotype.Service;
@@ -44,22 +46,35 @@ public class CierreCajaService {
     }
 
     @Transactional
-    public CierreCajaResponse finalizarCierre(Long cierreId, CierreCajaRequest request) throws ChangeSetPersister.NotFoundException {
-        CierreCajasEnity cierre = cierreCajaRepository.findById(cierreId)
-                .orElseThrow(() -> new ChangeSetPersister.NotFoundException());
-
-        if (cierre.getFechaCierre() != null) {
-            throw new CierreCajaException("Este cierre ya ha sido finalizado");
+    public CierreCajaResponse finalizarCierre(Long cierreId, CierreCaja2Request request) {
+        // Validar request
+        if (request.getTotalVentas() == null || request.getTotalGastos() == null || request.getTotalEfectivo() == null) {
+            throw new IllegalArgumentException("Campos obligatorios no pueden ser nulos");
         }
 
-        // Calcular totales
-        BigDecimal totalEsperado = request.getTotalVentas().subtract(request.getTotalGastos());
+        // Obtener el cierre
+        CierreCajasEnity cierre = cierreCajaRepository.findById(cierreId)
+                .orElseThrow(() -> new EntityNotFoundException("Cierre no encontrado con ID: " + cierreId));
+
+        // Validar estado
+        if (cierre.getFechaCierre() != null) {
+            throw new IllegalStateException("Este cierre ya ha sido finalizado");
+        }
+
+        // Calcular valores
+        BigDecimal totalTarjeta = request.getTotalTarjeta() != null ? request.getTotalTarjeta() : BigDecimal.ZERO;
+        BigDecimal totalQr = request.getTotalQr() != null ? request.getTotalQr() : BigDecimal.ZERO;
+
         BigDecimal totalContado = request.getTotalEfectivo()
-                .add(request.getTotalTarjeta() != null ? request.getTotalTarjeta() : BigDecimal.ZERO)
-                .add(request.getTotalQr() != null ? request.getTotalQr() : BigDecimal.ZERO);
+                .add(totalTarjeta)
+                .add(totalQr);
+
+        BigDecimal totalEsperado = request.getTotalVentas()
+                .subtract(request.getTotalGastos());
+
         BigDecimal diferencia = totalContado.subtract(totalEsperado);
 
-        // Actualizar cierre
+        // Actualizar entidad
         cierre.setFechaCierre(LocalDateTime.now());
         cierre.setTotalVentas(request.getTotalVentas());
         cierre.setTotalGastos(request.getTotalGastos());
@@ -67,13 +82,15 @@ public class CierreCajaService {
         cierre.setTotalContados(totalContado);
         cierre.setDiferencia(diferencia);
         cierre.setTotalEfectivo(request.getTotalEfectivo());
-        cierre.setTotalTarjeta(request.getTotalTarjeta());
-        cierre.setTotalQr(request.getTotalQr());
+        cierre.setTotalTarjeta(totalTarjeta);
+        cierre.setTotalQr(totalQr);
         cierre.setObservaciones(request.getObservaciones());
 
+        // Guardar
         cierre = cierreCajaRepository.save(cierre);
         return mapToResponse(cierre);
     }
+
 
     public List<CierreCajaResponse> obtenerCierresPorCaja(Long cajaId) {
         return cierreCajaRepository.findByCajaIdOrderByFechaCierreDesc(cajaId)
