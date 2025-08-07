@@ -34,6 +34,10 @@ public class ItemEntity {
     @Column(length = 1024)
     private String imagen;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "categoria_id")
+    private CategoriaEntity categoria;
+
     @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<SucursalItemEntity> sucursalItems;

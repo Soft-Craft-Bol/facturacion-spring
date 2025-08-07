@@ -1,6 +1,7 @@
 package com.gaspar.facturador.application.rest.controller;
 
 import com.gaspar.facturador.application.response.RecetaDTO;
+import com.gaspar.facturador.application.rest.dto.RecetaDetalladaDTO;
 import com.gaspar.facturador.domain.service.RecetaService;
 import com.gaspar.facturador.persistence.dto.CrearRecetaDTO;
 import com.gaspar.facturador.persistence.entity.RecetasEntity;
@@ -43,12 +44,12 @@ public class RecetaController {
     }
 
     @GetMapping("/list")
-    public ResponseEntity<Page<RecetaDTO>> listarRecetas(
+    public ResponseEntity<Page<RecetaDetalladaDTO>> listarRecetasDetalladas(
             @RequestParam(required = false) String nombre,
             @RequestParam(required = false) Integer productoId,
             Pageable pageable) {
 
-        Page<RecetaDTO> recetasPage = recetaService.listarRecetasPaginadas(
+        Page<RecetaDetalladaDTO> recetasPage = recetaService.listarRecetasDetalladasPaginadas(
                 nombre,
                 productoId,
                 pageable
@@ -61,6 +62,12 @@ public class RecetaController {
     public ResponseEntity<RecetaDTO> obtenerRecetaPorId(@PathVariable Integer id) {
         RecetasEntity receta = recetaService.obtenerRecetaConInsumos(id);
         return ResponseEntity.ok(recetaService.convertirADTO(receta));
+    }
+
+    @GetMapping("/{id}/detalle")
+    public ResponseEntity<RecetaDetalladaDTO> obtenerRecetaDetalladaPorId(@PathVariable Integer id) {
+        RecetaDetalladaDTO receta = recetaService.obtenerRecetaDetallada(id);
+        return ResponseEntity.ok(receta);
     }
 
     @GetMapping("/producto/{productoId}")

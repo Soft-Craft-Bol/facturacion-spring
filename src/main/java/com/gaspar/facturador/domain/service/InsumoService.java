@@ -112,16 +112,17 @@ public class InsumoService {
         }
     }
 
-    public List<InsumoSucursalResponse> getInsumosBySucursal(Long sucursalId, boolean soloActivos) {
-        List<SucursalInsumoEntity> insumos = soloActivos ?
-                insumoRepository.findActiveInsumosBySucursalId(sucursalId) :
-                insumoRepository.findInsumosBySucursalId(sucursalId);
+    public Page<InsumoSucursalResponse> getInsumosBySucursal(
+            Long sucursalId,
+            boolean soloActivos,
+            Pageable pageable) {
 
-        return insumos.stream()
-                .map(this::mapToInsumoSucursalResponse)
-                .collect(Collectors.toList());
+        Page<SucursalInsumoEntity> insumosPage = soloActivos ?
+                insumoRepository.findActiveInsumosBySucursalId(sucursalId, pageable) :
+                insumoRepository.findInsumosBySucursalId(sucursalId, pageable);
+
+        return insumosPage.map(this::mapToInsumoSucursalResponse);
     }
-
     // Métodos auxiliares
     private TipoInsumo parseTipoInsumo(String tipo) {
         if (StringUtils.isBlank(tipo)) return null;

@@ -2,16 +2,23 @@ package com.gaspar.facturador.application.rest.controller;
 
 import com.gaspar.facturador.application.request.VentaSinFacturaRequest;
 import com.gaspar.facturador.application.response.ClienteFrecuenteDTO;
+import com.gaspar.facturador.application.response.CompraInsumoResponse;
+import com.gaspar.facturador.application.response.PagedResponse;
 import com.gaspar.facturador.application.response.ProductoMasVendidoDTO;
 import com.gaspar.facturador.domain.service.ProductoService;
 import com.gaspar.facturador.persistence.PuntoVentaRepository;
 import com.gaspar.facturador.persistence.dto.TotalVentasPorDiaDTO;
+import com.gaspar.facturador.persistence.dto.VentaFiltroDTO;
 import com.gaspar.facturador.persistence.dto.VentaHoyDTO;
 import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
 import com.gaspar.facturador.persistence.entity.VentasEntity;
 import com.gaspar.facturador.domain.service.VentaService;
+import com.gaspar.facturador.persistence.entity.enums.TipoInsumo;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -58,6 +65,42 @@ public class VentaController {
         }
     }
 
+//    @GetMapping
+//    public ResponseEntity<PagedResponse<VentaFiltroDTO>> getVentas(
+//            @RequestParam(required = false) Long idPuntoVenta,
+//            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
+//            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
+//            @RequestParam(required = false) String estado,
+//            @RequestParam(required = false) String productoNombre,
+//            @RequestParam(required = false) String nombreCliente,
+//            @RequestParam(defaultValue = "0") int page,
+//            @RequestParam(defaultValue = "10") int size) {
+//
+//        Date fechaInicioDate = fechaInicio != null ? java.sql.Date.valueOf(fechaInicio) : null;
+//        Date fechaFinDate = fechaFin != null ? java.sql.Date.valueOf(fechaFin.plusDays(1)) : null;
+//
+//        var ventasPage = ventaService.getVentasConFiltros(
+//                idPuntoVenta,
+//                fechaInicioDate,
+//                fechaFinDate,
+//                estado,
+//                productoNombre,
+//                nombreCliente,
+//                page,
+//                size);
+//
+//        PagedResponse<VentaFiltroDTO> response = new PagedResponse<>(
+//                ventasPage.getContent(),
+//                ventasPage.getNumber(),
+//                ventasPage.getSize(),
+//                ventasPage.getTotalElements(),
+//                ventasPage.getTotalPages(),
+//                ventasPage.isLast()
+//        );
+//
+//        return ResponseEntity.ok(response);
+//    }
+
     @GetMapping("/hoy")
     public ResponseEntity<Page<VentaHoyDTO>> getVentasDeHoy(
             @RequestParam(defaultValue = "0") int page,
@@ -99,6 +142,5 @@ public class VentaController {
         Map<String, Object> resumen = ventaService.obtenerResumenVentasConYsinFacturacion(fechaInicio, fechaFin);
         return ResponseEntity.ok(resumen);
     }
-
 
 }

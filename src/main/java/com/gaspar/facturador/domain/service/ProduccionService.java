@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -26,28 +26,24 @@ public class ProduccionService {
     private final MovimientoProduccionRepository movimientoProduccionRepository;
     private final SucursalCrudRepository sucursalRepository;
     private final ProduccionCrudRepository produccionRepository;
+    private final RecetaInsumoCrudRepository recetaInsumoCrudRepository;
+    private final DetalleProduccionInsumoCrudRepository detalleProduccionInsumoRepository;
 
     @Transactional
     public void registrarProduccion(ProduccionDTO produccionDTO) {
-        System.out.println("Iniciando registro de producción con DTO: " + produccionDTO);
-
-        if (produccionDTO.getSucursalId() == null) {
-            throw new RuntimeException("El ID de sucursal no puede ser nulo");
-        }
-
         RecetasEntity receta = recetasRepository.findById(produccionDTO.getRecetaId())
                 .orElseThrow(() -> new RuntimeException("Receta no encontrada"));
-        System.out.println("Receta encontrada - ID: " + receta.getId() + ", Producto: " );
 
-        validarStockInsumos(receta, produccionDTO);
-        actualizarStockInsumos(receta, produccionDTO);
+        Map<Long, InsumoEntity> insumosEspecificos = obtenerInsumosEspecificos(receta, produccionDTO.getSucursalId());
+        validarStockInsumos(insumosEspecificos, produccionDTO);
+        actualizarStockInsumos(insumosEspecificos, produccionDTO);
         actualizarStockProducto(receta, produccionDTO);
-        registrarMovimientoProduccion(receta, produccionDTO);
 
-        System.out.println("Producción registrada exitosamente");
+        MovimientoProduccionEntity movimiento = registrarMovimientoProduccion(receta, produccionDTO);
+        registrarDetalleProduccion(movimiento, insumosEspecificos, produccionDTO);
     }
 
-    public ProduccionResponseDTO obtenerProduccionPorId(Long id) {
+        public ProduccionResponseDTO obtenerProduccionPorId(Long id) {
         MovimientoProduccionEntity movimiento = movimientoProduccionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Producción no encontrada"));
         return toResponseDTO(movimiento);
@@ -89,8 +85,9 @@ public class ProduccionService {
         RecetasEntity receta = recetasRepository.findById(produccionDTO.getRecetaId())
                 .orElseThrow(() -> new RuntimeException("Receta no encontrada"));
 
-        validarStockInsumos(receta, produccionDTO);
-        actualizarStockInsumos(receta, produccionDTO);
+        Map<Long, InsumoEntity> insumosEspecificos = obtenerInsumosEspecificos(receta, produccionDTO.getSucursalId());
+        validarStockInsumos(insumosEspecificos, produccionDTO);
+        actualizarStockInsumos(insumosEspecificos, produccionDTO);
         actualizarStockProducto(receta, produccionDTO);
 
         // Actualizar movimiento
@@ -104,8 +101,11 @@ public class ProduccionService {
         movimiento.setObservaciones(produccionDTO.getObservaciones());
         movimiento.setFechaProduccion(LocalDateTime.now());
 
-        MovimientoProduccionEntity updated = movimientoProduccionRepository.save(movimiento);
-        return toResponseDTO(updated);
+        // Eliminar detalles antiguos y crear nuevos
+        detalleProduccionInsumoRepository.deleteByMovimientoProduccionId(movimiento.getId());
+        registrarDetalleProduccion(movimiento, insumosEspecificos, produccionDTO);
+
+        return toResponseDTO(movimientoProduccionRepository.save(movimiento));
     }
 
     @Transactional
@@ -114,10 +114,9 @@ public class ProduccionService {
                 .orElseThrow(() -> new RuntimeException("Producción no encontrada"));
 
         revertirProduccion(movimiento);
+        detalleProduccionInsumoRepository.deleteByMovimientoProduccionId(id);
         movimientoProduccionRepository.delete(movimiento);
     }
-
-
     //Metodos auxiliares
 
     private ProduccionResponseDTO toResponseDTO(MovimientoProduccionEntity movimiento) {
@@ -135,15 +134,35 @@ public class ProduccionService {
         return dto;
     }
 
-    private void revertirProduccion(MovimientoProduccionEntity movimiento) {
-        // Revertir insumos
-        for (RecetaInsumoEntity insumoReceta : movimiento.getReceta().getRecetaInsumos()) {
-            SucursalInsumoEntity stockInsumo = sucursalInsumoRepository
-                    .findBySucursalIdAndInsumoId(Long.valueOf(movimiento.getSucursalId()), insumoReceta.getInsumo().getId())
-                    .orElseThrow(() -> new RuntimeException("Stock de insumo no encontrado"));
+    private Map<Long, InsumoEntity> obtenerInsumosEspecificos(RecetasEntity receta, Integer sucursalId) {
+        Map<Long, InsumoEntity> insumosEspecificos = new HashMap<>();
 
-            BigDecimal cantidadDevuelta = insumoReceta.getCantidad().multiply(movimiento.getCantidad());
-            stockInsumo.setCantidad(stockInsumo.getCantidad().add(cantidadDevuelta));
+        for (RecetaInsumoEntity recetaInsumo : receta.getRecetaInsumos()) {
+            InsumoGenericoEntity insumoGenerico = recetaInsumo.getInsumoGenerico();
+
+            // Obtener el insumo específico con mayor prioridad disponible en la sucursal
+            InsumoEntity insumo = insumoGenerico.getInsumosAsociados().stream()
+                    .filter(d -> sucursalInsumoRepository.existsBySucursalIdAndInsumoId(
+                            Long.valueOf(sucursalId), d.getInsumo().getId()))
+                    .sorted(Comparator.comparingInt(InsumoGenericoDetalleEntity::getPrioridad))
+                    .map(InsumoGenericoDetalleEntity::getInsumo)
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException(
+                            "No hay insumos disponibles para: " + insumoGenerico.getNombre()));
+
+            insumosEspecificos.put(insumoGenerico.getId(), insumo);
+        }
+
+        return insumosEspecificos;
+    }
+
+    private void revertirProduccion(MovimientoProduccionEntity movimiento) {
+        // Revertir insumos usando el detalle de producción
+        List<DetalleProduccionInsumoEntity> detalles = detalleProduccionInsumoRepository.findByMovimientoProduccionId(movimiento.getId());
+
+        for (DetalleProduccionInsumoEntity detalle : detalles) {
+            SucursalInsumoEntity stockInsumo = detalle.getSucursalInsumo();
+            stockInsumo.setCantidad(stockInsumo.getCantidad().add(detalle.getCantidadUsada()));
             sucursalInsumoRepository.save(stockInsumo);
         }
 
@@ -159,67 +178,72 @@ public class ProduccionService {
     }
 
 
-    private void validarStockInsumos(RecetasEntity receta, ProduccionDTO produccionDTO) {
-        System.out.println("Validando stock de insumos para receta ID: " + receta.getId());
-        System.out.println("Sucursal ID: " + produccionDTO.getSucursalId());
-        System.out.println("Cantidad a producir: " + produccionDTO.getCantidad());
-        Long sucursalId = produccionDTO.getSucursalId() != null
-                ? Long.valueOf(produccionDTO.getSucursalId())
-                : null;
+    private void validarStockInsumos(Map<Long, InsumoEntity> insumosEspecificos, ProduccionDTO produccionDTO) {
+        for (Map.Entry<Long, InsumoEntity> entry : insumosEspecificos.entrySet()) {
+            Long insumoGenericoId = entry.getKey();
+            InsumoEntity insumo = entry.getValue();
 
-        if (sucursalId == null) {
-            throw new RuntimeException("ID de sucursal no proporcionado");
-        }
-        for (RecetaInsumoEntity insumoReceta : receta.getRecetaInsumos()) {
-            Long insumoId = insumoReceta.getInsumo().getId();
-            String insumoNombre = insumoReceta.getInsumo().getNombre();
+            SucursalInsumoEntity stock = sucursalInsumoRepository
+                    .findBySucursalIdAndInsumoId(Long.valueOf(produccionDTO.getSucursalId()), insumo.getId())
+                    .orElseThrow(() -> new RuntimeException("Stock no encontrado para insumo: " + insumo.getNombre()));
 
-            System.out.println("Buscando stock para insumo - ID: " + insumoId + ", Nombre: " + insumoNombre);
+            BigDecimal cantidadNecesaria = obtenerCantidadNecesaria(produccionDTO.getRecetaId(), insumoGenericoId)
+                    .multiply(produccionDTO.getCantidad());
 
-            SucursalInsumoEntity stockInsumo = sucursalInsumoRepository
-                    .findBySucursalIdAndInsumoId(Long.valueOf(produccionDTO.getSucursalId()), insumoId)
-                    .orElseThrow(() -> {
-                        System.out.println("ERROR: No se encontró stock para insumo ID: " + insumoId + " en sucursal ID: " + produccionDTO.getSucursalId());
-                        return new RuntimeException("Stock de insumo no encontrado: " + insumoNombre);
-                    });
-
-            System.out.println("Stock encontrado - Cantidad actual: " + stockInsumo.getCantidad());
-
-            BigDecimal cantidadNecesaria = insumoReceta.getCantidad().multiply(produccionDTO.getCantidad());
-            System.out.println("Cantidad necesaria: " + cantidadNecesaria);
-
-            if (stockInsumo.getCantidad().compareTo(cantidadNecesaria) < 0) {
-                System.out.println("ERROR: Stock insuficiente. Disponible: " + stockInsumo.getCantidad() + ", Necesario: " + cantidadNecesaria);
-                throw new RuntimeException("Stock insuficiente de: " + insumoNombre);
+            if (stock.getCantidad().compareTo(cantidadNecesaria) < 0) {
+                throw new RuntimeException("Stock insuficiente para: " + insumo.getNombre() +
+                        ". Disponible: " + stock.getCantidad() + ", Necesario: " + cantidadNecesaria);
             }
-
-            System.out.println("Stock validado correctamente para insumo: " + insumoNombre);
         }
     }
 
-    private void actualizarStockInsumos(RecetasEntity receta, ProduccionDTO produccionDTO) {
-        System.out.println("Actualizando stock de insumos...");
+    private BigDecimal obtenerCantidadNecesaria(Integer recetaId, Long insumoGenericoId) {
+        return recetaInsumoCrudRepository.findByRecetaIdAndInsumoGenericoId(recetaId, insumoGenericoId)
+                .map(RecetaInsumoEntity::getCantidad)
+                .orElseThrow(() -> new RuntimeException("Insumo no encontrado en receta"));
+    }
 
-        for (RecetaInsumoEntity insumoReceta : receta.getRecetaInsumos()) {
-            Long insumoId = insumoReceta.getInsumo().getId();
-            System.out.println("Procesando insumo ID: " + insumoId);
+    private void registrarDetalleProduccion(
+            MovimientoProduccionEntity movimiento,
+            Map<Long, InsumoEntity> insumosEspecificos,
+            ProduccionDTO produccionDTO) {
+
+        for (Map.Entry<Long, InsumoEntity> entry : insumosEspecificos.entrySet()) {
+            Long insumoGenericoId = entry.getKey();
+            InsumoEntity insumo = entry.getValue();
+
+            DetalleProduccionInsumoEntity detalle = new DetalleProduccionInsumoEntity();
+            detalle.setMovimientoProduccion(movimiento); // Cambiado de setProduccion a setMovimientoProduccion
+            detalle.setSucursalInsumo(sucursalInsumoRepository
+                    .findBySucursalIdAndInsumoId(Long.valueOf(produccionDTO.getSucursalId()), insumo.getId())
+                    .orElseThrow(() -> new RuntimeException("Stock no encontrado")));
+
+            detalle.setCantidadUsada(
+                    obtenerCantidadNecesaria(produccionDTO.getRecetaId(), insumoGenericoId)
+                            .multiply(produccionDTO.getCantidad()));
+
+            detalleProduccionInsumoRepository.save(detalle);
+        }
+    }
+
+
+    private void actualizarStockInsumos(Map<Long, InsumoEntity> insumosEspecificos, ProduccionDTO produccionDTO) {
+        for (Map.Entry<Long, InsumoEntity> entry : insumosEspecificos.entrySet()) {
+            Long insumoGenericoId = entry.getKey();
+            InsumoEntity insumo = entry.getValue();
 
             SucursalInsumoEntity stockInsumo = sucursalInsumoRepository
-                    .findBySucursalIdAndInsumoId(Long.valueOf(produccionDTO.getSucursalId()), insumoId)
-                    .orElseThrow(() -> {
-                        System.out.println("ERROR: No se encontró stock para actualizar - Insumo ID: " + insumoId);
-                        return new RuntimeException("Stock de insumo no encontrado");
-                    });
+                    .findBySucursalIdAndInsumoId(Long.valueOf(produccionDTO.getSucursalId()), insumo.getId())
+                    .orElseThrow(() -> new RuntimeException("Stock no encontrado para insumo: " + insumo.getNombre()));
 
-            BigDecimal cantidadUtilizada = insumoReceta.getCantidad().multiply(produccionDTO.getCantidad());
-            System.out.println("Cantidad a descontar: " + cantidadUtilizada);
+            BigDecimal cantidadUtilizada = obtenerCantidadNecesaria(produccionDTO.getRecetaId(), insumoGenericoId)
+                    .multiply(produccionDTO.getCantidad());
 
             stockInsumo.setCantidad(stockInsumo.getCantidad().subtract(cantidadUtilizada));
             sucursalInsumoRepository.save(stockInsumo);
-
-            System.out.println("Stock actualizado - Nueva cantidad: " + stockInsumo.getCantidad());
         }
     }
+
     private void actualizarStockProducto(RecetasEntity receta, ProduccionDTO produccionDTO) {
         ItemEntity producto = receta.getProducto();
 
@@ -242,19 +266,18 @@ public class ProduccionService {
         sucursalItemRepository.save(stockProducto);
     }
 
-    private void registrarMovimientoProduccion(RecetasEntity receta, ProduccionDTO produccionDTO) {
+    private MovimientoProduccionEntity registrarMovimientoProduccion(RecetasEntity receta, ProduccionDTO produccionDTO) {
         MovimientoProduccionEntity movimiento = new MovimientoProduccionEntity();
         movimiento.setReceta(receta);
         movimiento.setSucursalId(Long.valueOf(produccionDTO.getSucursalId()));
         movimiento.setCantidad(produccionDTO.getCantidad());
-
-        BigDecimal unidadesProducidas = BigDecimal.valueOf(receta.getCantidadUnidades())
-                .multiply(produccionDTO.getCantidad());
-        movimiento.setUnidadesProduccidas(unidadesProducidas);
-
+        movimiento.setUnidadesProduccidas(
+                BigDecimal.valueOf(receta.getCantidadUnidades())
+                        .multiply(produccionDTO.getCantidad())
+        );
         movimiento.setFechaProduccion(LocalDateTime.now());
         movimiento.setObservaciones(produccionDTO.getObservaciones());
 
-        movimientoProduccionRepository.save(movimiento);
+        return movimientoProduccionRepository.save(movimiento); // Asegúrate de devolver el movimiento guardado
     }
 }

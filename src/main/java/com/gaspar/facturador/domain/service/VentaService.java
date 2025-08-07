@@ -215,37 +215,6 @@ public class VentaService {
         return ventasRepository.findTop10ClientesFrecuentes();
     }
 
-
-    public Page<VentaFiltroDTO> filtrarVentas(
-            Long idPuntoVenta,
-            LocalDate fecha,
-            String estado,
-            String productoNombre,
-            String nombreCliente,
-            int page,
-            int size) {
-
-        Pageable pageable = PageRequest.of(page, size);
-
-        // Convertir LocalDate a Date para la consulta
-        Date fechaInicio = fecha != null ?
-                Date.from(fecha.atStartOfDay(ZoneId.systemDefault()).toInstant()) : null;
-        Date fechaFin = fecha != null ?
-                Date.from(fecha.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()) : null;
-
-        // Consulta con filtros
-        Page<VentasEntity> ventasPage = ventasRepository.findByFiltros(
-                idPuntoVenta,
-                fechaInicio,
-                fechaFin,
-                estado,
-                productoNombre,
-                nombreCliente,
-                pageable);
-
-        return ventasPage.map(this::mapToVentaFiltroDTO);
-    }
-
     public Map<String, Object> obtenerResumenVentasConYsinFacturacion(Date fechaInicio, Date fechaFin) {
         List<VentasEntity> ventas = ventasRepository.findByFechaBetween(fechaInicio, fechaFin);
 

@@ -1,16 +1,12 @@
 package com.gaspar.facturador.application.response;
 
+import com.gaspar.facturador.application.rest.dto.RecetaInsumoGenericoDTO;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.validation.constraints.*;
+import lombok.*;
 
 import java.math.BigDecimal;
-import java.sql.Date;
+import java.util.Date;
 import java.util.List;
 
 @Data
@@ -34,18 +30,15 @@ public class RecetaDTO {
 
     @NotNull(message = "El producto es obligatorio")
     private Integer productoId;
+    private String nombreProducto;
 
-    private String nombreProducto; // Para mostrar en frontend
-
-    @NotNull(message = "Los insumos son obligatorios")
+    @NotNull(message = "Los insumos genéricos son obligatorios")
     @Valid
-    private List<InsumoRecetaDTO> insumos;
+    private List<RecetaInsumoGenericoDTO> insumosGenericos;
 
     private BigDecimal rendimiento;
     private String instrucciones;
     private Integer tiempoProduccionMinutos;
-
-    // Campos de auditoría para mostrar
     private Date fechaCreacion;
     private Date fechaActualizacion;
 }

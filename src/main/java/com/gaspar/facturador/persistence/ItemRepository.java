@@ -41,4 +41,9 @@ public class ItemRepository implements IItemRepository {
     public long count() {
         return itemCrudRepository.count();
     }
+
+    @Override
+    public List<ItemEntity> findByCategoriaId(Integer categoriaId) {
+        return itemCrudRepository.findByCategoriaId(categoriaId);
+    }
 }

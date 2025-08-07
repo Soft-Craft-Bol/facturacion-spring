@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -26,4 +27,7 @@ public interface ItemCrudRepository extends JpaRepository<ItemEntity, Integer>, 
     Optional<ItemEntity> findByCodigo(String codigo);
     // Mantén el método original para compatibilidad
     Page<ItemEntity> findByDescripcionContainingIgnoreCase(String descripcion, Pageable pageable);
+
+    @Query("SELECT i FROM ItemEntity i WHERE i.categoria.id = :categoriaId")
+    List<ItemEntity> findByCategoriaId(@Param("categoriaId") Integer categoriaId);
 }

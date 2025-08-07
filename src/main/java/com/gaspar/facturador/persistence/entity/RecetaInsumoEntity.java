@@ -24,12 +24,11 @@ public class RecetaInsumoEntity {
     private RecetasEntity receta;
 
     @ManyToOne
-    @JoinColumn(name = "insumo_id", nullable = false)
-    @NotNull(message = "El insumo es obligatorio")
-    private InsumoEntity insumo;
+    @JoinColumn(name = "insumo_generico_id", nullable = false)
+    private InsumoGenericoEntity insumoGenerico;
 
     @Positive(message = "La cantidad debe ser positiva")
-    private BigDecimal cantidad; // Cantidad de insumo necesaria
+    private BigDecimal cantidad;
 
     @Column(length = 20)
     private String unidadMedida; // kg, g, l, ml, etc.

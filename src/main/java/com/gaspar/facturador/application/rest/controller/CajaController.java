@@ -8,6 +8,7 @@ import com.gaspar.facturador.persistence.crud.*;
 import com.gaspar.facturador.persistence.entity.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -193,5 +194,57 @@ public class CajaController {
         return ResponseEntity.ok(dtos);
     }
 
+    @GetMapping("/historial/{usuarioId}")
+    public ResponseEntity<?> obtenerHistorialCajasPorUsuario(
+            @PathVariable Long usuarioId,
+            @RequestParam(required = false) String desde,
+            @RequestParam(required = false) String hasta,
+            Pageable pageable
+    ) {
+        Page<CajasEntity> cajasPage;
+
+        if (desde != null && hasta != null) {
+            LocalDateTime fechaDesde = LocalDateTime.parse(desde);
+            LocalDateTime fechaHasta = LocalDateTime.parse(hasta);
+            cajasPage = cajasRepository.findAllByUsuarioAperturaIdAndFechaAperturaBetween(usuarioId, fechaDesde, fechaHasta, pageable);
+        } else {
+            cajasPage = cajasRepository.findAllByUsuarioAperturaId(usuarioId, pageable);
+        }
+
+        var dtos = cajasPage.map(caja -> {
+            CierreCajasEnity cierre = cierreCajaRepository.findByCaja(caja).orElse(null);
+
+            return CajaHistorialResponseDTO.builder()
+                    .id(caja.getId())
+                    .nombre(caja.getNombre())
+                    .estado(caja.getEstado())
+                    .turno(caja.getTurno())
+                    .montoInicial(caja.getMontoInicial())
+                    .sucursal(caja.getSucursal().getNombre())
+                    .usuarioApertura(caja.getUsuarioApertura() != null ? caja.getUsuarioApertura().getUsername() : null)
+                    .usuarioCierre(caja.getUsuarioCierre() != null ? caja.getUsuarioCierre().getUsername() : null)
+                    .fechaApertura(caja.getFechaApertura())
+                    .fechaCierre(caja.getFechaCierre())
+                    .cierre(cierre != null ? CierreCajaResponseDTO.builder()
+                            .efectivoContado(cierre.getEfectivoContado())
+                            .tarjetaContado(cierre.getTarjetaContado())
+                            .qrContado(cierre.getQrContado())
+                            .totalGastos(cierre.getTotalGastos())
+                            .totalVentas(cierre.getTotalVentas())
+                            .diferencia(cierre.getDiferencia())
+                            .observaciones(cierre.getObservaciones())
+                            .detalles(cierre.getDetalles().stream().map(detalle ->
+                                    CierreCajaDetalleResponseDTO.builder()
+                                            .montoFacturado(detalle.getMontoFacturado())
+                                            .montoSinFactura(detalle.getMontoSinFactura())
+                                            .montoContado(detalle.getMontoContado())
+                                            .build()
+                            ).toList())
+                            .build() : null)
+                    .build();
+        });
+
+        return ResponseEntity.ok(dtos);
+    }
 
 }

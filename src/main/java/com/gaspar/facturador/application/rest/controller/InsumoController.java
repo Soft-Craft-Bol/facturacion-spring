@@ -59,10 +59,12 @@ public class InsumoController {
     }
 
     @GetMapping("/sucursal/{sucursalId}")
-    public ResponseEntity<List<InsumoSucursalResponse>> listarInsumosPorSucursal(
+    public ResponseEntity<Page<InsumoSucursalResponse>> listarInsumosPorSucursal(
             @PathVariable Long sucursalId,
-            @RequestParam(defaultValue = "true") boolean soloActivos) {
-        return ResponseEntity.ok(insumoService.getInsumosBySucursal(sucursalId, soloActivos));
+            @RequestParam(defaultValue = "true") boolean soloActivos,
+            Pageable pageable) {
+
+        return ResponseEntity.ok(insumoService.getInsumosBySucursal(sucursalId, soloActivos, pageable));
     }
 
     @PutMapping("/{id}")

@@ -31,8 +31,9 @@ public class RecetasEntity {
     @Positive(message = "La cantidad debe ser positiva")
     private Integer cantidadUnidades; // Cantidad total de unidades producidas
 
-    @Positive(message = "El peso unitario debe ser positivo")
-    private BigDecimal pesoUnitario; // Peso por unidad en kg
+    @Positive(message = "El peso unitario debe ser positivo o 0")
+    @Column(nullable = true)
+    private BigDecimal pesoUnitario;
 
     @NotNull(message = "La fecha de creación es obligatoria")
     private Date fechaCreacion;
