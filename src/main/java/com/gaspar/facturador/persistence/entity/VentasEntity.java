@@ -1,5 +1,6 @@
 package com.gaspar.facturador.persistence.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.gaspar.facturador.persistence.entity.enums.TipoComprobanteEnum;
 import com.gaspar.facturador.persistence.entity.enums.TipoPagoEnum;
@@ -45,6 +46,7 @@ public class VentasEntity {
 
     @ManyToOne
     @JoinColumn(name = "cliente_id", nullable = false)
+    @JsonIgnore
     private ClienteEntity cliente;
 
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)

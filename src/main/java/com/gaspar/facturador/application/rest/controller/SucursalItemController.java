@@ -113,7 +113,11 @@ public class SucursalItemController {
     }
 
     @PutMapping("/sucursal/{sucursalId}/item/{itemId}/increase")
-    public ResponseEntity<SucursalItemEntity> increaseQuantity(@PathVariable Integer sucursalId, @PathVariable Integer itemId, @RequestParam Integer cantidad) {
+    public ResponseEntity<SucursalItemResponse> increaseQuantity(
+            @PathVariable Integer sucursalId,
+            @PathVariable Integer itemId,
+            @RequestParam Integer cantidad) {
+
         Optional<SucursalItemEntity> sucursalItemOptional = sucursalItemCrudRepository.findBySucursal_IdAndItem_Id(sucursalId, itemId);
 
         if (!sucursalItemOptional.isPresent()) {
@@ -123,7 +127,8 @@ public class SucursalItemController {
         SucursalItemEntity sucursalItem = sucursalItemOptional.get();
         sucursalItem.setCantidad(sucursalItem.getCantidad() + cantidad);
         SucursalItemEntity updatedSucursalItem = sucursalItemCrudRepository.save(sucursalItem);
-        return ResponseEntity.ok(updatedSucursalItem);
+
+        return ResponseEntity.ok(new SucursalItemResponse(updatedSucursalItem));
     }
 
     @PutMapping("/sucursal/{sucursalId}/item/{itemId}/decrease")
@@ -183,6 +188,7 @@ public class SucursalItemController {
             @RequestParam(required = false) String codigo,
             @RequestParam(required = false) Boolean conDescuento,
             @RequestParam(required = false) Integer sucursalId,
+            @RequestParam(required = false) Integer categoriaId,
             @RequestParam(required = false) String sortBy,
             @RequestParam(required = false) String sortDirection) {
 
@@ -194,7 +200,7 @@ public class SucursalItemController {
 
         // Llamada al servicio con todos los parámetros
         Page<ItemWithSucursalesDTO> itemsPage = itemService.findItemsWithSucursales(
-                search, codigo, conDescuento, sucursalId, pageable);
+                search, codigo, conDescuento, sucursalId, categoriaId, pageable);
 
         return ResponseEntity.ok(itemsPage);
     }
@@ -218,9 +224,10 @@ public class SucursalItemController {
             @RequestParam(required = false) Integer codigoProductoSin,
             @RequestParam(required = false) Boolean conDescuento,
             @RequestParam(required = false) Boolean sinStock,
+            @RequestParam(required = false) Integer categoriaId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "cantidad,desc") String sort) {  // Cambiado a "cantidad,desc"
+            @RequestParam(defaultValue = "cantidad,desc") String sort) {
 
         // Procesar el parámetro de ordenamiento
         String[] sortParams = sort.split(",");
@@ -229,11 +236,13 @@ public class SucursalItemController {
 
         // Mapear campos del DTO a campos de la entidad
         Map<String, String> fieldMapping = new HashMap<>();
-        fieldMapping.put("cantidadDisponible", "cantidad");  // Mapeo DTO -> Entidad
+        fieldMapping.put("cantidadDisponible", "cantidad");
         fieldMapping.put("precioConDescuento", "item.precioUnitario");
+        fieldMapping.put("precioUnitario", "item.precioUnitario");
         fieldMapping.put("descripcion", "item.descripcion");
         fieldMapping.put("codigo", "item.codigo");
         fieldMapping.put("tieneDescuento", "item.promocionItems");
+        fieldMapping.put("categoria", "item.categoria.nombre"); // Mapeo para ordenar por categoría
 
         String entityField = fieldMapping.getOrDefault(sortField, sortField);
         Sort.Direction direction = Sort.Direction.fromString(sortDirection);
@@ -241,7 +250,7 @@ public class SucursalItemController {
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, entityField));
 
         Page<ProductoSucursalDto> productosPage = itemService.getProductosByPuntoVentaId(
-                puntoVentaId, search, codigoProductoSin, conDescuento, sinStock, pageable);
+                puntoVentaId, search, codigoProductoSin, conDescuento, sinStock, categoriaId, pageable); // Agregar categoriaId
 
         ProductosPaginadosResponse response = new ProductosPaginadosResponse();
         response.setProductos(productosPage.getContent());

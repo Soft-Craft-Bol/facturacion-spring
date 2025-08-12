@@ -7,7 +7,7 @@ import java.time.LocalDate;
 public class ProduccionFilterDTO {
     private LocalDate fechaInicio;
     private LocalDate fechaFin;
-    private Long recetaId;
+    private Integer recetaId;
     private Integer productoId;
     private Integer sucursalId;
 }

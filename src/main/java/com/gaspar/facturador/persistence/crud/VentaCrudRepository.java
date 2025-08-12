@@ -4,19 +4,24 @@ import com.gaspar.facturador.application.response.ClienteFrecuenteDTO;
 import com.gaspar.facturador.persistence.dto.ReporteVentasDTO;
 import com.gaspar.facturador.persistence.dto.TotalVentasPorDiaDTO;
 import com.gaspar.facturador.persistence.entity.VentasEntity;
+import com.gaspar.facturador.persistence.entity.enums.TipoPagoEnum;
+import jakarta.persistence.TemporalType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Temporal;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Date;
 import java.time.ZoneId;
 import java.util.List;
 
-public interface VentaCrudRepository extends JpaRepository<VentasEntity, Long> {
+public interface VentaCrudRepository extends JpaRepository<VentasEntity, Long>, JpaSpecificationExecutor<VentasEntity> {
     // Métodos base
     Page<VentasEntity> findByFechaBetween(Date fechaInicio, Date fechaFin, Pageable pageable);
     List<VentasEntity> findByFechaBetween(Date fechaInicio, Date fechaFin);
@@ -102,24 +107,5 @@ public interface VentaCrudRepository extends JpaRepository<VentasEntity, Long> {
     """)
     List<ClienteFrecuenteDTO> findTop10ClientesFrecuentes();
 
-    @Query("SELECT v FROM VentasEntity v " +
-            "WHERE (:idPuntoVenta IS NULL OR v.puntoVenta.id = :idPuntoVenta) " +
-            "AND (:fechaInicio IS NULL OR v.fecha >= :fechaInicio) " +
-            "AND (:fechaFin IS NULL OR v.fecha < :fechaFin) " +
-            "AND (:estado IS NULL OR v.estado = :estado OR " +
-            "     (v.factura IS NOT NULL AND v.factura.estado = :estado)) " +
-            "AND (:productoNombre IS NULL OR EXISTS " +
-            "     (SELECT 1 FROM v.detalles d WHERE " +
-            "      LOWER(d.descripcionProducto) LIKE LOWER(CONCAT('%', :productoNombre, '%')))) " +
-            "AND (:nombreCliente IS NULL OR LOWER(v.cliente.nombreRazonSocial) LIKE LOWER(CONCAT('%', :nombreCliente, '%')))")
-    Page<VentasEntity> findByFiltros(
-            @Param("idPuntoVenta") Long idPuntoVenta,
-            @Param("fechaInicio") Date fechaInicio,
-            @Param("fechaFin") Date fechaFin,
-            @Param("estado") String estado,
-            @Param("productoNombre") String productoNombre,
-            @Param("nombreCliente") String nombreCliente,
-            Pageable pageable);
-
-
+    List<VentasEntity> findByCajaId(Long cajaId);
 }

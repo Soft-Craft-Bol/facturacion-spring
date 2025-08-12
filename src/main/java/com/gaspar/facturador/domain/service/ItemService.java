@@ -46,6 +46,7 @@ public class ItemService {
             String codigo,
             Boolean conDescuento,
             Integer sucursalId,
+            Integer categoriaId,
             Pageable pageable) {
 
         Specification<ItemEntity> spec = Specification.where(null);
@@ -74,6 +75,11 @@ public class ItemService {
         if (sucursalId != null) {
             spec = spec.and((root, query, cb) ->
                     cb.equal(root.join("sucursalItems").get("sucursal").get("id"), sucursalId));
+        }
+
+        if (categoriaId != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("categoria").get("id"), categoriaId));
         }
 
         Page<ItemEntity> itemsPage = itemCrudRepository.findAll(spec, pageable);
@@ -141,6 +147,11 @@ public class ItemService {
         dto.setUnidadMedida(item.getUnidadMedida());
         dto.setPrecioUnitario(item.getPrecioUnitario());
         dto.setCodigoProductoSin(item.getCodigoProductoSin());
+        dto.setCategoria(item.getCategoria() != null && item.getCategoria().getNombre() != null
+                ? item.getCategoria().getNombre()
+                : "Sin categoría");
+
+        dto.setImagen(item.getImagen());
         dto.setImagen(item.getImagen());
 
         // Lógica de descuentos
@@ -201,19 +212,17 @@ public class ItemService {
             Integer codigoProductoSin,
             Boolean conDescuento,
             Boolean sinStock,
+            Integer categoriaId,
             Pageable pageable) {
 
-        // 1. Obtener la sucursal
         PuntoVentaEntity puntoVenta = puntoVentaCrudRepository.findById(puntoVentaId)
                 .orElseThrow(() -> new EntityNotFoundException("Punto de venta no encontrado"));
         SucursalEntity sucursal = puntoVenta.getSucursal();
 
-        // 2. Crear especificación para los filtros
         Specification<SucursalItemEntity> spec = Specification.where(
                 (root, query, cb) -> cb.equal(root.get("sucursal").get("id"), sucursal.getId())
         );
 
-        // Filtro por término de búsqueda (código o descripción)
         if (searchTerm != null && !searchTerm.isEmpty()) {
             spec = spec.and((root, query, cb) -> {
                 Join<SucursalItemEntity, ItemEntity> itemJoin = root.join("item");
@@ -224,13 +233,11 @@ public class ItemService {
             });
         }
 
-        // Filtro por código producto SIN
         if (codigoProductoSin != null) {
             spec = spec.and((root, query, cb) ->
                     cb.equal(root.join("item").get("codigoProductoSin"), codigoProductoSin));
         }
 
-        // Filtro por descuento
         if (conDescuento != null) {
             spec = spec.and((root, query, cb) -> {
                 Join<SucursalItemEntity, PromocionEntity> promocionJoin = root.join("item")
@@ -244,7 +251,6 @@ public class ItemService {
             });
         }
 
-        // Filtro por stock
         if (sinStock != null) {
             spec = spec.and((root, query, cb) -> {
                 if (sinStock) {
@@ -255,15 +261,17 @@ public class ItemService {
             });
         }
 
-        // 3. Obtener los items paginados
+        if (categoriaId != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.join("item").join("categoria").get("id"), categoriaId));
+        }
+
         Page<SucursalItemEntity> sucursalItemsPage = sucursalItemCrudRepository.findAll(spec, pageable);
 
-        // 4. Transformar a DTO
         return sucursalItemsPage.map(sucursalItem -> {
             ItemEntity item = sucursalItem.getItem();
             ProductoSucursalDto dto = new ProductoSucursalDto();
 
-            // Mapeo de propiedades básicas
             dto.setId(item.getId());
             dto.setCodigo(item.getCodigo());
             dto.setDescripcion(item.getDescripcion());
@@ -273,7 +281,14 @@ public class ItemService {
             dto.setImagen(item.getImagen());
             dto.setCantidadDisponible(sucursalItem.getCantidad());
 
-            // Info de sucursal
+            if(item.getCategoria() != null) {
+                dto.setCategoriaId(item.getCategoria().getId());
+                dto.setCategoriaNombre(item.getCategoria().getNombre());
+            } else {
+                dto.setCategoriaId(null);
+                dto.setCategoriaNombre(null);
+            }
+
             dto.setSucursalId(sucursal.getId());
             dto.setSucursalNombre(sucursal.getNombre());
             dto.setSucursalDireccion(sucursal.getDireccion());

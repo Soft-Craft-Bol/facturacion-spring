@@ -39,11 +39,17 @@ public class InsumoGenericoController {
         return ResponseEntity.ok(insumoGenericoService.obtenerPorId(id));
     }
 
-    @PostMapping("/{id}/asignar-insumo")
-    public ResponseEntity<InsumoGenericoDTO> asignarInsumo(
+    @PutMapping("/{id}")
+    public ResponseEntity<InsumoGenericoDTO> actualizarInsumoGenerico(
             @PathVariable Long id,
-            @RequestBody InsumoGenericoDetalleDTO detalleDTO) {
-        return ResponseEntity.ok(insumoGenericoService.asignarInsumo(id, detalleDTO));
+            @RequestBody InsumoGenericoDTO dto) {
+        return ResponseEntity.ok(insumoGenericoService.actualizarInsumoGenerico(id, dto));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminarInsumoGenerico(@PathVariable Long id) {
+        insumoGenericoService.eliminarInsumoGenerico(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/asignar-insumos")
@@ -51,6 +57,13 @@ public class InsumoGenericoController {
             @PathVariable Long id,
             @RequestBody List<InsumoGenericoDetalleDTO> detalles) {
         return ResponseEntity.ok(insumoGenericoService.asignarInsumos(id, detalles));
+    }
+
+    @PutMapping("/{id}/actualizar-asignaciones")
+    public ResponseEntity<InsumoGenericoDTO> actualizarAsignaciones(
+            @PathVariable Long id,
+            @RequestBody List<InsumoGenericoDetalleDTO> detallesDTO) {
+        return ResponseEntity.ok(insumoGenericoService.actualizarAsignaciones(id, detallesDTO));
     }
 
 

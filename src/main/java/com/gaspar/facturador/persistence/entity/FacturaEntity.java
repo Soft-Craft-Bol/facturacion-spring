@@ -33,6 +33,7 @@ public class FacturaEntity {
     private String direccion;
     private Integer codigoPuntoVenta;
 
+    //DATOS DEL CLIENTE
     private LocalDateTime fechaEmision;
     private String nombreRazonSocial;
     private Integer codigoTipoDocumentoIdentidad;

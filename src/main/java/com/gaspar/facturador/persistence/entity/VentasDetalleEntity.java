@@ -29,6 +29,7 @@ public class VentasDetalleEntity {
     private ItemEntity producto;
     private BigDecimal cantidad;
     private BigDecimal montoDescuento;
+    @Column(name = "descripcion_producto", length = 100)
     private String descripcionProducto;
     private BigDecimal precioUnitario;
 }

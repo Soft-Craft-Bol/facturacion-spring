@@ -15,6 +15,7 @@ public class ItemWithSucursalesDTO {
     private BigDecimal precioConDescuento; // Nuevo campo
     private boolean tieneDescuento; // Nuevo campo
     private Integer codigoProductoSin;
+    private String categoria;
     private String imagen;
     private List<SucursalInfoDTO> sucursales;
 }

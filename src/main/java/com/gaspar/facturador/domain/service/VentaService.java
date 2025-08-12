@@ -2,6 +2,9 @@ package com.gaspar.facturador.domain.service;
 
 import com.gaspar.facturador.application.request.VentaSinFacturaRequest;
 import com.gaspar.facturador.application.response.ClienteFrecuenteDTO;
+import com.gaspar.facturador.application.rest.dto.VentaListadoDTO;
+import com.gaspar.facturador.application.rest.dto.VentaResponseDTO;
+import com.gaspar.facturador.application.rest.dto.VentasFiltroDTO;
 import com.gaspar.facturador.persistence.PuntoVentaRepository;
 import com.gaspar.facturador.persistence.crud.*;
 import com.gaspar.facturador.persistence.dto.TotalVentasPorDiaDTO;
@@ -10,10 +13,13 @@ import com.gaspar.facturador.persistence.dto.VentaHoyDTO;
 import com.gaspar.facturador.persistence.entity.*;
 import com.gaspar.facturador.persistence.entity.enums.TipoComprobanteEnum;
 import com.gaspar.facturador.persistence.entity.enums.TipoPagoEnum;
+import com.gaspar.facturador.utils.VentaSpecifications;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -175,7 +181,6 @@ public class VentaService {
             dto.setNombreRazonSocial(cliente.getNombreRazonSocial());
         }
 
-
         Date fechaVenta = venta.getFecha();
         LocalDateTime fechaEmision = fechaVenta.toInstant()
                 .atZone(ZoneId.systemDefault())
@@ -194,8 +199,15 @@ public class VentaService {
         dto.setDetalles(venta.getDetalles().stream().map(detalle -> {
             VentaHoyDTO.VentaDetalleDTO detalleDTO = new VentaHoyDTO.VentaDetalleDTO();
             detalleDTO.setDescripcion(detalle.getDescripcionProducto());
-            // Usar el precio unitario guardado en el detalle
-            detalleDTO.setSubTotal(detalle.getCantidad().multiply(detalle.getPrecioUnitario()));
+
+            // Calcular precio con descuento
+            BigDecimal precioConDescuento = detalle.getPrecioUnitario();
+            if (detalle.getMontoDescuento() != null && detalle.getMontoDescuento().compareTo(BigDecimal.ZERO) > 0) {
+                precioConDescuento = detalle.getPrecioUnitario().subtract(detalle.getMontoDescuento());
+            }
+
+            // Calcular subtotal
+            detalleDTO.setSubTotal(detalle.getCantidad().multiply(precioConDescuento));
             return detalleDTO;
         }).collect(Collectors.toList()));
 
@@ -215,8 +227,8 @@ public class VentaService {
         return ventasRepository.findTop10ClientesFrecuentes();
     }
 
-    public Map<String, Object> obtenerResumenVentasConYsinFacturacion(Date fechaInicio, Date fechaFin) {
-        List<VentasEntity> ventas = ventasRepository.findByFechaBetween(fechaInicio, fechaFin);
+    public Map<String, Object> obtenerResumenVentasConYsinFacturacion(Long cajaId) {
+        List<VentasEntity> ventas = ventasRepository.findByCajaId(cajaId);
 
         // Definir las categorías principales
         Map<String, BigDecimal> facturacion = new HashMap<>();
@@ -336,61 +348,174 @@ public class VentaService {
         return cleaned;
     }
 
+    public Page<VentaListadoDTO> obtenerVentasConFactura(
+            LocalDate fechaDesde, LocalDate fechaHasta,
+            String estadoFactura, TipoPagoEnum metodoPago,
+            String codigoCliente, String codigoProducto,
+            BigDecimal montoMin, BigDecimal montoMax,
+            Pageable pageable) {
 
-    private VentaFiltroDTO mapToVentaFiltroDTO(VentasEntity venta) {
-        VentaFiltroDTO dto = new VentaFiltroDTO();
-        dto.setIdVenta(venta.getId());
-        dto.setFechaInicio(venta.getFecha().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
+        Specification<VentasEntity> spec = Specification.where(VentaSpecifications.hasFactura())
+                .and(VentaSpecifications.withFechaDesde(fechaDesde))
+                .and(VentaSpecifications.withFechaHasta(fechaHasta))
+                .and(VentaSpecifications.withEstadoFactura(estadoFactura))
+                .and(VentaSpecifications.withMetodoPago(metodoPago))
+                .and(VentaSpecifications.withCodigoCliente(codigoCliente))
+                .and(VentaSpecifications.withCodigoProducto(codigoProducto))
+                .and(VentaSpecifications.withMontoMin(montoMin))
+                .and(VentaSpecifications.withMontoMax(montoMax));
 
-        // Mapear datos del punto de venta
-        if (venta.getPuntoVenta() != null) {
-            dto.setIdPuntoVenta(Long.valueOf(venta.getPuntoVenta().getId()));
-            dto.setNombrePuntoVenta(venta.getPuntoVenta().getNombre());
-            if (venta.getPuntoVenta().getSucursal() != null) {
-                dto.setNombreSucursal(venta.getPuntoVenta().getSucursal().getNombre());
-            }
-        }
+        Page<VentasEntity> ventasPage = ventasRepository.findAll(spec, pageable);
+        return ventasPage.map(this::convertToDTO);
+    }
 
-        // Mapear datos del vendedor
-        if (venta.getVendedor() != null) {
-            dto.setIdUsuario(venta.getVendedor().getId());
-            dto.setNombreUsuario(venta.getVendedor().getUsername());
-        }
+    private VentaListadoDTO convertToDTO(VentasEntity venta) {
+        VentaListadoDTO dto = new VentaListadoDTO();
 
-        // Mapear datos del cliente
-        if (venta.getCliente() != null) {
-            dto.setCodigoCliente(venta.getCliente().getCodigoCliente());
-            dto.setNombreCliente(venta.getCliente().getNombreRazonSocial());
-        }
-
-        dto.setTipoComprobante(venta.getTipoComprobante());
+        // Mapeo de campos básicos
+        dto.setId(venta.getId());
+        dto.setFecha(venta.getFecha());
         dto.setMetodoPago(venta.getMetodoPago());
-        dto.setEstado(venta.getEstado() != null ? venta.getEstado() :
-                (venta.getFactura() != null ? venta.getFactura().getEstado() : null));
+        dto.setMonto(venta.getMonto());
+        dto.setEstado(venta.getEstado());
+        dto.setTipoComprobante(venta.getTipoComprobante());
 
-        // Mapear detalles
-        dto.setDetalles(venta.getDetalles().stream().map(detalle -> {
-            VentaFiltroDTO.VentaDetalleDTO detalleDTO = new VentaFiltroDTO.VentaDetalleDTO();
-            detalleDTO.setIdProducto(Long.valueOf(detalle.getProducto().getId()));
-            detalleDTO.setDescripcionProducto(detalle.getDescripcionProducto());
-            detalleDTO.setCantidad(detalle.getCantidad());
-            detalleDTO.setPrecioUnitario(detalle.getPrecioUnitario());
-            detalleDTO.setMontoDescuento(detalle.getMontoDescuento());
-            detalleDTO.setSubTotal(detalle.getCantidad().multiply(detalle.getPrecioUnitario())
-                    .subtract(detalle.getMontoDescuento()));
-            return detalleDTO;
-        }).collect(Collectors.toList()));
+        // Mapeo del cliente
+        if (venta.getCliente() != null) {
+            VentaListadoDTO.ClienteDTO clienteDTO = new VentaListadoDTO.ClienteDTO();
+            clienteDTO.setId(venta.getCliente().getId());
+            clienteDTO.setNombreRazonSocial(venta.getCliente().getNombreRazonSocial());
+            clienteDTO.setCodigoCliente(venta.getCliente().getCodigoCliente());
+            clienteDTO.setNumeroDocumento(venta.getCliente().getNumeroDocumento());
+            dto.setCliente(clienteDTO);
+        }
 
-        // Calcular monto total
-        BigDecimal montoTotal = dto.getDetalles().stream()
-                .map(VentaFiltroDTO.VentaDetalleDTO::getSubTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        dto.setMontoMinimo(montoTotal);
-        dto.setMontoMaximo(montoTotal);
+        // Mapeo de detalles
+        if (venta.getDetalles() != null && !venta.getDetalles().isEmpty()) {
+            List<VentaListadoDTO.DetalleVentaDTO> detallesDTO = venta.getDetalles().stream()
+                    .map(detalle -> {
+                        VentaListadoDTO.DetalleVentaDTO detalleDTO = new VentaListadoDTO.DetalleVentaDTO();
+                        detalleDTO.setId(detalle.getId());
+                        detalleDTO.setCantidad(detalle.getCantidad());
+                        detalleDTO.setPrecioUnitario(detalle.getPrecioUnitario());
+                        detalleDTO.setDescripcionProducto(detalle.getDescripcionProducto());
+
+                        // Mapeo del producto
+                        if (detalle.getProducto() != null) {
+                            VentaListadoDTO.ProductoDTO productoDTO = new VentaListadoDTO.ProductoDTO();
+                            productoDTO.setId(detalle.getProducto().getId());
+                            productoDTO.setCodigo(detalle.getProducto().getCodigo());
+                            productoDTO.setDescripcion(detalle.getProducto().getDescripcion());
+                            productoDTO.setUnidadMedida(detalle.getProducto().getUnidadMedida());
+                            productoDTO.setPrecioUnitario(detalle.getProducto().getPrecioUnitario());
+                            productoDTO.setImagen(detalle.getProducto().getImagen());
+                            detalleDTO.setProducto(productoDTO);
+                        }
+
+                        return detalleDTO;
+                    })
+                    .collect(Collectors.toList());
+            dto.setDetalles(detallesDTO);
+        }
+
+        // Mapeo del vendedor
+        if (venta.getVendedor() != null) {
+            VentaListadoDTO.VendedorDTO vendedorDTO = new VentaListadoDTO.VendedorDTO();
+            vendedorDTO.setId(venta.getVendedor().getId());
+            vendedorDTO.setFirstName(venta.getVendedor().getFirstName());
+            vendedorDTO.setLastName(venta.getVendedor().getLastName());
+            vendedorDTO.setEmail(venta.getVendedor().getEmail());
+            dto.setVendedor(vendedorDTO);
+        }
+
+        // Mapeo del punto de venta
+        if (venta.getPuntoVenta() != null) {
+            VentaListadoDTO.PuntoVentaDTO puntoVentaDTO = new VentaListadoDTO.PuntoVentaDTO();
+            puntoVentaDTO.setId(venta.getPuntoVenta().getId());
+            puntoVentaDTO.setNombre(venta.getPuntoVenta().getNombre());
+
+            if (venta.getPuntoVenta().getSucursal() != null) {
+                VentaListadoDTO.SucursalDTO sucursalDTO = new VentaListadoDTO.SucursalDTO();
+                sucursalDTO.setId(venta.getPuntoVenta().getSucursal().getId());
+                sucursalDTO.setNombre(venta.getPuntoVenta().getSucursal().getNombre());
+                sucursalDTO.setDireccion(venta.getPuntoVenta().getSucursal().getDireccion());
+                puntoVentaDTO.setSucursal(sucursalDTO);
+            }
+
+            dto.setPuntoVenta(puntoVentaDTO);
+        }
+
+        // Mapeo de la factura
+        if (venta.getFactura() != null) {
+            VentaListadoDTO.FacturaResumenDTO facturaDTO = new VentaListadoDTO.FacturaResumenDTO();
+            facturaDTO.setId(venta.getFactura().getId());
+            facturaDTO.setNumeroFactura(venta.getFactura().getNumeroFactura().intValue());
+            facturaDTO.setCuf(venta.getFactura().getCuf());
+            facturaDTO.setCufd(venta.getFactura().getCufd());
+            facturaDTO.setEstado(venta.getFactura().getEstado());
+            facturaDTO.setMontoTotal(venta.getFactura().getMontoTotal());
+            dto.setFactura(facturaDTO);
+        }
 
         return dto;
     }
 
+    public VentaResponseDTO convertToVentaResponseDTO(VentasEntity venta) {
+        VentaResponseDTO dto = new VentaResponseDTO();
 
+        // Mapeo de campos básicos
+        dto.setIdVenta(venta.getId());
+        dto.setEstado(venta.getEstado());
+        dto.setFechaEmision(venta.getFecha().toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDateTime());
+        dto.setMontoTotal(venta.getMonto());
+        dto.setMetodoPago(venta.getMetodoPago().name());
 
+        // Datos del cliente
+        if (venta.getCliente() != null) {
+            dto.setNombreCliente(venta.getCliente().getNombreRazonSocial());
+        } else {
+            dto.setNombreCliente("CONSUMIDOR FINAL");
+        }
+
+        // Mapeo de detalles
+        dto.setDetalles(venta.getDetalles().stream().map(detalle -> {
+            VentaResponseDTO.DetalleVentaDTO detalleDTO = new VentaResponseDTO.DetalleVentaDTO();
+            detalleDTO.setDescripcionProducto(detalle.getDescripcionProducto());
+            detalleDTO.setCantidad(detalle.getCantidad());
+            detalleDTO.setPrecioUnitario(detalle.getPrecioUnitario());
+            detalleDTO.setDescuento(detalle.getMontoDescuento());
+
+            // Calcular subtotal (precioUnitario * cantidad - descuento)
+            BigDecimal subtotal = detalle.getPrecioUnitario()
+                    .multiply(detalle.getCantidad())
+                    .subtract(detalle.getMontoDescuento());
+            detalleDTO.setSubtotal(subtotal);
+
+            return detalleDTO;
+        }).collect(Collectors.toList()));
+
+        return dto;
+    }
+
+    public Page<VentaListadoDTO> obtenerVentasSinFactura(
+            LocalDate fechaDesde, LocalDate fechaHasta,
+            TipoPagoEnum metodoPago,
+            String codigoCliente, String codigoProducto,
+            BigDecimal montoMin, BigDecimal montoMax,
+            Pageable pageable) {
+
+        Specification<VentasEntity> spec = Specification.where(VentaSpecifications.hasNoFactura())
+                .and(VentaSpecifications.withFechaDesde(fechaDesde))
+                .and(VentaSpecifications.withFechaHasta(fechaHasta))
+                .and(VentaSpecifications.withMetodoPago(metodoPago))
+                .and(VentaSpecifications.withCodigoCliente(codigoCliente))
+                .and(VentaSpecifications.withCodigoProducto(codigoProducto))
+                .and(VentaSpecifications.withMontoMin(montoMin))
+                .and(VentaSpecifications.withMontoMax(montoMax));
+
+        Page<VentasEntity> ventasPage = ventasRepository.findAll(spec, pageable);
+        return ventasPage.map(this::convertToDTO);
+    }
 }

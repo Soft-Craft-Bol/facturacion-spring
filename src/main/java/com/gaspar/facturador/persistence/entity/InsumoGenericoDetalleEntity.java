@@ -20,5 +20,5 @@ public class InsumoGenericoDetalleEntity {
     @JoinColumn(name = "insumo_id", nullable = false)
     private InsumoEntity insumo;
 
-    private Integer prioridad = 1; // opcional, por si quieres ordenar preferencia
+    private Integer prioridad;
 }

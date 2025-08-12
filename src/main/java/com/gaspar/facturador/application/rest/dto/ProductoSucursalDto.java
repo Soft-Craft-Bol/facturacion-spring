@@ -21,4 +21,6 @@ public class ProductoSucursalDto {
     private Integer sucursalId;
     private String sucursalNombre;
     private String sucursalDireccion;
+    private Integer categoriaId;
+    private String categoriaNombre;
 }

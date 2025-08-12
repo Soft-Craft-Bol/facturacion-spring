@@ -38,17 +38,6 @@ public interface RecetasCrudRepository extends JpaRepository<RecetasEntity, Inte
             "WHERE ig IN :insumosGenericos")
     List<InsumoGenericoEntity> findInsumosEspecificos(@Param("insumosGenericos") List<InsumoGenericoEntity> insumosGenericos);
 
-    @Query("SELECT DISTINCT r FROM RecetasEntity r " +
-            "LEFT JOIN FETCH r.recetaInsumos ri " +
-            "LEFT JOIN FETCH ri.insumoGenerico ig " +
-            "LEFT JOIN FETCH ig.insumosAsociados iad " +
-            "LEFT JOIN FETCH iad.insumo " +
-            "WHERE (:nombre IS NULL OR LOWER(r.nombre) LIKE LOWER(CONCAT('%', CAST(:nombre AS string), '%'))) " +
-            "AND (:productoId IS NULL OR r.producto.id = :productoId)")
-    Page<RecetasEntity> findByFiltersWithDetails(
-            @Param("nombre") String nombre,
-            @Param("productoId") Integer productoId,
-            Pageable pageable);
 
     @Query("SELECT DISTINCT r FROM RecetasEntity r " +
             "LEFT JOIN FETCH r.recetaInsumos ri " +

@@ -34,42 +34,29 @@ public class ProduccionController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ProduccionResponseDTO> obtenerProduccionPorId(
-            @PathVariable Long id) {
+    public ResponseEntity<ProduccionResponseDTO> obtenerProduccionPorId(@PathVariable Long id) {
         return ResponseEntity.ok(produccionService.obtenerProduccionPorId(id));
     }
 
     @GetMapping
     public ResponseEntity<ProduccionPageDTO> listarProduccionesPaginadas(
             @PageableDefault(size = 10) Pageable pageable,
-            @RequestParam(required = false) Long recetaId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
+            @RequestParam(required = false) Integer recetaId,
             @RequestParam(required = false) Integer productoId,
-            @RequestParam(required = false) Integer sucursalId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin) {
+            @RequestParam(required = false) Integer sucursalId) {
 
         ProduccionFilterDTO filtros = new ProduccionFilterDTO();
+        filtros.setFechaInicio(fechaInicio);
+        filtros.setFechaFin(fechaFin);
         filtros.setRecetaId(recetaId);
         filtros.setProductoId(productoId);
         filtros.setSucursalId(sucursalId);
-        filtros.setFechaInicio(fechaInicio);
-        filtros.setFechaFin(fechaFin);
 
         return ResponseEntity.ok(produccionService.listarProduccionesPaginadas(pageable, filtros));
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<ProduccionResponseDTO> actualizarProduccion(
-            @PathVariable Long id,
-            @RequestBody ProduccionDTO produccionDTO) {
-        return ResponseEntity.ok(produccionService.actualizarProduccion(id, produccionDTO));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminarProduccion(
-            @PathVariable Long id) {
-        produccionService.eliminarProduccion(id);
-        return ResponseEntity.noContent().build();
     }
 
 }

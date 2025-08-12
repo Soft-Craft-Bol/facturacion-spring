@@ -1,13 +1,8 @@
 package com.gaspar.facturador.domain.service;
 
 import com.gaspar.facturador.application.request.UpdateUserRequest;
-import com.gaspar.facturador.application.rest.dto.AuthCreateUserRequest;
-import com.gaspar.facturador.application.rest.dto.AuthLoginRequest;
-import com.gaspar.facturador.application.rest.dto.AuthResponse;
-import com.gaspar.facturador.persistence.crud.HorarioCrudRepository;
-import com.gaspar.facturador.persistence.crud.PuntoVentaCrudRepository;
-import com.gaspar.facturador.persistence.crud.RoleRepository;
-import com.gaspar.facturador.persistence.crud.UserRepository;
+import com.gaspar.facturador.application.rest.dto.*;
+import com.gaspar.facturador.persistence.crud.*;
 import com.gaspar.facturador.persistence.dto.HorarioDTO;
 import com.gaspar.facturador.persistence.dto.PuntoVentaDTO;
 import com.gaspar.facturador.persistence.dto.UserDTO;
@@ -55,6 +50,9 @@ public class UserDetailServiceImpl implements UserDetailsService {
 
     @Autowired
     private PuntoVentaCrudRepository puntoVentaRepository;
+
+    @Autowired
+    private CajaRepository cajasRepository;
 
     @Override
     public UserDetails loadUserByUsername(String username) {
@@ -145,7 +143,56 @@ public class UserDetailServiceImpl implements UserDetailsService {
         String accessToken = jwtUtils.createToken(authentication);
         String photo = userSaved.getPhoto();
 
-        return new AuthResponse( userSaved.getId(), username, "User created successfully", accessToken, true, photo, userSaved.getPuntosVenta());
+        Set<SucursalUserDTO> sucursalUserDTO = userEntity.getPuntosVenta().stream()
+                .map(pv -> {
+                    SucursalEntity sucursal = pv.getSucursal();
+                    return new SucursalUserDTO(sucursal.getId(), sucursal.getNombre());
+                })
+                .collect(Collectors.toSet());
+
+        Set<PuntoVentaDTO> puntosVentaDTO = userEntity.getPuntosVenta().stream()
+                .map(pv -> new PuntoVentaDTO(pv.getId(), pv.getNombre()))
+                .collect(Collectors.toSet());
+
+        Set<String> permissions = userEntity.getRoles().stream()
+                .flatMap(role -> role.getPermissions().stream())
+                .map(PermissionEntity::getName)
+                .collect(Collectors.toSet());
+
+        Set<CajaAbiertaDTO> cajasAbiertasDTO = cajasRepository.findByUsuarioAperturaAndEstado(userEntity, "ABIERTA")
+                .stream()
+                .map(caja -> new CajaAbiertaDTO(
+                        caja.getId(),
+                        caja.getNombre(),
+                        caja.getEstado(),
+                        caja.getTurno().name(),
+                        caja.getMontoInicial(),
+                        caja.getFechaApertura()))
+                .collect(Collectors.toSet());
+
+        List<HorarioDTO> horariosDTO = horarioCrudRepository.findByIdPanadero(userEntity.getId())
+                .stream()
+                .map(horario -> new HorarioDTO(
+                        horario.getId(),
+                        horario.getHoraEntrada(),
+                        horario.getHoraSalida(),
+                        horario.getFechaEntrada(),
+                        horario.getFechaSalida(),
+                        horario.getDias()))
+                .collect(Collectors.toList());
+
+        return new AuthResponse(
+                userEntity.getId(),
+                username,
+                "User logged in successfully",
+                accessToken,
+                true,
+                userEntity.getPhoto(),
+                sucursalUserDTO,
+                puntosVentaDTO,
+                permissions,
+                cajasAbiertasDTO.isEmpty() ? null : cajasAbiertasDTO,
+                horariosDTO.isEmpty() ? null : horariosDTO);
     }
 
 
@@ -160,10 +207,57 @@ public class UserDetailServiceImpl implements UserDetailsService {
 
         UserEntity userEntity = userRepository.findUserEntityByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("El usuario " + username + " no existe."));
-        String photo = userEntity.getPhoto();
-        Set<PuntoVentaEntity> puntosVenta = userEntity.getPuntosVenta();
 
-        return new AuthResponse( userEntity.getId(), username, "User logged in successfully", accessToken, true, photo, puntosVenta);
+        Set<SucursalUserDTO> sucursalUserDTO = userEntity.getPuntosVenta().stream()
+                .map(pv -> {
+                    SucursalEntity sucursal = pv.getSucursal();
+                    return new SucursalUserDTO(sucursal.getId(), sucursal.getNombre());
+                })
+                .collect(Collectors.toSet());
+
+        Set<PuntoVentaDTO> puntosVentaDTO = userEntity.getPuntosVenta().stream()
+                .map(pv -> new PuntoVentaDTO(pv.getId(), pv.getNombre()))
+                .collect(Collectors.toSet());
+
+        Set<String> permissions = userEntity.getRoles().stream()
+                .flatMap(role -> role.getPermissions().stream())
+                .map(PermissionEntity::getName)
+                .collect(Collectors.toSet());
+
+        Set<CajaAbiertaDTO> cajasAbiertasDTO = cajasRepository.findByUsuarioAperturaAndEstado(userEntity, "ABIERTA")
+                .stream()
+                .map(caja -> new CajaAbiertaDTO(
+                        caja.getId(),
+                        caja.getNombre(),
+                        caja.getEstado(),
+                        caja.getTurno().name(),
+                        caja.getMontoInicial(),
+                        caja.getFechaApertura()))
+                .collect(Collectors.toSet());
+
+        List<HorarioDTO> horariosDTO = horarioCrudRepository.findByIdPanadero(userEntity.getId())
+                .stream()
+                .map(horario -> new HorarioDTO(
+                        horario.getId(),
+                        horario.getHoraEntrada(),
+                        horario.getHoraSalida(),
+                        horario.getFechaEntrada(),
+                        horario.getFechaSalida(),
+                        horario.getDias()))
+                .collect(Collectors.toList());
+
+        return new AuthResponse(
+                userEntity.getId(),
+                username,
+                "User logged in successfully",
+                accessToken,
+                true,
+                userEntity.getPhoto(),
+                sucursalUserDTO,
+                puntosVentaDTO,
+                permissions,
+                cajasAbiertasDTO.isEmpty() ? null : cajasAbiertasDTO,
+                horariosDTO.isEmpty() ? null : horariosDTO);
     }
 
     public Authentication authenticate(String username, String password) {
