@@ -22,7 +22,9 @@ import com.gaspar.facturador.domain.service.emision.GeneraFacturaService;
 import com.gaspar.facturador.persistence.FacturaRepository;
 import com.gaspar.facturador.persistence.dto.FacturaDetalleDTO;
 import com.gaspar.facturador.persistence.entity.*;
+import com.gaspar.facturador.persistence.entity.enums.TipoPagoEnum;
 import com.gaspar.facturador.utils.FacturaCompressor;
+import org.apache.commons.io.FileUtils;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import com.gaspar.facturador.persistence.dto.FacturaDTO;
@@ -96,7 +98,8 @@ public class FacturacionService {
         String xmlContent = new String(generaFacturaService.getXmlBytes(factura));
 
         try {
-            byte[] xmlComprimidoZip = generaFacturaService.obtenerArchivo(factura, false);
+            // Pasar el puntoVenta para usarlo en el nombre del archivo
+            byte[] xmlComprimidoZip = generaFacturaService.obtenerArchivo(factura, cufd.getCodigoControl(), puntoVenta, true, false);
             RespuestaRecepcion respuesta = envioFacturaService.enviar(puntoVenta, cufd, xmlComprimidoZip);
 
             if (respuesta.getCodigoEstado() != 908) {
@@ -109,7 +112,6 @@ public class FacturacionService {
             }
 
             FacturaEntity facturaEntity = persistirFactura(factura);
-
             registrarVenta(ventaRequest, facturaEntity.getId());
 
             return construirRespuestaExitosa(factura, xmlContent, respuesta);
@@ -121,6 +123,7 @@ public class FacturacionService {
             generaFacturaService.limpiarFacturasTemporales();
         }
     }
+
 
     private CufdEntity obtenerCufdVigente(PuntoVentaEntity puntoVenta) throws Exception {
         Optional<CufdEntity> cufdOpt = cufdRepository.findActual(puntoVenta);
@@ -198,7 +201,12 @@ public class FacturacionService {
         venta.setIdPuntoVenta(ventaRequest.getIdPuntoVenta().longValue());
         venta.setIdCliente(ventaRequest.getIdCliente());
         venta.setTipoComprobante(ventaRequest.getTipoComprobante());
-        venta.setMetodoPago(ventaRequest.getMetodoPago());
+        if (ventaRequest.getCodigoMetodoPago() != null) {
+            TipoPagoEnum metodoPago = TipoPagoEnum.fromId(ventaRequest.getCodigoMetodoPago());
+            venta.setMetodoPago(metodoPago.getDescripcion());
+        } else {
+            venta.setMetodoPago("EFECTIVO");
+        }
         venta.setUsername(ventaRequest.getUsername());
         venta.setDetalle(ventaRequest.getDetalle());
         venta.setIdfactura(idFactura);
@@ -235,7 +243,7 @@ public class FacturacionService {
         byte[] xmlBytes = this.generaFacturaService.getXmlBytes(factura);
         String xmlContent = new String(xmlBytes);
         // Continuar con el flujo normal
-        byte[] xmlComprimidoZip = this.generaFacturaService.obtenerArchivo(factura, true);
+        byte[] xmlComprimidoZip = this.generaFacturaService.obtenerArchivo(factura, cufd.get().getCodigoControl(), puntoVenta.get(), true, true);
         // Construir la respuesta
         FacturaResponse facturaResponse = new FacturaResponse();
         facturaResponse.setCuf(factura.getCabecera().getCuf());
@@ -245,6 +253,7 @@ public class FacturacionService {
         return facturaResponse;
     }
 
+    // En FacturacionService, modificar el método enviarPaquetes
     @Transactional(rollbackFor = Exception.class)
     public PaquetesResponse enviarPaquetes(EnvioPaqueteRequest envioPaqueteRequest) throws IOException {
         try {
@@ -261,8 +270,13 @@ public class FacturacionService {
                             puntoVenta)
                     .orElseThrow(() -> new ProcessException("Evento significativo no encontrado o no vigente"));
 
-            // 3. Comprimir y enviar paquete
-            byte[] xmlsComprimidosZip = facturaCompressor.comprimirPaqueteFacturas();
+            // 3. Comprimir y enviar paquete usando el código de control del CUFD
+            byte[] xmlsComprimidosZip = facturaCompressor.comprimirPaquetePorCodigoControl(
+                    cufd.getCodigoControl(),
+                    puntoVenta,
+                    true // esContingencia
+            );
+
             int cantidadFacturas = facturaCompressor.getCantidadArchivosXML();
 
             RespuestaRecepcion respuestaRecepcion = envioPaquetesService.enviarPaqueteFacturas(
@@ -277,7 +291,6 @@ public class FacturacionService {
             // 4. Crear respuesta
             PaquetesResponse paquetesResponse = new PaquetesResponse();
             paquetesResponse.setCodigoEstado(respuestaRecepcion.getCodigoEstado());
-
             paquetesResponse.setCodigoRecepcion(respuestaRecepcion.getCodigoRecepcion());
             paquetesResponse.setCodigoEvento(envioPaqueteRequest.codigoEvento());
             paquetesResponse.setCantidadFacturasAlmacenadas(cantidadFacturas);
@@ -293,11 +306,13 @@ public class FacturacionService {
                 evento.setCodigoEventoPaquete(envioPaqueteRequest.codigoEvento());
                 evento.setCantidadFacturas(cantidadFacturas);
                 evento.setEtapa("PAQUETE_ENVIADO");
-                evento.setVigente(false); // Marcamos como no vigente después del envío
+                evento.setVigente(false);
                 eventoRepository.save(evento);
+
+                facturaCompressor.eliminarArchivosPorCodigoControl(cufd.getCodigoControl(), puntoVenta, true);
             }
 
-            // 7. Personalizar mensajes según el código de estado
+            // 8. Personalizar mensajes según el código de estado
             String mensajeBase;
             if (respuestaRecepcion.getCodigoEstado() == 901) {
                 mensajeBase = "Paquete recibido correctamente por el SIAT. Estado: PENDIENTE DE PROCESAMIENTO";
@@ -310,7 +325,7 @@ public class FacturacionService {
             }
             paquetesResponse.setMensaje(mensajeBase);
 
-            // 8. Agregar mensajes adicionales del SIAT si existen
+            // 9. Agregar mensajes adicionales del SIAT si existen
             if (respuestaRecepcion.getMensajesList() != null && !respuestaRecepcion.getMensajesList().isEmpty()) {
                 StringBuilder mensajeDetallado = new StringBuilder(mensajeBase);
                 mensajeDetallado.append(" Detalles: ");
@@ -320,49 +335,73 @@ public class FacturacionService {
                 paquetesResponse.setMensaje(mensajeDetallado.toString());
             }
 
-            // 9. Limpieza de archivos temporales
-            this.generaFacturaService.limpiarFacturasTemporales();
-            if (envioExitoso) {
-                limpiarArchivosTemporales();
-            }
-
             return paquetesResponse;
         } finally {
             limpiarArchivosPorTiempo();
         }
     }
 
-    /**
-     * Limpia archivos temporales de paquetes cuando el envío fue exitoso
-     */
     private void limpiarArchivosTemporales() {
-        String directorioPaquetes = appConfig.getPathFiles() + "/facturas/paquetes/";
-        File directorio = new File(directorioPaquetes);
+        String basePath = appConfig.getPathFiles() + "/facturas/";
 
-        if (directorio.exists() && directorio.isDirectory()) {
-            File[] archivos = directorio.listFiles((dir, name) ->
-                    name.endsWith(".xml") || name.endsWith(".zip"));
+        limpiarDirectorio(basePath + "emision_normal", 72); // 72 horas para emisión normal
 
-            if (archivos != null) {
-                for (File archivo : archivos) {
-                    try {
-                        if (archivo.delete()) {
-                            System.out.println("Archivo eliminado exitosamente: " + archivo.getName());
-                        } else {
-                            System.err.println("No se pudo eliminar el archivo: " + archivo.getName());
-                        }
-                    } catch (Exception e) {
-                        System.err.println("Error al eliminar archivo temporal: " +
-                                archivo.getName() + " - " + e.getMessage());
+        limpiarDirectorio(basePath + "contingencia", 720); // 720 horas (30 días) para contingencia
+    }
+
+    private void limpiarDirectorio(String path, int horasRetencion) {
+        File directorio = new File(path);
+        if (!directorio.exists()) return;
+
+        long tiempoLimite = System.currentTimeMillis() - (horasRetencion * 60 * 60 * 1000);
+
+        limpiarRecursivo(directorio, tiempoLimite, true);
+    }
+
+    private void limpiarRecursivo(File directorio, long tiempoLimite, boolean esRaiz) {
+        File[] contenidos = directorio.listFiles();
+        if (contenidos == null) return;
+
+        for (File archivo : contenidos) {
+            try {
+                if (archivo.isDirectory()) {
+                    if (!esRaiz && esCufdVigente(archivo.getName())) {
+                        System.out.println("[INFO] Manteniendo directorio CUFD vigente: " + archivo.getAbsolutePath());
+                        continue;
                     }
+
+                    limpiarRecursivo(archivo, tiempoLimite, false);
+
+                    if ((archivo.listFiles() == null || archivo.listFiles().length == 0) &&
+                            archivo.lastModified() < tiempoLimite) {
+                        safeDelete(archivo);
+                    }
+                } else if (archivo.lastModified() < tiempoLimite) {
+                    safeDelete(archivo);
                 }
+            } catch (Exception e) {
+                System.err.println("[ERROR] Procesando " + archivo.getAbsolutePath() +
+                        " - Error: " + e.getMessage());
             }
         }
     }
 
-    /**
-     * Limpia archivos que tengan más de 72 horas de antigüedad
-     */
+    private boolean esCufdVigente(String nombreDir) {
+        String codigoCufd = nombreDir.length() > 10 ? nombreDir.substring(0, 10) : nombreDir;
+        return cufdRepository.existsByCodigoStartingWithAndFechaVigenciaAfter(
+                codigoCufd, LocalDateTime.now());
+    }
+
+    private void safeDelete(File archivo) throws IOException {
+        if (!archivo.exists()) return;
+
+        if (!archivo.delete()) {
+            throw new IOException("Falló al eliminar " + archivo.getAbsolutePath() +
+                    " - ¿Permisos insuficientes?");
+        }
+        System.out.println("[INFO] Eliminado exitosamente: " + archivo.getAbsolutePath());
+    }
+
     private void limpiarArchivosPorTiempo() {
         String directorioPaquetes = appConfig.getPathFiles() + "/facturas/paquetes/";
         File directorio = new File(directorioPaquetes);
@@ -460,12 +499,6 @@ public class FacturacionService {
         return response;
     }
 
-    private ValidacionPaqueteResponse mapToResponse(RespuestaRecepcion respuesta) {
-        ValidacionPaqueteResponse response = new ValidacionPaqueteResponse();
-        response.setCodigoEstado(respuesta.getCodigoEstado());
-        response.setCodigoRecepcion(respuesta.getCodigoRecepcion());
-        return response;
-    }
 
     public RespuestaRecepcion anularFactura(Long idPuntoVenta, String cuf, String codigoMotivo) throws Exception {
         return anulacionFacturaService.anularFactura(idPuntoVenta, cuf, codigoMotivo);
@@ -475,9 +508,7 @@ public class FacturacionService {
         return reversionFacturaService.reversionAnulacionFactura(idPuntoVenta, cuf);
     }
 
-//    public List<FacturaEntity> getAllFacturas() {
-//        return facturaRepository.findAll();
-//    }
+
     public void deleteFacturaById(Long id) {
         facturaRepository.delete(id);
     }

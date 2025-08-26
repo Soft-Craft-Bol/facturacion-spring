@@ -67,6 +67,15 @@ public class InsumoController {
         return ResponseEntity.ok(insumoService.getInsumosBySucursal(sucursalId, soloActivos, pageable));
     }
 
+    @GetMapping("/sucursal/{sucursalId}/otros")
+    public ResponseEntity<Page<InsumoSucursalResponse>> listarOtrosInsumosPorSucursal(
+            @PathVariable Long sucursalId,
+            @RequestParam(defaultValue = "true") boolean soloActivos,
+            Pageable pageable) {
+
+        return ResponseEntity.ok(insumoService.getInsumosBySucursalExcludingMateriaPrima(sucursalId, soloActivos, pageable));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<InsumoResponse> actualizarInsumo(
             @PathVariable Long id,

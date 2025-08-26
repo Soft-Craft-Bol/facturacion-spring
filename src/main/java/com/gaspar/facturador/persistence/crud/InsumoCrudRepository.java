@@ -59,4 +59,14 @@ public interface InsumoCrudRepository extends JpaRepository<InsumoEntity, Long> 
     Page<InsumoEntity> findByNombreContainingIgnoreCase(String nombre, Pageable pageable);
 
     Page<InsumoEntity> findByTipo(TipoInsumo tipo, Pageable pageable);
+
+    @Query("SELECT si FROM SucursalInsumoEntity si WHERE si.sucursal.id = :sucursalId AND si.insumo.activo = true AND si.insumo.tipo != 'MATERIA_PRIMA'")
+    Page<SucursalInsumoEntity> findActiveInsumosBySucursalIdExcludingMateriaPrima(
+            @Param("sucursalId") Long sucursalId,
+            Pageable pageable);
+
+    @Query("SELECT si FROM SucursalInsumoEntity si WHERE si.sucursal.id = :sucursalId AND si.insumo.tipo != 'MATERIA_PRIMA'")
+    Page<SucursalInsumoEntity> findInsumosBySucursalIdExcludingMateriaPrima(
+            @Param("sucursalId") Long sucursalId,
+            Pageable pageable);
 }

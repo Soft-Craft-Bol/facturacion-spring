@@ -51,7 +51,7 @@ public class SucursalInsumoService {
     }
 
     @Transactional
-    public void updateStockInsumo(Long sucursalId, Long insumoId, BigDecimal cantidad) throws ChangeSetPersister.NotFoundException {
+    public void updateStockInsumo(Integer sucursalId, Long insumoId, BigDecimal cantidad) throws ChangeSetPersister.NotFoundException {
         SucursalInsumoEntity sucursalInsumo = sucursalInsumoRepository.findBySucursalIdAndInsumoId(sucursalId, insumoId)
                 .orElseThrow(() -> new ChangeSetPersister.NotFoundException());
 

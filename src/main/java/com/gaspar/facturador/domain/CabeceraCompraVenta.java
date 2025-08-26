@@ -6,7 +6,9 @@ import com.gaspar.facturador.commons.CodigoMonedaEnum;
 import com.gaspar.facturador.commons.CodigoTipoDocumentoIdentidadEnum;
 import com.gaspar.facturador.persistence.entity.ClienteEntity;
 import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
+import com.gaspar.facturador.utils.JaxbNilAdapters;
 import jakarta.xml.bind.annotation.*;
+import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import lombok.Getter;
 
 import javax.xml.datatype.*;
@@ -91,6 +93,7 @@ public class CabeceraCompraVenta {
     private String numeroDocumento;
 
     @XmlElement(required = true, nillable = true)
+    @XmlJavaTypeAdapter(JaxbNilAdapters.StringAdapter.class)
     private String complemento;
 
     @XmlElement(required = true)
@@ -99,6 +102,7 @@ public class CabeceraCompraVenta {
     private int codigoMetodoPago;
 
     @XmlElement(required = true, type = Long.class, nillable = true)
+    @XmlJavaTypeAdapter(JaxbNilAdapters.LongAdapter.class)
     private Long numeroTarjeta;
 
     @XmlElement(required = true)
@@ -116,12 +120,14 @@ public class CabeceraCompraVenta {
     private BigDecimal montoTotalMoneda;
 
     @XmlElement(required = true, nillable = true)
+    @XmlJavaTypeAdapter(JaxbNilAdapters.BigDecimalAdapter.class)
     protected BigDecimal montoGiftCard;
 
     @XmlElement(required = true, nillable = true)
     private BigDecimal descuentoAdicional;
 
-    @XmlElement(required = true, type = Integer.class, nillable = true)
+    @XmlElement(required = true, nillable = true)
+    @XmlJavaTypeAdapter(JaxbNilAdapters.IntegerAdapter.class)
     private Integer codigoExcepcion;
 
     @XmlElement(required = true, nillable = true)
@@ -183,15 +189,19 @@ public class CabeceraCompraVenta {
             return this;
         }
 
-        public Builder buildPago(BigDecimal total) {
-            cabeceraCompraVenta.codigoMetodoPago = CodigoMetodoPagoEnum.EFECTIVO.getValue();
-            cabeceraCompraVenta.numeroTarjeta = null;
+        public Builder buildPago(BigDecimal total, CodigoMetodoPagoEnum metodoPago, Long numeroTarjeta) {
+            if (metodoPago == null) {
+                metodoPago = CodigoMetodoPagoEnum.EFECTIVO;
+            }
+            cabeceraCompraVenta.codigoMetodoPago = metodoPago.getValue();
+            cabeceraCompraVenta.numeroTarjeta = (metodoPago == CodigoMetodoPagoEnum.TARJETA) ? numeroTarjeta : null;
             cabeceraCompraVenta.montoTotal = total;
             cabeceraCompraVenta.montoTotalSujetoIva = total;
             cabeceraCompraVenta.codigoMoneda = CodigoMonedaEnum.BOLIVIANO.getValue();
             cabeceraCompraVenta.tipoCambio = BigDecimal.ONE;
             cabeceraCompraVenta.montoTotalMoneda = total;
             cabeceraCompraVenta.descuentoAdicional = BigDecimal.ZERO;
+            cabeceraCompraVenta.montoGiftCard = null;
 
             return this;
         }

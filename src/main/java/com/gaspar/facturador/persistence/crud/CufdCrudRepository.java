@@ -24,6 +24,12 @@ public interface CufdCrudRepository extends CrudRepository<CufdEntity, Integer> 
                                     @Param("fechaLimite") LocalDateTime fechaLimite);
 
 
-
-
+    @Query("SELECT COUNT(c) > 0 FROM CufdEntity c WHERE " +
+            "c.codigo LIKE CONCAT(:codigo, '%') AND " +
+            "c.fechaVigencia > :fecha AND " +
+            "c.vigente = true")
+    boolean existsByCodigoStartingWithAndFechaVigenciaAfterAndVigente(
+            @Param("codigo") String codigo,
+            @Param("fecha") LocalDateTime fecha,
+            @Param("vigente") boolean vigente);
 }

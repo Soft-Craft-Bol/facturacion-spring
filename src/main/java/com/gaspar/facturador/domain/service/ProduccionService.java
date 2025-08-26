@@ -158,7 +158,7 @@ public class ProduccionService {
         detalle.setInsumoGenerico(insumoGenerico);
         detalle.setSucursalInsumo(
                 sucursalInsumoRepository.findBySucursalIdAndInsumoId(
-                        Long.valueOf(sucursalId),
+                        sucursalId,
                         insumoId
                 ).orElseThrow(() -> new RuntimeException("Stock no encontrado para insumo ID: " + insumoId))
         );

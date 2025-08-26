@@ -23,6 +23,7 @@ import java.sql.Date;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,6 +33,7 @@ public class CompraInsumoService {
     private final CompraInsumoCrudRepository compraInsumoRepository;
     private final InsumoCrudRepository insumoRepository;
     private final SucursalCrudRepository sucursalRepository;
+    private final SucursalInsumoCrudRepository sucursalInsumoRepository;
     private final ProveedorRepository proveedorRepository;
     private final GastoRepository gastoRepository;
     private final SucursalInsumoService sucursalInsumoService;
@@ -122,7 +124,7 @@ public class CompraInsumoService {
 
         // Revertir stock anterior
         sucursalInsumoService.updateStockInsumo(
-                Long.valueOf(compra.getSucursal().getId()),
+                compra.getSucursal().getId(),
                 compra.getInsumo().getId(),
                 compra.getCantidad().negate());
 
@@ -140,7 +142,7 @@ public class CompraInsumoService {
 
         // Revertir stock
         sucursalInsumoService.updateStockInsumo(
-                Long.valueOf(compra.getSucursal().getId()),
+                compra.getSucursal().getId(),
                 compra.getInsumo().getId(),
                 compra.getCantidad().negate());
 
@@ -182,7 +184,7 @@ public class CompraInsumoService {
                                         CompraInsumoRequest request) throws ChangeSetPersister.NotFoundException {
         // Actualizar stock en sucursal
         sucursalInsumoService.updateStockInsumo(
-                Long.valueOf(sucursal.getId()),
+                sucursal.getId(),
                 insumo.getId(),
                 BigDecimal.valueOf(request.getCantidad()));
 
@@ -190,6 +192,18 @@ public class CompraInsumoService {
         if (request.getPrecioUnitario().compareTo(insumo.getPrecioActual()) != 0) {
             insumo.setPrecioActual(request.getPrecioUnitario());
             insumoRepository.save(insumo);
+        }
+
+        // Actualizar fecha de vencimiento (si viene en la request)
+        if (request.getFechaVencimiento() != null) {
+            Optional<SucursalInsumoEntity> sucursalInsumoOpt = sucursalInsumoRepository
+                    .findBySucursalIdAndInsumoId(sucursal.getId(), insumo.getId());
+
+            if (sucursalInsumoOpt.isPresent()) {
+                SucursalInsumoEntity sucursalInsumo = sucursalInsumoOpt.get();
+                sucursalInsumo.setFechaVencimiento(request.getFechaVencimiento());
+                sucursalInsumoRepository.save(sucursalInsumo);
+            }
         }
     }
 

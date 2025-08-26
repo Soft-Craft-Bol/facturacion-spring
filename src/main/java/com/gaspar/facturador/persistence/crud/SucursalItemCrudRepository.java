@@ -1,6 +1,9 @@
 package com.gaspar.facturador.persistence.crud;
 
+import com.gaspar.facturador.persistence.entity.ItemEntity;
+import com.gaspar.facturador.persistence.entity.SucursalEntity;
 import com.gaspar.facturador.persistence.entity.SucursalItemEntity;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -18,4 +21,6 @@ public interface SucursalItemCrudRepository extends JpaRepository<SucursalItemEn
     @EntityGraph(attributePaths = {"item", "item.promocionItems"})
     @Override
     Page<SucursalItemEntity> findAll(Specification<SucursalItemEntity> spec, Pageable pageable);
+
+    Optional<SucursalItemEntity> findBySucursalAndItem(@NotNull SucursalEntity sucursal, ItemEntity item);
 }

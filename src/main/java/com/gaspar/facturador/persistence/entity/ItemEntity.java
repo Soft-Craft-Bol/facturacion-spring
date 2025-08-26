@@ -36,6 +36,7 @@ public class ItemEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "categoria_id")
+    @JsonIgnore
     private CategoriaEntity categoria;
 
     @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)

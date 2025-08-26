@@ -1,9 +1,6 @@
 package com.gaspar.facturador.domain;
 
-import jakarta.xml.bind.annotation.XmlAccessType;
-import jakarta.xml.bind.annotation.XmlAccessorType;
-import jakarta.xml.bind.annotation.XmlRootElement;
-import jakarta.xml.bind.annotation.XmlType;
+import jakarta.xml.bind.annotation.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -18,6 +15,9 @@ import java.util.List;
 })
 @XmlRootElement(name = "facturaElectronicaCompraVenta")
 public class FacturaElectronicaCompraVenta {
+
+    @XmlAttribute(namespace = "http://www.w3.org/2001/XMLSchema-instance")
+    private final String noNamespaceSchemaLocation = "facturaElectronicaCompraVenta.xsd";
 
     private CabeceraCompraVenta cabecera;
     private List<DetalleCompraVenta> detalle;

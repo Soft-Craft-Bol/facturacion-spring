@@ -3,6 +3,7 @@ package com.gaspar.facturador.domain.service.emision;
 import com.gaspar.facturador.application.request.VentaDetalleRequest;
 import com.gaspar.facturador.application.request.VentaRequest;
 import com.gaspar.facturador.application.rest.exception.ProcessException;
+import com.gaspar.facturador.commons.CodigoMetodoPagoEnum;
 import com.gaspar.facturador.commons.CodigoModalidadEmisionEnum;
 import com.gaspar.facturador.commons.CodigoTipoDocumentoFiscalEnum;
 import com.gaspar.facturador.commons.CodigoTipoEmisionEnum;
@@ -29,6 +30,8 @@ import java.io.*;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
 import java.time.LocalDateTime;
@@ -92,6 +95,10 @@ public class GeneraFacturaService {
 
         BigDecimal total = BigDecimal.ZERO;
 
+        CodigoMetodoPagoEnum metodoPago = ventaRequest.getCodigoMetodoPago() != null ?
+                CodigoMetodoPagoEnum.fromValue(ventaRequest.getCodigoMetodoPago()) :
+                CodigoMetodoPagoEnum.EFECTIVO;
+
         for (VentaDetalleRequest ventaDetalleRequest : ventaRequest.getDetalle()) {
 
             item = this.itemRepository.findById(ventaDetalleRequest.getIdProducto());
@@ -120,7 +127,7 @@ public class GeneraFacturaService {
         CabeceraCompraVenta cabeceraCompraVenta = new CabeceraCompraVenta.Builder()
                 .buildEmpresa(puntoVenta.get())
                 .buildCliente(cliente.get())
-                .buildPago(total)
+                .buildPago(total, metodoPago, ventaRequest.getNumeroTarjeta())
                 .setUsuario(ventaRequest.getUsuario())
                 .setNumeroFactura(numeroFactura)
                 .setFechaEmision(Utils.localDateTimeToXMLGregorianCalendar(LocalDateTime.now()))
@@ -158,31 +165,30 @@ public class GeneraFacturaService {
         return Utils.obtenerCUF(datosFacturaCUF, cufd.getCodigoControl());
     }
 
-    public byte[] obtenerArchivo(FacturaElectronicaCompraVenta factura, boolean guardarArchivos) throws Exception {
-        // 1. Generar XML
+    public byte[] obtenerArchivo(FacturaElectronicaCompraVenta factura, String codigoControl, PuntoVentaEntity puntoVenta, boolean guardarArchivos, boolean esContingencia) throws Exception {
         byte[] xml = this.getXmlBytes(factura);
-        // 2. Firmar XML
         byte[] xmlFirmado = this.firmarArchivo(xml);
-        // 3. Validar XML
         XmlObject xmlFacturaObj = XmlObject.Factory.parse(new String(xmlFirmado));
         this.validarContraXSD(xmlFacturaObj);
-        // 4. Comprimir XML
-        byte[] xmlComprimidoZip = this.comprimirXMLFactura(xmlFirmado, factura.getCabecera().getCuf(), guardarArchivos);
-
+        byte[] xmlComprimidoZip = this.comprimirXMLFactura(xmlFirmado, factura.getCabecera().getCuf(),
+                codigoControl, puntoVenta, guardarArchivos, esContingencia);
         return xmlComprimidoZip;
     }
 
-
-    public void imprimirXmlSinFirmar(FacturaElectronicaCompraVenta factura) throws JAXBException {
-        byte[] xmlBytes = this.getXmlBytes(factura);
-        String xmlString = new String(xmlBytes);
+    private byte[] comprimirXMLFactura(byte[] xmlFacturaFirmada, String cuf, String codigoControl,
+                                       PuntoVentaEntity puntoVenta, boolean guardarArchivos, boolean esContingencia) throws Exception {
+        if (guardarArchivos) {
+            File tempFacturaXml = this.escribirArchivo(xmlFacturaFirmada, cuf, codigoControl, puntoVenta, esContingencia);
+            File archivoComprimido = this.obtenerArchivoComprimido(tempFacturaXml);
+            return Files.readAllBytes(archivoComprimido.toPath());
+        } else {
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream)) {
+                gzipOutputStream.write(xmlFacturaFirmada);
+            }
+            return byteArrayOutputStream.toByteArray();
+        }
     }
-
-    public void imprimirXmlFirmado(FacturaElectronicaCompraVenta factura) throws Exception {
-        byte[] xmlFirmado = this.firmarArchivo(this.getXmlBytes(factura));
-        String xmlStringFirmado = new String(xmlFirmado);
-    }
-
 
     public byte[] getXmlBytes(FacturaElectronicaCompraVenta facturaObject) throws JAXBException {
         JAXBContext context = JAXBContext.newInstance(FacturaElectronicaCompraVenta.class);
@@ -208,36 +214,35 @@ public class GeneraFacturaService {
         }
     }
 
-    private byte[] comprimirXMLFactura(byte[] xmlFacturaFirmada, String cuf, boolean guardarArchivos) throws Exception {
-        if (guardarArchivos) {
-            File tempFacturaXml = this.escribirArchivo(xmlFacturaFirmada, cuf);
-            File archivoComprimido = this.obtenerArchivoComprimido(tempFacturaXml);
-            byte[] comprimidoByte = this.compresionArchivo(archivoComprimido);
-            return comprimidoByte;
-        } else {
-            // Comprimir en memoria sin guardar archivos
-            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-            try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream)) {
-                gzipOutputStream.write(xmlFacturaFirmada);
-            }
-            return byteArrayOutputStream.toByteArray();
-        }
-    }
 
     public void limpiarFacturasTemporales() {
         this.facturasTemporales.clear();
     }
 
-    private File escribirArchivo(byte[] xmlFacturaFirmada, String cuf) throws Exception {
+    private File escribirArchivo(byte[] xmlFacturaFirmada, String cuf, String codigoControl,
+                                 PuntoVentaEntity puntoVenta, boolean esContingencia) throws Exception {
         String contextPath = appConfig.getPathFiles();
-        String fullPath = contextPath + "/facturas/paquetes/" + cuf + ".xml";
 
+        // Determinar tipo de emisión
+        String tipoEmision = esContingencia ? "contingencia" : "emision_normal";
+
+        // Crear directorio con la estructura: /facturas/[tipo_emision]/sucursal_[nombre]/[CUFD]/
+        String sucursalDirName = "sucursal_" + puntoVenta.getNombre().replace(" ", "_").toLowerCase();
+        String cufdDirectory = contextPath + "/facturas/" + tipoEmision + "/" + sucursalDirName + "/" + codigoControl;
+
+        Path directoryPath = Paths.get(cufdDirectory);
+        if (!Files.exists(directoryPath)) {
+            Files.createDirectories(directoryPath);
+        }
+
+        // Nombre del archivo: [CUF].xml
+        String fullPath = cufdDirectory + "/" + cuf + ".xml";
         File tempFacturaXml = new File(fullPath);
 
+        // Escribir el XML
         Document sourceDoc = XmlHelper.leerXML(xmlFacturaFirmada);
-
         Transformer transformer = TransformerFactory.newInstance().newTransformer();
-        Result output = new StreamResult(new File(tempFacturaXml.getPath()));
+        Result output = new StreamResult(tempFacturaXml);
         Source input = new DOMSource(sourceDoc);
         transformer.transform(input, output);
 
@@ -252,10 +257,4 @@ public class GeneraFacturaService {
         File archivoComprimido = new File(tempFacturaXml.getPath() + ".zip");
         return archivoComprimido;
     }
-
-    private byte[] compresionArchivo(File archivoComprimido) throws Exception {
-        byte[] comprimidoByte = Files.readAllBytes(archivoComprimido.toPath());
-        return comprimidoByte;
-    }
-
 }

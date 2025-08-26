@@ -123,6 +123,18 @@ public class InsumoService {
 
         return insumosPage.map(this::mapToInsumoSucursalResponse);
     }
+
+    public Page<InsumoSucursalResponse> getInsumosBySucursalExcludingMateriaPrima(
+            Long sucursalId,
+            boolean soloActivos,
+            Pageable pageable) {
+
+        Page<SucursalInsumoEntity> insumosPage = soloActivos ?
+                insumoRepository.findActiveInsumosBySucursalIdExcludingMateriaPrima(sucursalId, pageable) :
+                insumoRepository.findInsumosBySucursalIdExcludingMateriaPrima(sucursalId, pageable);
+
+        return insumosPage.map(this::mapToInsumoSucursalResponse);
+    }
     // Métodos auxiliares
     private TipoInsumo parseTipoInsumo(String tipo) {
         if (StringUtils.isBlank(tipo)) return null;

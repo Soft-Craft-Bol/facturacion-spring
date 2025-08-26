@@ -55,7 +55,7 @@ public class SucursalInsumoController {
     @PatchMapping("/{insumoId}/sucursal/{sucursalId}/stock")
     public ResponseEntity<Void> actualizarStockInsumo(
             @PathVariable Long insumoId,
-            @PathVariable Long sucursalId,
+            @PathVariable Integer sucursalId,
             @RequestParam BigDecimal cantidad) {
         try {
             sucursalInsumoService.updateStockInsumo(sucursalId, insumoId, cantidad);

@@ -45,7 +45,7 @@ public class MovimientoMermaService {
             movimiento.setInsumo(new InsumoEntity());
             movimiento.getInsumo().setId(dto.getInsumoId());
             var stock = sucursalInsumoRepository
-                    .findBySucursalIdAndInsumoId((long) dto.getSucursalId().intValue(), dto.getInsumoId())
+                    .findBySucursalIdAndInsumoId(dto.getSucursalId().intValue(), dto.getInsumoId())
                     .orElseThrow(() -> new RuntimeException("Insumo no encontrado en la sucursal"));
             stock.setCantidad(stock.getCantidad().subtract(dto.getCantidad()));
             sucursalInsumoRepository.save(stock);
@@ -95,7 +95,7 @@ public class MovimientoMermaService {
                 .orElseThrow(() -> new NoSuchElementException("Merma no encontrada"));
         if (merma.getInsumo() != null) {
             var stock = sucursalInsumoRepository
-                    .findBySucursalIdAndInsumoId((long) merma.getSucursal().getId(), merma.getInsumo().getId())
+                    .findBySucursalIdAndInsumoId(merma.getSucursal().getId(), merma.getInsumo().getId())
                     .orElseThrow(() -> new RuntimeException("Insumo no encontrado en la sucursal"));
             stock.setCantidad(stock.getCantidad().add(merma.getCantidad()));
             sucursalInsumoRepository.save(stock);

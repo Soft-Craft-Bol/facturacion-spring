@@ -50,5 +50,16 @@ public class CufdRepository implements ICufdRepository {
         return this.cufdCrudRepository.findAnteriores(puntoVenta, fechaLimite);
     }
 
+    @Override
+    public boolean existsByCodigoStartingWithAndFechaVigenciaAfter(String nombreDir, LocalDateTime now) {
+        if (nombreDir == null || nombreDir.isEmpty()) {
+            return false;
+        }
+        String codigoBusqueda = nombreDir.length() > 10 ? nombreDir.substring(0, 10) : nombreDir;
+
+        return cufdCrudRepository.existsByCodigoStartingWithAndFechaVigenciaAfterAndVigente(
+                codigoBusqueda, now, true);
+    }
+
 
 }
