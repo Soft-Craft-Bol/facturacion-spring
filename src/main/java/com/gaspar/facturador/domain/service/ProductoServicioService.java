@@ -35,10 +35,10 @@ public class ProductoServicioService {
             return;
         }
 
-        productoServicioRepository.deleteAll();
-        for (ProductosDto productosDto : respuestaListaProductos.getListaCodigos()) {
-            productoServicioRepository.save(productosDto);
-        }
+//        productoServicioRepository.deleteAll();
+//        for (ProductosDto productosDto : respuestaListaProductos.getListaCodigos()) {
+//            productoServicioRepository.save(productosDto);
+//        }
     }
 
     private RespuestaListaProductos obtenerCatalogos(SolicitudSincronizacion solicitudSincronizacion) throws RemoteException {

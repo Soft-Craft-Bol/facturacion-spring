@@ -19,4 +19,6 @@ public interface ICufdRepository {
     List<CufdEntity> findAnteriores(PuntoVentaEntity puntoVenta);
 
     boolean existsByCodigoStartingWithAndFechaVigenciaAfter(String nombreDir, LocalDateTime now);
+
+    Optional<String> findCodigoControlByCufd(String cufd);
 }

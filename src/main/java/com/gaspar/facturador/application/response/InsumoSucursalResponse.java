@@ -14,7 +14,7 @@ public class InsumoSucursalResponse {
     private TipoInsumo tipo;
     private String unidades;
     private BigDecimal cantidad;
-    private Integer stockMinimo;
+    private BigDecimal stockMinimo;
     private Date fechaVencimiento;
     private Boolean activo;
 }

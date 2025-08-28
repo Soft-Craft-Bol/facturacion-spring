@@ -28,10 +28,10 @@ public class ActividadService {
 
     public void guardarCatalogos(SolicitudSincronizacion solicitudSincronizacion) throws RemoteException {
         RespuestaListaActividades respuestaListaActividades = this.obtenerCatalogos(solicitudSincronizacion);
-        this.actividadRepository.deleteAll();
-        for (ActividadesDto actividadesDto : respuestaListaActividades.getListaActividades()) {
-            this.actividadRepository.save(actividadesDto);
-        }
+//        this.actividadRepository.deleteAll();
+//        for (ActividadesDto actividadesDto : respuestaListaActividades.getListaActividades()) {
+//            this.actividadRepository.save(actividadesDto);
+//        }
     }
 
     private RespuestaListaActividades obtenerCatalogos(SolicitudSincronizacion solicitudSincronizacion) throws RemoteException {

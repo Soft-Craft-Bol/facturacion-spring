@@ -11,7 +11,6 @@ import com.gaspar.facturador.application.response.ValidacionPaqueteResponse;
 import com.gaspar.facturador.application.rest.dto.EnvioPaqueteRequest;
 import com.gaspar.facturador.application.rest.exception.ProcessException;
 import com.gaspar.facturador.config.AppConfig;
-import com.gaspar.facturador.domain.DetalleCompraVenta;
 import com.gaspar.facturador.domain.FacturaElectronicaCompraVenta;
 import com.gaspar.facturador.domain.helpers.Utils;
 import com.gaspar.facturador.domain.repository.ICufdRepository;
@@ -253,26 +252,34 @@ public class FacturacionService {
         return facturaResponse;
     }
 
-    // En FacturacionService, modificar el método enviarPaquetes
     @Transactional(rollbackFor = Exception.class)
     public PaquetesResponse enviarPaquetes(EnvioPaqueteRequest envioPaqueteRequest) throws IOException {
         try {
-            // 1. Validar y obtener entidades necesarias
+
             PuntoVentaEntity puntoVenta = puntoVentaRepository.findById(envioPaqueteRequest.idPuntoVenta())
                     .orElseThrow(() -> new ProcessException("Punto de venta no encontrado"));
 
-            CufdEntity cufd = cufdRepository.findActual(puntoVenta)
-                    .orElseThrow(() -> new ProcessException("CUFD vigente no encontrado"));
-
-            // 2. Obtener el evento significativo relacionado
             EventoSignificativoEntity evento = eventoRepository.findByCodigoRecepcionEventoAndPuntoVenta(
                             envioPaqueteRequest.codigoEvento(),
                             puntoVenta)
                     .orElseThrow(() -> new ProcessException("Evento significativo no encontrado o no vigente"));
 
+            String cufdEvento = eventoRepository.findCufdByCodigoRecepcionEvento(envioPaqueteRequest.codigoEvento())
+                    .orElseThrow(() -> new ProcessException("No se encontró CUFD para el evento con código " + envioPaqueteRequest.codigoEvento()));
+            System.out.println(cufdEvento);
+
+            String codigoControl = cufdRepository.findCodigoControlByCufd(cufdEvento)
+                    .orElseThrow(() -> new ProcessException("No se encontró código de control para el CUFD del evento: " + cufdEvento));
+
+            System.out.println("Código de control: " + codigoControl);
+
+            CufdEntity cufd = cufdRepository.findActual(puntoVenta)
+                    .orElseThrow(() -> new ProcessException("CUFD vigente no encontrado"));
+
+
             // 3. Comprimir y enviar paquete usando el código de control del CUFD
             byte[] xmlsComprimidosZip = facturaCompressor.comprimirPaquetePorCodigoControl(
-                    cufd.getCodigoControl(),
+                    codigoControl,
                     puntoVenta,
                     true // esContingencia
             );
@@ -309,7 +316,7 @@ public class FacturacionService {
                 evento.setVigente(false);
                 eventoRepository.save(evento);
 
-                facturaCompressor.eliminarArchivosPorCodigoControl(cufd.getCodigoControl(), puntoVenta, true);
+               facturaCompressor.eliminarDirectorioCompletoPorCodigoControl(codigoControl, puntoVenta, true);
             }
 
             // 8. Personalizar mensajes según el código de estado
@@ -341,50 +348,7 @@ public class FacturacionService {
         }
     }
 
-    private void limpiarArchivosTemporales() {
-        String basePath = appConfig.getPathFiles() + "/facturas/";
 
-        limpiarDirectorio(basePath + "emision_normal", 72); // 72 horas para emisión normal
-
-        limpiarDirectorio(basePath + "contingencia", 720); // 720 horas (30 días) para contingencia
-    }
-
-    private void limpiarDirectorio(String path, int horasRetencion) {
-        File directorio = new File(path);
-        if (!directorio.exists()) return;
-
-        long tiempoLimite = System.currentTimeMillis() - (horasRetencion * 60 * 60 * 1000);
-
-        limpiarRecursivo(directorio, tiempoLimite, true);
-    }
-
-    private void limpiarRecursivo(File directorio, long tiempoLimite, boolean esRaiz) {
-        File[] contenidos = directorio.listFiles();
-        if (contenidos == null) return;
-
-        for (File archivo : contenidos) {
-            try {
-                if (archivo.isDirectory()) {
-                    if (!esRaiz && esCufdVigente(archivo.getName())) {
-                        System.out.println("[INFO] Manteniendo directorio CUFD vigente: " + archivo.getAbsolutePath());
-                        continue;
-                    }
-
-                    limpiarRecursivo(archivo, tiempoLimite, false);
-
-                    if ((archivo.listFiles() == null || archivo.listFiles().length == 0) &&
-                            archivo.lastModified() < tiempoLimite) {
-                        safeDelete(archivo);
-                    }
-                } else if (archivo.lastModified() < tiempoLimite) {
-                    safeDelete(archivo);
-                }
-            } catch (Exception e) {
-                System.err.println("[ERROR] Procesando " + archivo.getAbsolutePath() +
-                        " - Error: " + e.getMessage());
-            }
-        }
-    }
 
     private boolean esCufdVigente(String nombreDir) {
         String codigoCufd = nombreDir.length() > 10 ? nombreDir.substring(0, 10) : nombreDir;
@@ -404,41 +368,112 @@ public class FacturacionService {
 
     private void limpiarArchivosPorTiempo() {
         String directorioPaquetes = appConfig.getPathFiles() + "/facturas/paquetes/";
-        File directorio = new File(directorioPaquetes);
+        File directorioPaq = new File(directorioPaquetes);
 
-        if (directorio.exists() && directorio.isDirectory()) {
-            File[] archivos = directorio.listFiles((dir, name) ->
-                    name.endsWith(".xml") || name.endsWith(".zip"));
+        if (directorioPaq.exists() && directorioPaq.isDirectory()) {
+            File[] archivosPaquetes = directorioPaq.listFiles((dir, name) ->
+                    name.endsWith(".tar.gz") || name.endsWith(".zip"));
 
-            if (archivos != null) {
-                long tiempoLimite = System.currentTimeMillis() - (72 * 60 * 60 * 1000); // 72 horas en milisegundos
+            if (archivosPaquetes != null) {
+                long tiempoLimite = System.currentTimeMillis() - (72 * 60 * 60 * 1000); // 72 horas
 
-                for (File archivo : archivos) {
+                for (File archivo : archivosPaquetes) {
                     try {
                         if (archivo.lastModified() < tiempoLimite) {
                             if (archivo.delete()) {
-                                System.out.println("Archivo eliminado por antigüedad (>72h): " + archivo.getName());
+                                System.out.println("Paquete eliminado por antigüedad (>72h): " + archivo.getName());
                             } else {
-                                System.err.println("No se pudo eliminar archivo antiguo: " + archivo.getName());
+                                System.err.println("No se pudo eliminar paquete antiguo: " + archivo.getName());
                             }
                         }
                     } catch (Exception e) {
-                        System.err.println("Error al verificar/eliminar archivo por tiempo: " +
+                        System.err.println("Error al eliminar paquete por tiempo: " +
                                 archivo.getName() + " - " + e.getMessage());
+                    }
+                }
+            }
+        }
+
+        // Limpiar directorios vacíos de facturas (opcional)
+        limpiarDirectoriosVacios();
+    }
+
+    private void limpiarDirectoriosVacios() {
+        String basePath = appConfig.getPathFiles() + "/facturas/";
+        File baseDir = new File(basePath);
+
+        if (baseDir.exists() && baseDir.isDirectory()) {
+            limpiarDirectoriosVaciosRecursivo(baseDir);
+        }
+    }
+
+    private void limpiarDirectoriosVaciosRecursivo(File directorio) {
+        File[] subDirectorios = directorio.listFiles(File::isDirectory);
+
+        if (subDirectorios != null) {
+            for (File subDir : subDirectorios) {
+                limpiarDirectoriosVaciosRecursivo(subDir);
+
+                // Eliminar directorio si está vacío y no es el directorio de paquetes
+                if (subDir.isDirectory() && subDir.list().length == 0 && !subDir.getName().equals("paquetes")) {
+                    try {
+                        if (subDir.delete()) {
+                            System.out.println("Directorio vacío eliminado: " + subDir.getAbsolutePath());
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Error al eliminar directorio vacío: " + e.getMessage());
                     }
                 }
             }
         }
     }
 
-    /**
-     * Método alternativo para usar con Scheduled Task (opcional)
-     * Debe ser llamado periódicamente para limpiar archivos antiguos
-     */
+    public void limpiarArchivosTemporalesCompleto() {
+        try {
+            // Limpiar paquetes antiguos
+            limpiarArchivosPorTiempo();
+
+            // Limpiar directorios de contingencia vacíos (más de 30 días)
+            String contingenciaPath = appConfig.getPathFiles() + "/facturas/contingencia/";
+            File contingenciaDir = new File(contingenciaPath);
+
+            if (contingenciaDir.exists()) {
+                long tiempoLimiteContingencia = System.currentTimeMillis() - (720 * 60 * 60 * 1000); // 720 horas (30 días)
+                limpiarDirectoriosAntiguos(contingenciaDir, tiempoLimiteContingencia);
+            }
+
+        } catch (Exception e) {
+            System.err.println("Error en limpieza completa de archivos temporales: " + e.getMessage());
+        }
+    }
+
+    private void limpiarDirectoriosAntiguos(File directorio, long tiempoLimite) {
+        File[] contenidos = directorio.listFiles();
+        if (contenidos == null) return;
+
+        for (File archivo : contenidos) {
+            try {
+                if (archivo.isDirectory()) {
+                    limpiarDirectoriosAntiguos(archivo, tiempoLimite);
+
+                    // Verificar si el directorio está vacío y es antiguo
+                    if ((archivo.listFiles() == null || archivo.listFiles().length == 0) &&
+                            archivo.lastModified() < tiempoLimite) {
+                        safeDelete(archivo);
+                    }
+                } else if (archivo.lastModified() < tiempoLimite) {
+                    safeDelete(archivo);
+                }
+            } catch (Exception e) {
+                System.err.println("Error procesando " + archivo.getAbsolutePath() + ": " + e.getMessage());
+            }
+        }
+    }
+
     @Scheduled(fixedRate = 3600000) // Ejecutar cada hora
     public void limpiezaProgramadaArchivos() {
         try {
-            limpiarArchivosPorTiempo();
+            limpiarArchivosTemporalesCompleto();
         } catch (Exception e) {
             System.err.println("Error en limpieza programada: " + e.getMessage());
         }

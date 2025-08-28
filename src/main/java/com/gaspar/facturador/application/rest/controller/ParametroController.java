@@ -45,6 +45,26 @@ public class ParametroController {
     }
     @GetMapping("/tipo-moneda")
     public List<ParametroEntity> getTipoMoneda() {
-        return parametroRepository.getTipoMoneda();
+        List<String> codigosClasificador = Arrays.asList(
+                "1",   // BOLIVIANO
+                "46",  // DÓLAR ESTADOUNIDENSE
+                "109", // NUEVO SOL PERUANO
+                "23",  // REAL BRASILEÑO
+                "33",  // PESO CHILENO
+                "9",   // PESO ARGENTINO
+                "149", // BOLÍVAR FUERTE
+                "108"  // GUARANÍ PARAGUAYO
+        );
+        return parametroRepository.getTipoMoneda(codigosClasificador);
+    }
+
+    @GetMapping("/tipo-emision")
+    public List<ParametroEntity> getTipoEmision() {
+        return parametroRepository.getTipoEmision();
+    }
+
+    @GetMapping("/motivo-anulacion")
+    public List<ParametroEntity> getMotivosAnulacion() {
+        return parametroRepository.getMotivosAnulacion();
     }
 }

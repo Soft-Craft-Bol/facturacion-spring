@@ -88,28 +88,32 @@ public class FacturaCompressor {
 
     public int getCantidadArchivosXML() {return cantidadArchivosXML;}
 
-    public boolean eliminarArchivosPorCodigoControl(String codigoControl, PuntoVentaEntity puntoVenta, boolean esContingencia) {
+    public boolean eliminarDirectorioCompletoPorCodigoControl(String codigoControl, PuntoVentaEntity puntoVenta, boolean esContingencia) {
         try {
             String tipoEmision = esContingencia ? "contingencia" : "emision_normal";
             String sucursalDirName = "sucursal_" + puntoVenta.getNombre().replace(" ", "_").toLowerCase();
 
-            String directorioPath = appConfig.getPathFiles() + "/facturas/" + tipoEmision + "/" + sucursalDirName + "/" + codigoControl;
-            File directorio = new File(directorioPath);
+            String directorioFacturasPath = appConfig.getPathFiles() + "/facturas/" + tipoEmision + "/" + sucursalDirName + "/" + codigoControl;
+            File directorioFacturas = new File(directorioFacturasPath);
 
-            if (directorio.exists() && directorio.isDirectory()) {
-                // Eliminar todos los archivos XML
-                for (File file : directorio.listFiles((dir, name) -> name.endsWith(".xml"))) {
-                    if (!file.delete()) {
-                        System.err.println("No se pudo eliminar el archivo: " + file.getName());
+            if (directorioFacturas.exists() && directorioFacturas.isDirectory()) {
+                // Primero eliminar todos los archivos
+                File[] archivos = directorioFacturas.listFiles();
+                if (archivos != null) {
+                    for (File file : archivos) {
+                        if (!file.delete()) {
+                            System.err.println("No se pudo eliminar: " + file.getName());
+                        }
                     }
                 }
 
-                // Intentar eliminar el directorio (solo si está vacío)
-                return directorio.delete();
+                // Luego eliminar el directorio vacío
+                return directorioFacturas.delete();
             }
+
             return false;
         } catch (Exception e) {
-            System.err.println("Error al eliminar archivos por código de control: " + e.getMessage());
+            System.err.println("Error al eliminar directorio completo: " + e.getMessage());
             return false;
         }
     }

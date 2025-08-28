@@ -15,7 +15,13 @@ public interface ParametroCrudRepository extends CrudRepository<ParametroEntity,
     @Query("SELECT p FROM ParametroEntity p WHERE p.codigoTipoParametro = 'UNIDAD_MEDIDA' AND p.codigoClasificador IN :codigosClasificador")
     List<ParametroEntity> findUnidadesMedida(@Param("codigosClasificador") List<String> codigosClasificador);
 
-    @Query("SELECT p FROM ParametroEntity p WHERE p.codigoTipoParametro = 'TIPO_MONEDA'")
-    List<ParametroEntity> getTipoMoneda();
+    @Query("SELECT p FROM ParametroEntity p WHERE p.codigoTipoParametro = 'TIPO_MONEDA' AND p.codigoClasificador IN :codigosClasificador")
+    List<ParametroEntity> findTipoMoneda(@Param("codigosClasificador") List<String> codigosClasificador);
+
+    @Query("SELECT p FROM ParametroEntity p WHERE p.codigoTipoParametro = 'TIPO_EMISION'")
+    List<ParametroEntity> getTipoEmision();
+
+    @Query("SELECT p FROM ParametroEntity p WHERE p.codigoTipoParametro = 'MOTIVO_ANULACION'")
+    List<ParametroEntity> getMotivosAnulacion();
 
 }

@@ -28,10 +28,10 @@ public class LeyendaService {
 
     public void guardarCatalogos(SolicitudSincronizacion solicitudSincronizacion) throws RemoteException {
         RespuestaListaParametricasLeyendas respuestaLeyendas = this.obtenerCatalogos(solicitudSincronizacion);
-        leyendaRepository.deleteAll();
-        for (ParametricaLeyendasDto actividadesDto : respuestaLeyendas.getListaLeyendas()) {
-            leyendaRepository.save(actividadesDto);
-        }
+//        leyendaRepository.deleteAll();
+//        for (ParametricaLeyendasDto actividadesDto : respuestaLeyendas.getListaLeyendas()) {
+//            leyendaRepository.save(actividadesDto);
+//        }
     }
 
     private RespuestaListaParametricasLeyendas obtenerCatalogos(SolicitudSincronizacion solicitudSincronizacion) throws RemoteException {

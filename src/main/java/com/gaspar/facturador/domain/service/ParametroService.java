@@ -25,7 +25,7 @@ public class ParametroService {
     }
 
     public void guardarParametros(SolicitudSincronizacion solicitudSincronizacion) throws RemoteException {
-        parametroRepository.deleteAll();
+       // parametroRepository.deleteAll();
         for (ParametricaEnum parametro : ParametricaEnum.values()) {
             this.obtenerParametros(solicitudSincronizacion, parametro);
         }
@@ -79,11 +79,11 @@ public class ParametroService {
         }
 
         List<ParametricasDto> listaCodigos = respuestaParametros.getListaCodigos();
-        if (listaCodigos != null) {
-            for (ParametricasDto parametricasDto : listaCodigos) {
-                parametroRepository.save(parametricasDto, parametro);
-            }
-        }
+//        if (listaCodigos != null) {
+//            for (ParametricasDto parametricasDto : listaCodigos) {
+//                parametroRepository.save(parametricasDto, parametro);
+//            }
+//        }
     }
 
     private String obtenerMensajeServicio(List<MensajeServicio> mensajeServicioList) {

@@ -14,7 +14,6 @@ import java.util.Optional;
 public interface CufdCrudRepository extends CrudRepository<CufdEntity, Integer> {
 
     Optional<CufdEntity> findByPuntoVentaAndVigente(PuntoVentaEntity puntoVenta, boolean vigente);
-    List<CufdEntity> findAllByPuntoVentaAndVigente(PuntoVentaEntity puntoVenta, boolean vigente);
 
     @Query("SELECT c FROM CufdEntity c WHERE c.puntoVenta = :puntoVenta " +
             "AND c.vigente = false " +
@@ -32,4 +31,8 @@ public interface CufdCrudRepository extends CrudRepository<CufdEntity, Integer> 
             @Param("codigo") String codigo,
             @Param("fecha") LocalDateTime fecha,
             @Param("vigente") boolean vigente);
+
+    @Query("SELECT c.codigoControl FROM CufdEntity c WHERE c.codigo = :cufd")
+    Optional<String> findCodigoControlByCufd(String cufd);
+
 }

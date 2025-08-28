@@ -34,4 +34,8 @@ public interface IEventoSignificativoRepository extends JpaRepository<EventoSign
     Optional<EventoSignificativoEntity> findByCodigoRecepcionPaqueteAndPuntoVenta(
             String codigoRecepcion,
             PuntoVentaEntity puntoVenta);
+    @Query("SELECT e.cufdEvento FROM EventoSignificativoEntity e " +
+            "WHERE e.codigoRecepcionEvento = :codigoRecepcionEvento " +
+            "AND e.vigente = true")
+    Optional<String> findCufdByCodigoRecepcionEvento(Long codigoRecepcionEvento);
 }

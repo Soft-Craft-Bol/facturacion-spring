@@ -33,7 +33,7 @@ public class SucursalInsumoEntity {
     @Column(nullable = false)
     private BigDecimal cantidad;
 
-    private Integer stockMinimo;
+    private BigDecimal stockMinimo;
 
     private Date fechaIngreso;
     private Date fechaVencimiento;

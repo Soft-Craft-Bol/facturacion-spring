@@ -16,7 +16,7 @@ public class SucursalInsumoRequest {
     private BigDecimal cantidad;
 
     @Positive(message = "El stock mínimo debe ser mayor a cero")
-    private Integer stockMinimo;
+    private BigDecimal stockMinimo;
 
     private Date fechaVencimiento;
 }
