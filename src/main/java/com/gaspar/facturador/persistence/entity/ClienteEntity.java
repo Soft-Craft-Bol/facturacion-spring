@@ -38,7 +38,7 @@ public class ClienteEntity {
 
     @NotNull(message = "El número de documento es obligatorio")
     @Digits(integer = 20, fraction = 0, message = "El número de documento debe ser un número válido sin decimales")
-    @Column(nullable = false, unique = false) // suponiendo que puede repetirse entre clientes
+    @Column(nullable = false, unique = false)
     private Long numeroDocumento;
 
     @Size(max = 10, message = "El complemento no debe exceder 5 caracteres")
@@ -58,5 +58,12 @@ public class ClienteEntity {
     @Size(max = 100, message = "El email no debe exceder 50 caracteres")
     @Column(unique = true, length = 50)
     private String email;
+
+    @Column(name = "permite_credito")
+    private Boolean permiteCredito = false;
+
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "credito_cliente_id", referencedColumnName = "id")
+    private CreditoClienteEntity credito;
 
 }

@@ -46,4 +46,8 @@ public class EgresosRepository {
     public void delete(Long id) {
         egresosCrudRepository.deleteById(id);
     }
+
+    public List<EgresosEntity> getEgresosByCaja(Long cajaId) {
+        return egresosCrudRepository.findByCajaId(cajaId);
+    }
 }

@@ -1,10 +1,12 @@
 package com.gaspar.facturador.application.rest.controller;
 
+import com.gaspar.facturador.application.request.AnularVentaRequest;
 import com.gaspar.facturador.application.request.VentaSinFacturaRequest;
 import com.gaspar.facturador.application.response.ClienteFrecuenteDTO;
 import com.gaspar.facturador.application.response.CompraInsumoResponse;
 import com.gaspar.facturador.application.response.PagedResponse;
 import com.gaspar.facturador.application.response.ProductoMasVendidoDTO;
+import com.gaspar.facturador.application.rest.dto.ReporteProductoDTO;
 import com.gaspar.facturador.application.rest.dto.VentaListadoDTO;
 import com.gaspar.facturador.application.rest.dto.VentaResponseDTO;
 import com.gaspar.facturador.application.rest.dto.VentasFiltroDTO;
@@ -137,6 +139,56 @@ public class VentaController {
                 codigoCliente, codigoProducto, montoMin, montoMax, pageable);
 
         return ResponseEntity.ok(ventasPage);
+    }
+
+    @GetMapping("/caja/{cajaId}/productos")
+    public ResponseEntity<List<ReporteProductoDTO>> getProductosVendidosPorCaja(
+            @PathVariable Long cajaId) {
+
+        List<ReporteProductoDTO> reporte = ventaService.obtenerReporteProductosPorCaja(cajaId);
+        return ResponseEntity.ok(reporte);
+    }
+
+    @GetMapping("/caja/{cajaId}/resumen")
+    public ResponseEntity<Map<String, Object>> getResumenVentasPorCaja(
+            @PathVariable Long cajaId) {
+
+        List<ReporteProductoDTO> productos = ventaService.obtenerReporteProductosPorCaja(cajaId);
+        BigDecimal totalVentas = ventaService.obtenerTotalVentasPorCaja(cajaId);
+
+        return ResponseEntity.ok(Map.of(
+                "cajaId", cajaId,
+                "totalProductosVendidos", productos.size(),
+                "totalVentas", totalVentas,
+                "detallesProductos", productos
+        ));
+    }
+
+    @GetMapping("/caja/{cajaId}/total-ventas")
+    public ResponseEntity<Map<String, Object>> getTotalVentasPorCaja(
+            @PathVariable Long cajaId) {
+
+        BigDecimal totalVentas = ventaService.obtenerTotalVentasPorCaja(cajaId);
+
+        return ResponseEntity.ok(Map.of(
+                "cajaId", cajaId,
+                "totalVentas", totalVentas
+        ));
+    }
+
+    @PostMapping("/{id}/anular")
+    public ResponseEntity<?> anularVenta(@PathVariable Long id, @RequestBody AnularVentaRequest request) {
+        try {
+            VentasEntity ventaAnulada = ventaService.anularVenta(id, request.getMotivo(), request.getUsuario());
+            VentaResponseDTO response = ventaService.convertToVentaResponseDTO(ventaAnulada);
+
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al anular la venta: " + e.getMessage());
+        }
     }
 
 }

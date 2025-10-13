@@ -1,6 +1,7 @@
 package com.gaspar.facturador.persistence.crud;
 
 import com.gaspar.facturador.application.response.ClienteFrecuenteDTO;
+import com.gaspar.facturador.application.rest.dto.ReporteProductoDTO;
 import com.gaspar.facturador.persistence.dto.ReporteVentasDTO;
 import com.gaspar.facturador.persistence.dto.TotalVentasPorDiaDTO;
 import com.gaspar.facturador.persistence.entity.VentasEntity;
@@ -108,4 +109,24 @@ public interface VentaCrudRepository extends JpaRepository<VentasEntity, Long>, 
     List<ClienteFrecuenteDTO> findTop10ClientesFrecuentes();
 
     List<VentasEntity> findByCajaId(Long cajaId);
+
+    @Query("SELECT new com.gaspar.facturador.application.rest.dto.ReporteProductoDTO(" +
+            "p.id, " +
+            "vd.descripcionProducto, " +
+            "SUM(vd.cantidad), " +
+            "SUM(vd.cantidad * vd.precioUnitario - vd.montoDescuento)) " +
+            "FROM VentasDetalleEntity vd " +
+            "JOIN vd.producto p " +
+            "JOIN vd.venta v " +
+            "WHERE v.caja.id = :cajaId " +
+            "AND v.estado = 'COMPLETADO' " +
+            "GROUP BY p.id, vd.descripcionProducto " +
+            "ORDER BY SUM(vd.cantidad) DESC")
+    List<ReporteProductoDTO> findProductosVendidosPorCaja(@Param("cajaId") Long cajaId);
+
+    // En VentaCrudRepository
+    List<VentasEntity> findByAnulada(Boolean anulada);
+    Page<VentasEntity> findByAnulada(Boolean anulada, Pageable pageable);
+    List<VentasEntity> findByFechaBetweenAndAnulada(Date fechaInicio, Date fechaFin, Boolean anulada);
+
 }

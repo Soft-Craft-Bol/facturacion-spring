@@ -26,7 +26,7 @@ public class SalesChartService {
                         gasto.getFecha().getDayOfWeek().toString(),
                         gasto.getMonto().doubleValue(),
                         StreamSupport.stream(egresosCrudRepository.findAll().spliterator(), false)
-                                .filter(egreso -> egreso.getFechaDePago().toLocalDate().equals(gasto.getFecha()))
+                                .filter(egreso -> egreso.getFechaDePago().equals(gasto.getFecha()))
                                 .mapToDouble(EgresosEntity::getMonto)
                                 .sum()
                 ))

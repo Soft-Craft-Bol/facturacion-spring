@@ -8,10 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * Entidad que representa una caja física o virtual en una sucursal,
- * con su estado, turno, y movimientos asociados.
- */
+
 @Entity
 @Table(name = "cajas")
 @Getter

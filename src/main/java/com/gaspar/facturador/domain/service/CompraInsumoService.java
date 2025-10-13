@@ -37,6 +37,8 @@ public class CompraInsumoService {
     private final ProveedorRepository proveedorRepository;
     private final GastoRepository gastoRepository;
     private final SucursalInsumoService sucursalInsumoService;
+    private final SucursalItemCrudRepository sucursalItemRepository;
+    private final ItemCrudRepository itemRepository;
 
     @Transactional
     public void registrarCompraInsumo(CompraInsumoRequest request) throws ChangeSetPersister.NotFoundException {
@@ -59,9 +61,16 @@ public class CompraInsumoService {
         CompraInsumoEntity compra = crearCompra(request, insumo, sucursal, proveedor, gasto);
         compraInsumoRepository.save(compra);
 
-        // Actualizar stock
+        // Actualizar stock del insumo
         actualizarStockYprecio(insumo, sucursal, request);
+
+        // 🔹 NUEVO: si es producto terminado, actualizar o crear item en stock
+        if (insumo.getTipo() == TipoInsumo.PRODUCTO_TERMINADO
+                || gasto.getCategoria() == GastoEnum.COMPRA_PRODUCTOS_TERMINADOS) {
+            actualizarStockItemFinal(insumo, sucursal, request);
+        }
     }
+
 
     public CompraInsumoResponse obtenerCompraPorId(Long id) {
         CompraInsumoEntity compra = compraInsumoRepository.findById(id)
@@ -244,4 +253,43 @@ public class CompraInsumoService {
 
         return response;
     }
+
+    private void actualizarStockItemFinal(InsumoEntity insumo, SucursalEntity sucursal,
+                                          CompraInsumoRequest request) {
+
+        // Buscar item con misma descripción que el insumo
+        Optional<ItemEntity> optionalItem = itemRepository.findByDescripcionIgnoreCase(insumo.getNombre());
+
+        ItemEntity item;
+        if (optionalItem.isPresent()) {
+            item = optionalItem.get();
+        } else {
+            // Si no existe, crearlo
+            item = new ItemEntity();
+            item.setCodigo("AUTO-" + insumo.getId()); // puedes usar otro generador
+            item.setDescripcion(insumo.getNombre());
+            item.setPrecioUnitario(insumo.getPrecioActual());
+            itemRepository.save(item);
+        }
+
+        // Buscar relación sucursal-item
+        Optional<SucursalItemEntity> optionalSucursalItem =
+                sucursalItemRepository.findBySucursalAndItem(sucursal, item);
+
+        SucursalItemEntity sucursalItem;
+        if (optionalSucursalItem.isPresent()) {
+            sucursalItem = optionalSucursalItem.get();
+            // sumar cantidad
+            sucursalItem.setCantidad(sucursalItem.getCantidad() + request.getCantidad().intValue());
+        } else {
+            // crear nueva relación
+            sucursalItem = new SucursalItemEntity();
+            sucursalItem.setSucursal(sucursal);
+            sucursalItem.setItem(item);
+            sucursalItem.setCantidad(request.getCantidad().intValue());
+        }
+
+        sucursalItemRepository.save(sucursalItem);
+    }
+
 }

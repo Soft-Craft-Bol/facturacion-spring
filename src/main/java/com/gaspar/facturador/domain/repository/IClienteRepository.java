@@ -13,5 +13,7 @@ public interface IClienteRepository {
     List<ClienteEntity> findAll();
     ClienteEntity save(ClienteEntity cliente);
     void deleteById(Integer id);
-    Optional<ClienteEntity> findByNumeroDocumento(Long numeroDocumento);
+    List<ClienteEntity> findByNombreRazonSocialLike(String nombre);
+    List<ClienteEntity> findByNumeroDocumentoLike(String prefijoDocumento);
+
 }

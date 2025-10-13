@@ -30,8 +30,20 @@ public class ReservaEntity {
     private ClienteEntity cliente;
 
     @NotNull
-    @Column(nullable = false)
+    @Column(nullable = false, name = "fecha_reserva")
     private LocalDateTime fechaReserva;
+
+    @Column(name = "fecha_entrega")
+    private LocalDateTime fechaEntrega;
+
+    @Column(name = "hora_entrega")
+    private String horaEntrega;
+
+    @Column(name = "nombre_encargado")
+    private String nombreEncargado;
+
+    @Column(name = "telefono_contacto", length = 20)
+    private String telefonoContacto;
 
     @NotNull
     @Column(nullable = false)
@@ -40,6 +52,10 @@ public class ReservaEntity {
     @NotNull
     @Column(nullable = false)
     private BigDecimal saldoPendiente;
+
+    @NotNull
+    @Column(nullable = true)
+    private BigDecimal precioUnitario;
 
     @NotNull
     @Column(nullable = false)
@@ -52,6 +68,12 @@ public class ReservaEntity {
     private String metodoPago;
 
     private String comprobante;
+
+    @Column(nullable = false, name = "productos_listos")
+    private boolean productosListos = false;
+
+    @Column(nullable = false, name = "entregado")
+    private boolean entregado = false;
 
     @OneToMany(mappedBy = "reserva", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ReservaItemEntity> items;

@@ -1,4 +1,4 @@
-package com.gaspar.facturador.utils;
+package com.gaspar.facturador.persistence.specification;
 
 import com.gaspar.facturador.persistence.entity.ItemEntity;
 import com.gaspar.facturador.persistence.entity.VentasDetalleEntity;

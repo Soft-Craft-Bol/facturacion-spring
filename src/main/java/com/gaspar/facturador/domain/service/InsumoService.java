@@ -4,14 +4,18 @@ import com.gaspar.facturador.application.request.InsumoRequest;
 import com.gaspar.facturador.application.response.InsumoResponse;
 import com.gaspar.facturador.application.response.InsumoSucursalResponse;
 import com.gaspar.facturador.persistence.crud.InsumoCrudRepository;
+import com.gaspar.facturador.persistence.crud.SucursalInsumoCrudRepository;
 import com.gaspar.facturador.persistence.entity.InsumoEntity;
 import com.gaspar.facturador.persistence.entity.SucursalInsumoEntity;
 import com.gaspar.facturador.persistence.entity.enums.TipoInsumo;
+import com.gaspar.facturador.persistence.specification.InsumoSpecification;
+import com.gaspar.facturador.persistence.specification.ProduccionSpecifications;
 import io.micrometer.common.util.StringUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +27,7 @@ import java.util.stream.Collectors;
 public class InsumoService {
 
     private final InsumoCrudRepository insumoRepository;
+    private final SucursalInsumoCrudRepository sucursalInsumoRepository;
 
     @Transactional
     public InsumoResponse createInsumo(InsumoRequest request) {
@@ -115,11 +120,21 @@ public class InsumoService {
     public Page<InsumoSucursalResponse> getInsumosBySucursal(
             Long sucursalId,
             boolean soloActivos,
+            String nombre,
+            TipoInsumo tipo,
+            String unidades,
             Pageable pageable) {
 
-        Page<SucursalInsumoEntity> insumosPage = soloActivos ?
-                insumoRepository.findActiveInsumosBySucursalId(sucursalId, pageable) :
-                insumoRepository.findInsumosBySucursalId(sucursalId, pageable);
+        // Construir la especificación usando el repositorio correcto
+        Specification<SucursalInsumoEntity> spec = InsumoSpecification.withFilters(
+                sucursalId,
+                soloActivos ? true : null,
+                nombre,
+                tipo,
+                unidades
+        );
+
+        Page<SucursalInsumoEntity> insumosPage = sucursalInsumoRepository.findAll(spec, pageable);
 
         return insumosPage.map(this::mapToInsumoSucursalResponse);
     }

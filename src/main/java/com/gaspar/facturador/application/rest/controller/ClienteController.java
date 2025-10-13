@@ -24,15 +24,16 @@ public class ClienteController {
         this.clienteService = clienteService;
     }
 
-    @GetMapping("/buscar")
-    public ResponseEntity<ClienteEntity> buscarPorDocumento(
-            @RequestParam("documento") Long numeroDocumento) {
-        if(numeroDocumento == null) {
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-        }
-        Optional<ClienteEntity> cliente = clienteService.buscarPorDocumento(numeroDocumento);
-        return cliente.map(value -> new ResponseEntity<>(value, HttpStatus.OK))
-                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    @GetMapping("/sugerencias/nombre")
+    public ResponseEntity<List<ClienteEntity>> sugerenciasPorNombre(
+            @RequestParam("q") String nombre) {
+        return ResponseEntity.ok(clienteService.sugerirPorNombre(nombre));
+    }
+
+    @GetMapping("/sugerencias/documento")
+    public ResponseEntity<List<ClienteEntity>> sugerenciasPorDocumento(
+            @RequestParam("q") String prefijoDocumento) {
+        return ResponseEntity.ok(clienteService.sugerirPorDocumento(prefijoDocumento));
     }
 
     @GetMapping

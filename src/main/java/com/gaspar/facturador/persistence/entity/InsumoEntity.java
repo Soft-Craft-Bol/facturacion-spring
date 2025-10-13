@@ -43,4 +43,7 @@ public class InsumoEntity {
     @OneToMany(mappedBy = "insumo")
     private List<CompraInsumoEntity> compras;
 
+    public InsumoEntity(Long insumoId) {
+        this.id = insumoId;
+    }
 }

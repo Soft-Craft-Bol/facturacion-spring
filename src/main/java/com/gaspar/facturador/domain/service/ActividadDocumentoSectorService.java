@@ -28,11 +28,11 @@ public class ActividadDocumentoSectorService {
 
     public void guardarCatalogos(SolicitudSincronizacion solicitudSincronizacion) throws RemoteException {
         RespuestaListaActividadesDocumentoSector respuestaListaActividades = this.obtenerActividadesDocumentoSector(solicitudSincronizacion);
-//        actividadDocumentoSectorRepository.deleteAll();
-//
-//        for (ActividadesDocumentoSectorDto actividadesDocumentoSectorDto : respuestaListaActividades.getListaActividadesDocumentoSector()) {
-//            actividadDocumentoSectorRepository.save(actividadesDocumentoSectorDto);
-//        }
+        actividadDocumentoSectorRepository.deleteAll();
+
+        for (ActividadesDocumentoSectorDto actividadesDocumentoSectorDto : respuestaListaActividades.getListaActividadesDocumentoSector()) {
+            actividadDocumentoSectorRepository.save(actividadesDocumentoSectorDto);
+        }
     }
 
     private RespuestaListaActividadesDocumentoSector obtenerActividadesDocumentoSector(SolicitudSincronizacion solicitudSincronizacion) throws RemoteException {

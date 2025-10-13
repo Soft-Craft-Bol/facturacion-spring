@@ -1,19 +1,17 @@
 package com.gaspar.facturador.domain.service;
 
+import com.gaspar.facturador.application.request.MetodoPagoRequest;
 import com.gaspar.facturador.application.request.VentaSinFacturaRequest;
 import com.gaspar.facturador.application.response.ClienteFrecuenteDTO;
-import com.gaspar.facturador.application.rest.dto.VentaListadoDTO;
-import com.gaspar.facturador.application.rest.dto.VentaResponseDTO;
-import com.gaspar.facturador.application.rest.dto.VentasFiltroDTO;
+import com.gaspar.facturador.application.rest.dto.*;
 import com.gaspar.facturador.persistence.PuntoVentaRepository;
 import com.gaspar.facturador.persistence.crud.*;
 import com.gaspar.facturador.persistence.dto.TotalVentasPorDiaDTO;
-import com.gaspar.facturador.persistence.dto.VentaFiltroDTO;
 import com.gaspar.facturador.persistence.dto.VentaHoyDTO;
 import com.gaspar.facturador.persistence.entity.*;
 import com.gaspar.facturador.persistence.entity.enums.TipoComprobanteEnum;
 import com.gaspar.facturador.persistence.entity.enums.TipoPagoEnum;
-import com.gaspar.facturador.utils.VentaSpecifications;
+import com.gaspar.facturador.persistence.specification.VentaSpecifications;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -51,6 +49,7 @@ public class VentaService {
     public VentasEntity saveVenta(VentaSinFacturaRequest request) {
         System.out.println("Body recibido: " + request);
 
+        // Buscar usuario
         Long userId = userRepository.findIdByUsername(request.getUsername());
         if (userId == null) {
             throw new IllegalArgumentException("Usuario con username " + request.getUsername() + " no encontrado");
@@ -59,100 +58,168 @@ public class VentaService {
         UserEntity vendedor = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario con ID " + userId + " no encontrado"));
 
+        // Buscar punto de venta
         PuntoVentaEntity puntoVenta = puntoVentaRepository.findById(Math.toIntExact(request.getIdPuntoVenta()))
                 .orElseThrow(() -> new IllegalArgumentException("Punto de venta con ID " + request.getIdPuntoVenta() + " no encontrado"));
 
+        // Validar métodos de pago combinados
+        validarMetodosPago(request);
+
+        // Crear venta
         VentasEntity venta = new VentasEntity();
         venta.setFecha(new Date());
 
+        // Caja
         CajasEntity caja = new CajasEntity();
         caja.setId(request.getCajaId());
         venta.setCaja(caja);
 
+        // Cliente
         ClienteEntity cliente = clienteCrudRepository.findById(request.getIdCliente())
                 .orElseThrow(() -> new IllegalArgumentException("Cliente con ID " + request.getIdCliente() + " no encontrado"));
         venta.setCliente(cliente);
 
-
+        // Tipo comprobante
         try {
             String tipoComprobante = request.getTipoComprobante().toUpperCase();
             System.out.println("Tipo de comprobante recibido: " + tipoComprobante);
             venta.setTipoComprobante(TipoComprobanteEnum.valueOf(tipoComprobante));
-        } catch (IllegalArgumentException e) {
+        } catch (Exception e) {
             throw new IllegalArgumentException("Tipo de comprobante no válido: " + request.getTipoComprobante());
         }
 
-        if (venta.getTipoComprobante() == null) {
-            throw new IllegalArgumentException("El tipo de comprobante no puede ser nulo");
+        // Método de pago (general, si no usa múltiples métodos)
+        if (request.getMetodoPago() != null) {
+            try {
+                venta.setMetodoPago(TipoPagoEnum.valueOf(request.getMetodoPago().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Método de pago no válido: " + request.getMetodoPago());
+            }
         }
 
-        try {
-            venta.setMetodoPago(TipoPagoEnum.valueOf(request.getMetodoPago().toUpperCase()));
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Método de pago no válido: " + request.getMetodoPago());
-        }
-
-        venta.setMontoRecibido(request.getMontoRecibido());
-        venta.setMontoDevuelto(request.getMontoDevuelto());
         venta.setVendedor(vendedor);
         venta.setPuntoVenta(puntoVenta);
 
-
+        // --- DETALLES ---
         BigDecimal montoTotal = BigDecimal.ZERO;
         List<VentasDetalleEntity> detalles = new ArrayList<>();
 
         for (var item : request.getDetalle()) {
+            // Buscar stock en sucursal
             SucursalItemEntity sucursalItem = sucursalItemCrudRepository.findBySucursal_IdAndItem_Id(
                             puntoVenta.getSucursal().getId(),
-                            (int) item.getIdProducto().longValue())
+                            item.getIdProducto().intValue())
                     .orElseThrow(() -> new IllegalArgumentException("Producto con ID " + item.getIdProducto() + " no encontrado en la sucursal"));
 
+            // Validar stock
             if (BigDecimal.valueOf(sucursalItem.getCantidad()).compareTo(item.getCantidad()) < 0) {
                 throw new IllegalArgumentException("No hay suficiente stock para el producto con ID " + item.getIdProducto());
             }
 
-            // Obtener el precio unitario del ItemEntity
+            // Precio unitario
             BigDecimal precioUnitario = sucursalItem.getItem().getPrecioUnitario();
             if (precioUnitario == null) {
                 throw new IllegalArgumentException("El producto con ID " + item.getIdProducto() + " no tiene precio unitario definido");
             }
 
-            // Calcular subtotal con el precio real
+            // Subtotal
             BigDecimal subtotal = item.getCantidad().multiply(precioUnitario);
             BigDecimal montoItem = subtotal.subtract(item.getMontoDescuento());
-
             montoTotal = montoTotal.add(montoItem);
 
             // Actualizar stock
             sucursalItem.setCantidad(sucursalItem.getCantidad() - item.getCantidad().intValue());
             sucursalItemCrudRepository.save(sucursalItem);
 
-            VentasDetalleEntity detalle = new VentasDetalleEntity();
-            detalle.setVenta(venta);
+            // Crear detalle
             ItemEntity producto = itemCrudRepository.findById(item.getIdProducto())
                     .orElseThrow(() -> new IllegalArgumentException("Producto con ID " + item.getIdProducto() + " no encontrado"));
 
+            VentasDetalleEntity detalle = new VentasDetalleEntity();
+            detalle.setVenta(venta);
             detalle.setProducto(producto);
             detalle.setCantidad(item.getCantidad());
             detalle.setMontoDescuento(item.getMontoDescuento());
             detalle.setDescripcionProducto(sucursalItem.getItem().getDescripcion());
-            detalle.setPrecioUnitario(precioUnitario); // Guardar el precio unitario
+            detalle.setPrecioUnitario(precioUnitario);
 
             detalles.add(detalle);
         }
 
-        venta.setMonto(montoTotal);
-        venta.setEstado("COMPLETADO");
         venta.setDetalles(detalles);
+        venta.setMonto(montoTotal);
 
+        // --- PAGOS ---
+        if (request.getMetodosPago() != null && !request.getMetodosPago().isEmpty()) {
+            List<VentaPagoEntity> metodosPagoEntities = new ArrayList<>();
+
+            for (MetodoPagoRequest metodoRequest : request.getMetodosPago()) {
+                VentaPagoEntity metodoPago = new VentaPagoEntity();
+                metodoPago.setVenta(venta);
+                metodoPago.setMetodoPago(metodoRequest.getMetodoPago());
+                metodoPago.setMonto(metodoRequest.getMonto());
+                metodoPago.setReferencia(metodoRequest.getReferencia());
+                metodoPago.setEntidadBancaria(metodoRequest.getEntidadBancaria());
+                metodosPagoEntities.add(metodoPago);
+            }
+
+            venta.setMetodosPago(metodosPagoEntities);
+
+            BigDecimal totalPagado = request.getMetodosPago().stream()
+                    .map(MetodoPagoRequest::getMonto)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            venta.setMontoRecibido(totalPagado);
+            venta.setMontoDevuelto(totalPagado.subtract(montoTotal).max(BigDecimal.ZERO));
+        } else {
+            venta.setMontoRecibido(request.getMontoRecibido());
+            venta.setMontoDevuelto(request.getMontoDevuelto());
+        }
+
+        // --- FACTURA ---
         if (request.getIdfactura() != null) {
             FacturaEntity factura = new FacturaEntity();
             factura.setId(request.getIdfactura());
             venta.setFactura(factura);
         }
+
+        // --- CRÉDITO ---
+        if (Boolean.TRUE.equals(request.getEsCredito())) {
+            if (!cliente.getPermiteCredito() || cliente.getCredito() == null) {
+                throw new IllegalArgumentException("El cliente no tiene crédito habilitado");
+            }
+
+            BigDecimal creditoDisponible = cliente.getCredito().getCreditoDisponible();
+            if (creditoDisponible.compareTo(montoTotal) < 0) {
+                throw new IllegalArgumentException("El cliente no tiene suficiente crédito disponible");
+            }
+
+            cliente.getCredito().setCreditoDisponible(creditoDisponible.subtract(montoTotal));
+
+            CuentaPorCobrarEntity cxc = new CuentaPorCobrarEntity();
+            cxc.setVenta(venta);
+            cxc.setCliente(cliente);
+            cxc.setMontoTotal(montoTotal);
+            cxc.setSaldoPendiente(montoTotal);
+            cxc.setFechaEmision(new Date());
+            cxc.setDiasCredito(request.getDiasCredito());
+
+            Calendar calendar = Calendar.getInstance();
+            calendar.add(Calendar.DAY_OF_YEAR, request.getDiasCredito());
+            cxc.setFechaVencimiento(calendar.getTime());
+            cxc.setEstado("PENDIENTE");
+
+            venta.setEsCredito(true);
+            venta.setDiasCredito(request.getDiasCredito());
+            venta.setCuentaPorCobrar(cxc);
+            venta.setEstado("PENDIENTE");
+        } else {
+            venta.setEsCredito(false);
+            venta.setEstado("COMPLETADO");
+        }
+
         return ventasRepository.save(venta);
     }
-
 
     public Page<VentaHoyDTO> getVentasDeHoy(
             int page,
@@ -163,7 +230,7 @@ public class VentaService {
             String tipoBusqueda) {
 
         LocalDate hoy = LocalDate.now();
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "fecha"));
 
         Page<VentasEntity> ventasPage = ventasRepository.findByFechaAndFiltros(
                 hoy, idPuntoVenta, estado, busqueda, tipoBusqueda, pageable);
@@ -367,6 +434,85 @@ public class VentaService {
 
         Page<VentasEntity> ventasPage = ventasRepository.findAll(spec, pageable);
         return ventasPage.map(this::convertToDTO);
+    }
+
+    public List<ReporteProductoDTO> obtenerReporteProductosPorCaja(Long cajaId) {
+        return ventasRepository.findProductosVendidosPorCaja(cajaId);
+    }
+
+    public BigDecimal obtenerTotalVentasPorCaja(Long cajaId) {
+        List<ReporteProductoDTO> reporte = obtenerReporteProductosPorCaja(cajaId);
+        return reporte.stream()
+                .map(ReporteProductoDTO::totalVenta)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    @Transactional
+    public VentasEntity anularVenta(Long ventaId, String motivo, String usuario) {
+        VentasEntity venta = ventasRepository.findById(ventaId)
+                .orElseThrow(() -> new IllegalArgumentException("Venta con ID " + ventaId + " no encontrada"));
+
+        if (Boolean.TRUE.equals(venta.getAnulada())) {
+            throw new IllegalArgumentException("La venta ya ha sido anulada");
+        }
+
+        if (!"COMPLETADO".equals(venta.getEstado())) {
+            throw new IllegalArgumentException("Solo se pueden anular ventas con estado COMPLETADO");
+        }
+
+        // 1️⃣ Revertir stock
+        for (VentasDetalleEntity detalle : venta.getDetalles()) {
+            ItemEntity producto = detalle.getProducto();
+            Integer sucursalId = venta.getPuntoVenta().getSucursal().getId();
+
+            SucursalItemEntity sucursalItem = sucursalItemCrudRepository
+                    .findBySucursal_IdAndItem_Id(sucursalId, Math.toIntExact(producto.getId()))
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Producto con ID " + producto.getId() + " no encontrado en la sucursal"));
+
+            sucursalItem.setCantidad(sucursalItem.getCantidad() + detalle.getCantidad().intValue());
+            sucursalItemCrudRepository.save(sucursalItem);
+        }
+
+        // 2️⃣ Actualizar montos en la venta
+        venta.setAnulada(true);
+        venta.setMotivoAnulacion(motivo);
+        venta.setFechaAnulacion(new Date());
+        venta.setUsuarioAnulacion(usuario);
+        venta.setEstado("ANULADA");
+        venta.setMonto(BigDecimal.ZERO);
+        venta.setMontoRecibido(BigDecimal.ZERO);
+        venta.setMontoDevuelto(BigDecimal.ZERO);
+
+        return ventasRepository.save(venta);
+    }
+
+    private void validarMetodosPago(VentaSinFacturaRequest request) {
+        if (request.getMetodosPago() != null && !request.getMetodosPago().isEmpty()) {
+            if (request.getMetodosPago().size() > 3) {
+                throw new IllegalArgumentException("Máximo 3 métodos de pago permitidos");
+            }
+
+            for (MetodoPagoRequest metodo : request.getMetodosPago()) {
+                if (metodo.getMonto().compareTo(BigDecimal.ZERO) <= 0) {
+                    throw new IllegalArgumentException("El monto debe ser mayor a cero para todos los métodos de pago");
+                }
+            }
+
+            BigDecimal totalMetodos = request.getMetodosPago().stream()
+                    .map(MetodoPagoRequest::getMonto)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            BigDecimal montoAproximado = request.getDetalle().stream()
+                    .map(detalle -> detalle.getCantidad().multiply(BigDecimal.TEN)) // Precio aproximado de 10
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            if (totalMetodos.compareTo(montoAproximado) < 0) {
+                throw new IllegalArgumentException("La suma de los métodos de pago parece insuficiente para el monto total de la venta");
+            }
+        } else if (request.getMetodoPago() == null) {
+            throw new IllegalArgumentException("Debe especificar al menos un método de pago");
+        }
     }
 
     private VentaListadoDTO convertToDTO(VentasEntity venta) {

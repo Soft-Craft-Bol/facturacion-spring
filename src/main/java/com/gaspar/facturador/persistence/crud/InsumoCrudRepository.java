@@ -41,16 +41,6 @@ public interface InsumoCrudRepository extends JpaRepository<InsumoEntity, Long> 
             @Param("activo") boolean activo,
             Pageable pageable);
 
-    // Consultas para sucursales
-    @Query("SELECT si FROM SucursalInsumoEntity si WHERE si.sucursal.id = :sucursalId AND si.insumo.activo = true")
-    Page<SucursalInsumoEntity> findActiveInsumosBySucursalId(
-            @Param("sucursalId") Long sucursalId,
-            Pageable pageable);
-    @Query("SELECT si FROM SucursalInsumoEntity si WHERE si.sucursal.id = :sucursalId")
-    Page<SucursalInsumoEntity> findInsumosBySucursalId(
-            @Param("sucursalId") Long sucursalId,
-            Pageable pageable);
-    // Consultas existentes
     Page<InsumoEntity> findAll(Pageable pageable);
 
     Page<InsumoEntity> findByNombreContainingIgnoreCaseAndTipo(

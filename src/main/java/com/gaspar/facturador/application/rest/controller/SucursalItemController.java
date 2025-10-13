@@ -12,6 +12,7 @@ import com.gaspar.facturador.persistence.entity.PromocionEntity;
 import com.gaspar.facturador.persistence.entity.SucursalEntity;
 import com.gaspar.facturador.persistence.entity.SucursalItemEntity;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -79,6 +80,7 @@ public class SucursalItemController {
         sucursalDTO.setItems(itemDTOs);
         return ResponseEntity.ok(sucursalDTO);
     }
+
     //insertar un item con cantidad a una sucursal a una sucursal
     @PostMapping("/sucursal/{sucursalId}/item/{itemId}")
     public ResponseEntity<SucursalItemEntity> setInitialQuantity(@PathVariable Integer sucursalId, @PathVariable Integer itemId, @RequestParam Integer cantidad) {
@@ -224,7 +226,7 @@ public class SucursalItemController {
             @RequestParam(required = false) Integer codigoProductoSin,
             @RequestParam(required = false) Boolean conDescuento,
             @RequestParam(required = false) Boolean sinStock,
-            @RequestParam(required = false) Integer categoriaId,
+            @RequestParam(required = false) List<Integer> categoriaIds,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "cantidad,desc") String sort) {
@@ -250,7 +252,7 @@ public class SucursalItemController {
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, entityField));
 
         Page<ProductoSucursalDto> productosPage = itemService.getProductosByPuntoVentaId(
-                puntoVentaId, search, codigoProductoSin, conDescuento, sinStock, categoriaId, pageable); // Agregar categoriaId
+                puntoVentaId, search, codigoProductoSin, conDescuento, sinStock, categoriaIds, pageable); // Agregar categoriaId
 
         ProductosPaginadosResponse response = new ProductosPaginadosResponse();
         response.setProductos(productosPage.getContent());

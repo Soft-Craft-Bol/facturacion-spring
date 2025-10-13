@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.NoSuchElementException;
 
-import static com.gaspar.facturador.utils.MovimientoMermaSpecification.*;
+import static com.gaspar.facturador.persistence.specification.MovimientoMermaSpecification.*;
 
 @Service
 @RequiredArgsConstructor

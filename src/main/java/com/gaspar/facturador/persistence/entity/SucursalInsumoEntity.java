@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 @Data
 @Entity
@@ -37,4 +38,7 @@ public class SucursalInsumoEntity {
 
     private Date fechaIngreso;
     private Date fechaVencimiento;
+
+    @OneToMany(mappedBy = "sucursalInsumo", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<AjusteInventarioInsumoEntity> ajustesInventario;
 }

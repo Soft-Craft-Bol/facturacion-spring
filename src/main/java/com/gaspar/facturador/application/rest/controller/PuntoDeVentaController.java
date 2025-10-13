@@ -7,10 +7,7 @@ import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -18,15 +15,27 @@ import java.util.List;
 @RequestMapping("/puntos-venta")
 public class PuntoDeVentaController {
     private final IPuntoVentaRepository puntoVentaRepository;
+    private final PuntoVentaService puntoVentaService;
 
-    public PuntoDeVentaController(IPuntoVentaRepository puntoVentaRepository) {
+    public PuntoDeVentaController(IPuntoVentaRepository puntoVentaRepository, PuntoVentaService puntoVentaService) {
         this.puntoVentaRepository = puntoVentaRepository;
+        this.puntoVentaService = puntoVentaService;
     }
 
     @GetMapping
     public ResponseEntity<List<PuntoVentaEntity>> getAllPuntosVenta() {
         List<PuntoVentaEntity> puntosVenta = (List<PuntoVentaEntity>) puntoVentaRepository.findAll();
         return new ResponseEntity<>(puntosVenta, HttpStatus.OK);
+    }
+
+    @GetMapping("/{idSucursal}/puntos-venta")
+    public ResponseEntity<List<PuntoVentaEntity>> getPuntosVentaBySucursal(
+            @PathVariable Integer idSucursal) {
+        List<PuntoVentaEntity> puntosVenta = puntoVentaService.getPuntosVentaBySucursalId(idSucursal);
+        if (puntosVenta.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(puntosVenta);
     }
 
 

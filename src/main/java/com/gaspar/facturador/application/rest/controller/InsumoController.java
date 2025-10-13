@@ -7,6 +7,7 @@ import com.gaspar.facturador.domain.service.InsumoService;
 import com.gaspar.facturador.persistence.crud.InsumoCrudRepository;
 import com.gaspar.facturador.persistence.entity.InsumoEntity;
 import com.gaspar.facturador.persistence.entity.ItemEntity;
+import com.gaspar.facturador.persistence.entity.enums.TipoInsumo;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import org.apache.coyote.Response;
@@ -62,9 +63,13 @@ public class InsumoController {
     public ResponseEntity<Page<InsumoSucursalResponse>> listarInsumosPorSucursal(
             @PathVariable Long sucursalId,
             @RequestParam(defaultValue = "true") boolean soloActivos,
+            @RequestParam(required = false) String nombre,
+            @RequestParam(required = false) TipoInsumo tipo,
+            @RequestParam(required = false) String unidades,
             Pageable pageable) {
 
-        return ResponseEntity.ok(insumoService.getInsumosBySucursal(sucursalId, soloActivos, pageable));
+        return ResponseEntity.ok(insumoService.getInsumosBySucursal(
+                sucursalId, soloActivos, nombre, tipo, unidades, pageable));
     }
 
     @GetMapping("/sucursal/{sucursalId}/otros")

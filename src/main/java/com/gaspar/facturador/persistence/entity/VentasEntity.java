@@ -53,6 +53,10 @@ public class VentasEntity {
     @JsonManagedReference
     private List<VentasDetalleEntity> detalles;
 
+    @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<VentaPagoEntity> metodosPago;
+
     @Column(name = "tipo_comprobante")
     @Enumerated(EnumType.STRING)
     private TipoComprobanteEnum tipoComprobante;
@@ -69,4 +73,25 @@ public class VentasEntity {
     @JoinColumn(name = "id_factura", nullable = true)
     private FacturaEntity factura;
 
+    @Column(name = "anulada")
+    private Boolean anulada = false;
+
+    @Column(name = "motivo_anulacion")
+    private String motivoAnulacion;
+
+    @Column(name = "fecha_anulacion")
+    private Date fechaAnulacion;
+
+    @Column(name = "usuario_anulacion")
+    private String usuarioAnulacion;
+
+    @Column(name = "es_credito")
+    private Boolean esCredito = false;
+
+    @Column(name = "dias_credito")
+    private Integer diasCredito;
+
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "cuenta_por_cobrar_id", referencedColumnName = "id")
+    private CuentaPorCobrarEntity cuentaPorCobrar;
 }

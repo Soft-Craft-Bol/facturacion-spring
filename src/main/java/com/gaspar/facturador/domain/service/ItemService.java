@@ -212,7 +212,7 @@ public class ItemService {
             Integer codigoProductoSin,
             Boolean conDescuento,
             Boolean sinStock,
-            Integer categoriaId,
+            List<Integer> categoriaIds,
             Pageable pageable) {
 
         PuntoVentaEntity puntoVenta = puntoVentaCrudRepository.findById(puntoVentaId)
@@ -261,11 +261,11 @@ public class ItemService {
             });
         }
 
-        if (categoriaId != null) {
+        if (categoriaIds != null && !categoriaIds.isEmpty()) {
             spec = spec.and((root, query, cb) ->
-                    cb.equal(root.join("item").join("categoria").get("id"), categoriaId));
+                    root.join("item").join("categoria").get("id").in(categoriaIds)
+            );
         }
-
         Page<SucursalItemEntity> sucursalItemsPage = sucursalItemCrudRepository.findAll(spec, pageable);
 
         return sucursalItemsPage.map(sucursalItem -> {

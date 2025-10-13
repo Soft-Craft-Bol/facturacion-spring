@@ -93,7 +93,7 @@ public class EventoSignificativoService {
     }
 
 
-    private void verificarComunicacionSIAT() throws RemoteException {
+    public void verificarComunicacionSIAT() throws RemoteException {
         RespuestaComunicacion respuesta = servicioOperaciones.verificarComunicacion();
         if (!Boolean.TRUE.equals(respuesta.isTransaccion())) {
             throw new ProcessException("Error de conexión con SIAT");

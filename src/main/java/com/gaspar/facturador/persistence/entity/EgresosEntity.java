@@ -1,5 +1,6 @@
 package com.gaspar.facturador.persistence.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.gaspar.facturador.persistence.entity.enums.GastoEnum;
 import com.gaspar.facturador.persistence.entity.enums.TipoPagoEnum;
 import jakarta.persistence.*;
@@ -9,6 +10,7 @@ import lombok.*;
 import org.hibernate.validator.constraints.Length;
 
 import java.sql.Date;
+import java.time.LocalDate;
 
 
 @Entity
@@ -18,13 +20,14 @@ import java.sql.Date;
 @NoArgsConstructor
 @ToString
 @Table(name = "egresos")
-public class EgresosEntity {//USAR
+public class EgresosEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public long id;
 
     @NotNull
-    private Date fechaDePago;
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate fechaDePago;
 
     @NotNull
     @Length(max = 1024)
@@ -54,4 +57,8 @@ public class EgresosEntity {//USAR
 
     @NotNull
     private String observaciones;
+
+    @ManyToOne
+    @JoinColumn(name = "caja_id")
+    private CajasEntity caja;
 }

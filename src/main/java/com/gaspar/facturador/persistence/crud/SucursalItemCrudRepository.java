@@ -23,4 +23,5 @@ public interface SucursalItemCrudRepository extends JpaRepository<SucursalItemEn
     Page<SucursalItemEntity> findAll(Specification<SucursalItemEntity> spec, Pageable pageable);
 
     Optional<SucursalItemEntity> findBySucursalAndItem(@NotNull SucursalEntity sucursal, ItemEntity item);
+
 }

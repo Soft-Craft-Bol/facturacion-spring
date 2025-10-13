@@ -6,9 +6,11 @@ import com.gaspar.facturador.application.rest.dto.ProduccionPageDTO;
 import com.gaspar.facturador.application.rest.dto.ProduccionResponseDTO;
 import com.gaspar.facturador.persistence.crud.*;
 import com.gaspar.facturador.persistence.entity.*;
+import com.gaspar.facturador.persistence.specification.ProduccionSpecifications;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -214,14 +216,17 @@ public class ProduccionService {
         LocalDateTime fechaFin = filtros.getFechaFin() != null ?
                 filtros.getFechaFin().atTime(23, 59, 59) : null;
 
-        Page<ProduccionEntity> page = produccionRepository.findWithFilters(
-                fechaInicio,
-                fechaFin,
-                filtros.getRecetaId(),
-                filtros.getProductoId(),
-                filtros.getSucursalId(),
-                pageable
-        );
+        Long recetaId = filtros.getRecetaId() != null ?
+                filtros.getRecetaId().longValue() : null;
+        Long productoId = filtros.getProductoId() != null ?
+                filtros.getProductoId().longValue() : null;
+        Long sucursalId = filtros.getSucursalId() != null ?
+                filtros.getSucursalId().longValue() : null;
+
+        Specification<ProduccionEntity> spec = ProduccionSpecifications.withFilters(
+                fechaInicio, fechaFin, recetaId, productoId, sucursalId);
+
+        Page<ProduccionEntity> page = produccionRepository.findAll(spec, pageable);
 
         ProduccionPageDTO response = new ProduccionPageDTO();
         response.setProducciones(page.map(this::convertirAProduccionResponseDTO));

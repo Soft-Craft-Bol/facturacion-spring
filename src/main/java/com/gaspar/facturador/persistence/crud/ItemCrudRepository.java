@@ -30,4 +30,6 @@ public interface ItemCrudRepository extends JpaRepository<ItemEntity, Integer>, 
 
     @Query("SELECT i FROM ItemEntity i WHERE i.categoria.id = :categoriaId")
     List<ItemEntity> findByCategoriaId(@Param("categoriaId") Integer categoriaId);
+
+    Optional<ItemEntity> findByDescripcionIgnoreCase(String descripcion);
 }
