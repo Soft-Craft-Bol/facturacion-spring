@@ -38,8 +38,14 @@ public class CuentaPorCobrarEntity {
     @Column(name = "estado")
     private String estado; // PENDIENTE, PARCIAL, CANCELADO, VENCIDO
 
+    @Column(name = "tipo_cuenta")
+    private String tipoCuenta;
+
     @Column(name = "dias_credito")
     private Integer diasCredito;
+
+    @Column(name = "condiciones_pago")
+    private String condicionesPago;
 
     @OneToMany(mappedBy = "cuentaPorCobrar", cascade = CascadeType.ALL)
     private List<AbonoCreditoEntity> abonos;

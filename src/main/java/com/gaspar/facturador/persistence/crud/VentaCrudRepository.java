@@ -25,7 +25,6 @@ import java.util.List;
 public interface VentaCrudRepository extends JpaRepository<VentasEntity, Long>, JpaSpecificationExecutor<VentasEntity> {
     // Métodos base
     Page<VentasEntity> findByFechaBetween(Date fechaInicio, Date fechaFin, Pageable pageable);
-    List<VentasEntity> findByFechaBetween(Date fechaInicio, Date fechaFin);
 
     // Métodos con filtros combinados
     Page<VentasEntity> findByFechaBetweenAndPuntoVentaId(Date fechaInicio, Date fechaFin, Integer idPuntoVenta, Pageable pageable);
@@ -123,10 +122,5 @@ public interface VentaCrudRepository extends JpaRepository<VentasEntity, Long>, 
             "GROUP BY p.id, vd.descripcionProducto " +
             "ORDER BY SUM(vd.cantidad) DESC")
     List<ReporteProductoDTO> findProductosVendidosPorCaja(@Param("cajaId") Long cajaId);
-
-    // En VentaCrudRepository
-    List<VentasEntity> findByAnulada(Boolean anulada);
-    Page<VentasEntity> findByAnulada(Boolean anulada, Pageable pageable);
-    List<VentasEntity> findByFechaBetweenAndAnulada(Date fechaInicio, Date fechaFin, Boolean anulada);
 
 }

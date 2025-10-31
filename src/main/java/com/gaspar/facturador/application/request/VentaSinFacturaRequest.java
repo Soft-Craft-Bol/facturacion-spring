@@ -39,4 +39,8 @@ public class VentaSinFacturaRequest {
 
     private Boolean esCredito = false;
     private Integer diasCredito;
+
+    private Boolean esPagoPosterior = false;
+    private Integer plazoPagoPosterior;
+    private String condicionesPagoPosterior;
 }

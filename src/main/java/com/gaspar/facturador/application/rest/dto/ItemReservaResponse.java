@@ -18,6 +18,6 @@ public class ItemReservaResponse {
     private BigDecimal cantidad;
     private BigDecimal precioUnitario;
     private String photoUrl;
-    private boolean stockSuficiente;     // ✅ faltaba
+    private boolean stockSuficiente;    
     private BigDecimal stockDisponible;
 }
