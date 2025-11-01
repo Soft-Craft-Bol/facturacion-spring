@@ -237,6 +237,30 @@ public class ProduccionService {
         return response;
     }
 
+    @Transactional
+    public void eliminarProduccion(Long id) {
+        ProduccionEntity produccion = produccionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Producción no encontrada"));
+
+        // Revertir stock de insumos
+        for (DetalleProduccionInsumoEntity detalle : produccion.getInsumosConsumidos()) {
+            SucursalInsumoEntity stockInsumo = detalle.getSucursalInsumo();
+            stockInsumo.setCantidad(stockInsumo.getCantidad().add(detalle.getCantidadUsada()));
+        }
+
+        // Revertir stock del producto final
+        SucursalItemEntity stockProducto = sucursalItemRepository
+                .findBySucursal_IdAndItem_Id(
+                        produccion.getSucursal().getId().intValue(),
+                        produccion.getProducto().getId())
+                .orElseThrow(() -> new RuntimeException("Stock del producto no encontrado"));
+
+        stockProducto.setCantidad(stockProducto.getCantidad() - produccion.getCantidadProducida());
+
+        // Eliminar producción
+        produccionRepository.delete(produccion);
+    }
+
     private ProduccionResponseDTO convertirAProduccionResponseDTO(ProduccionEntity produccion) {
         ProduccionResponseDTO dto = new ProduccionResponseDTO();
         dto.setId(produccion.getId());
@@ -252,8 +276,6 @@ public class ProduccionService {
 
         return dto;
     }
-
-    // Opcional: método para convertir detalles de insumos
 
     private List<ProduccionResponseDTO.DetalleInsumoResponseDTO> convertirInsumosUsados(List<DetalleProduccionInsumoEntity> detalles) {
         return detalles.stream().map(detalle -> {

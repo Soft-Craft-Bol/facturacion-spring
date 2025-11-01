@@ -59,4 +59,14 @@ public class ProduccionController {
         return ResponseEntity.ok(produccionService.listarProduccionesPaginadas(pageable, filtros));
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> eliminarProduccion(@PathVariable Long id) {
+        try {
+            produccionService.eliminarProduccion(id);
+            return ResponseEntity.ok("Producción eliminada exitosamente");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
 }
