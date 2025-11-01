@@ -19,12 +19,14 @@ public class ExceptionHandler extends ResponseEntityExceptionHandler {
 
     @org.springframework.web.bind.annotation.ExceptionHandler(Exception.class)
     public final ResponseEntity<ExceptionResponse> handleAllExceptions(Exception e) {
+        String msg = e.getMessage() != null ? e.getMessage() : "Excepción sin mensaje";
         ExceptionResponse exceptionResponse = new ExceptionResponse(
                 "Error interno del servidor",
-                List.of(e.getMessage())
+                List.of(msg)
         );
         return new ResponseEntity<>(exceptionResponse, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
 
     @org.springframework.web.bind.annotation.ExceptionHandler(ProcessException.class)
     public final ResponseEntity<ExceptionResponse> handleAppException(ProcessException e) {

@@ -1,5 +1,6 @@
 package com.gaspar.facturador.persistence.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -17,6 +18,7 @@ public class CuentaPorCobrarEntity {
 
     @OneToOne
     @JoinColumn(name = "venta_id", nullable = false)
+    @JsonIgnore
     private VentasEntity venta;
 
     @ManyToOne

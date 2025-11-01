@@ -7,6 +7,7 @@ import com.gaspar.facturador.persistence.crud.CuentaPorCobrarRepository;
 import com.gaspar.facturador.persistence.crud.VentaCrudRepository;
 import com.gaspar.facturador.persistence.entity.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,7 +24,8 @@ public class PagoPosteriorService {
     private final CuentaPorCobrarRepository cuentaPorCobrarRepository;
     private final AbonoCreditoRepository abonoCreditoRepository;
     private final ClienteCrudRepository clienteRepository;
-    private final VentaService ventaService; // Inyecta VentaService
+    @Autowired
+    private final VentaService ventaService;
 
     @Transactional
     public VentasEntity crearVentaPagoPosterior(VentaSinFacturaRequest request) {
@@ -31,7 +33,7 @@ public class PagoPosteriorService {
         validarPagoPosterior(request);
 
         // Usar el método de VentaService para crear la venta base
-        VentasEntity venta = ventaService.crearVentaBase(request);
+        VentasEntity venta = ventaService.saveVenta(request);
 
         // Configurar como pago posterior
         venta.setEsCredito(false); // No es crédito tradicional

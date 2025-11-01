@@ -24,10 +24,8 @@ import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/cajas")
@@ -53,15 +51,11 @@ public class CajaController {
             @RequestParam BigDecimal montoInicial
     ) {
         try {
-            // Validar si existe sucursal
             var sucursal = sucursalRepository.findById(sucursalId)
                     .orElseThrow(() -> new RuntimeException("Sucursal no encontrada"));
-
-            // Validar si existe usuario
             var usuario = userRepository.findById(usuarioId)
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-            // Validar turno
             TurnoTrabajo turnoEnum;
             try {
                 turnoEnum = TurnoTrabajo.valueOf(turno.toUpperCase());
@@ -69,7 +63,6 @@ public class CajaController {
                 return ResponseEntity.badRequest().body("Turno inválido: " + turno);
             }
 
-            // Validar si el usuario ya tiene una caja abierta
             boolean existeAbierta = cajasRepository.existsBySucursalIdAndTurnoAndUsuarioAperturaIdAndEstado(
                     sucursalId,
                     turnoEnum,
@@ -100,7 +93,6 @@ public class CajaController {
 
             List<ProductoSucursalDto> productos = productosPage.getContent();
 
-            // Crear JSON con stock inicial
             Map<String, Object> stockInicial = new HashMap<>();
             stockInicial.put("cajaId", nuevaCaja.getId());
             stockInicial.put("fecha", LocalDateTime.now().toString());
@@ -108,7 +100,10 @@ public class CajaController {
 
             // Guardar en archivo
             // Ruta completa del archivo
-            String rutaArchivo = appConfig.getPathFiles() + "/stock_inicial/caja_" + nuevaCaja.getId() + ".json";
+            String fechaActual = LocalDateTime.now().toString().replace(":", "-");
+            String rutaArchivo = appConfig.getPathFiles() + "/stock_inicial/caja_"
+                    + nuevaCaja.getId() + "_" + fechaActual + ".json";
+
 
 // Obtener solo la carpeta padre
             java.nio.file.Path dirPath = java.nio.file.Paths.get(rutaArchivo).getParent();
@@ -135,7 +130,7 @@ public class CajaController {
         }
     }
 
-        @Transactional
+    @Transactional
     @PostMapping("/cerrar")
     public ResponseEntity<?> cerrarCaja(@RequestBody CierreCajaDTO dto) throws IOException {
         CajasEntity caja = cajasRepository.findById(dto.getCajaId())
@@ -177,7 +172,6 @@ public class CajaController {
                 MetodoPagoEntity metodoPago = metodoPagoRepository.findByCodigoIgnoreCase(codigoMetodo)
                         .orElseThrow(() -> new RuntimeException("Método de pago no encontrado: " + codigoMetodo));
 
-
                 CierreCajaDetalleEntity detalle = new CierreCajaDetalleEntity();
                 detalle.setMetodoPago(metodoPago);
                 detalle.setMontoFacturado("facturacion".equals(tipoFacturacion) ? monto : BigDecimal.ZERO);
@@ -187,13 +181,40 @@ public class CajaController {
                 cierre.agregarDetalle(detalle);
             }
         }
-
         cierreCajaRepository.save(cierre);
-        String rutaArchivo = appConfig.getPathFiles() + "/stock_inicial/caja_" + caja.getId() + ".json";
-            Path path = Path.of(rutaArchivo);
-            if (Files.exists(path)) {
-                Files.delete(path);
+
+        String carpeta = appConfig.getPathFiles() + "/stock_inicial/";
+        File dir = new File(carpeta);
+        File[] archivos = dir.listFiles((d, name) -> name.startsWith("caja_" + caja.getId() + "_") && name.endsWith(".json"));
+
+        if (archivos != null && archivos.length > 0) {
+            File archivoMasReciente = archivos[0];
+            for (File f : archivos) {
+                if (f.lastModified() > archivoMasReciente.lastModified()) {
+                    archivoMasReciente = f;
+                }
             }
+
+            // Obtener stock final actual
+            Pageable pageable = PageRequest.of(0, 10000, Sort.by(Sort.Direction.DESC, "cantidad"));
+            Page<ProductoSucursalDto> productosFinalesPage = itemService.getProductosByPuntoVentaId(
+                    dto.getPuntoVenta(), null, null, null, null, null, pageable);
+            List<Map<String, Object>> stockFinal = new ArrayList<>();
+
+            for (ProductoSucursalDto p : productosFinalesPage.getContent()) {
+                Map<String, Object> item = new HashMap<>();
+                item.put("id", p.getId());
+                item.put("codigo", p.getCodigo());
+                item.put("descripcion", p.getDescripcion());
+                item.put("cantidadDisponible", p.getCantidadDisponible());
+                stockFinal.add(item);
+            }
+
+            Map<String, Object> data = objectMapper.readValue(archivoMasReciente, Map.class);
+            data.put("stock_final", stockFinal);
+
+            objectMapper.writeValue(archivoMasReciente, data);
+        }
         return ResponseEntity.ok("Caja cerrada exitosamente.");
     }
 
@@ -254,7 +275,7 @@ public class CajaController {
                             .observaciones(cierre.getObservaciones())
                             .detalles(cierre.getDetalles().stream().map(detalle ->
                                     CierreCajaDetalleResponseDTO.builder()
-                                            .metodoPago(detalle.getMetodoPago().toString())
+                                            .metodoPago(detalle.getMetodoPago().getDescripcion())
                                             .montoFacturado(detalle.getMontoFacturado())
                                             .montoSinFactura(detalle.getMontoSinFactura())
                                             .montoContado(detalle.getMontoContado())
@@ -308,6 +329,7 @@ public class CajaController {
                             .observaciones(cierre.getObservaciones())
                             .detalles(cierre.getDetalles().stream().map(detalle ->
                                     CierreCajaDetalleResponseDTO.builder()
+                                            .metodoPago(detalle.getMetodoPago().getDescripcion())
                                             .montoFacturado(detalle.getMontoFacturado())
                                             .montoSinFactura(detalle.getMontoSinFactura())
                                             .montoContado(detalle.getMontoContado())
@@ -320,17 +342,33 @@ public class CajaController {
         return ResponseEntity.ok(dtos);
     }
 
-    @GetMapping("/{cajaId}")
+    @GetMapping("/stock-inicial/{cajaId}")
     public ResponseEntity<?> obtenerStockInicial(@PathVariable Long cajaId) {
         try {
-            String rutaArchivo = appConfig.getPathFiles() + "/stock_inicial/caja_" + cajaId + ".json";
-            File archivo = new File(rutaArchivo);
+            String carpeta = appConfig.getPathFiles() + "/stock_inicial/";
+            File dir = new File(carpeta);
 
-            if (!archivo.exists()) {
+            if (!dir.exists() || !dir.isDirectory()) {
+                return ResponseEntity.badRequest().body("No existe la carpeta de stock inicial.");
+            }
+
+            // Buscar todos los archivos que empiecen con "caja_ID_"
+            File[] archivos = dir.listFiles((d, name) -> name.startsWith("caja_" + cajaId + "_") && name.endsWith(".json"));
+
+            if (archivos == null || archivos.length == 0) {
                 return ResponseEntity.badRequest().body("No se encontró stock inicial para la caja " + cajaId);
             }
 
-            Map<String, Object> stockInicial = objectMapper.readValue(archivo, Map.class);
+            // Obtener el más reciente (por fecha de modificación)
+            File archivoMasReciente = archivos[0];
+            for (File f : archivos) {
+                if (f.lastModified() > archivoMasReciente.lastModified()) {
+                    archivoMasReciente = f;
+                }
+            }
+
+            // Leer el archivo JSON
+            Map<String, Object> stockInicial = objectMapper.readValue(archivoMasReciente, Map.class);
             return ResponseEntity.ok(stockInicial);
 
         } catch (Exception e) {
@@ -356,4 +394,131 @@ public class CajaController {
         }
     }
 
+
+    @GetMapping("/resumen/{cajaId}")
+    public ResponseEntity<?> obtenerCajaCompleta(@PathVariable Long cajaId) {
+        try {
+            // Obtener información básica de la caja
+            CajasEntity caja = cajasRepository.findById(cajaId)
+                    .orElseThrow(() -> new RuntimeException("Caja no encontrada con ID: " + cajaId));
+
+            // Obtener información de cierre si existe
+            Optional<CierreCajasEnity> cierreOpt = cierreCajaRepository.findByCaja(caja);
+
+            // Obtener stock inicial/final del archivo JSON
+            Map<String, Object> stockData = obtenerStockData(cajaId);
+
+            // Construir respuesta completa
+            Map<String, Object> response = construirRespuestaCompleta(caja, cierreOpt, stockData);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error al obtener detalles de la caja: " + e.getMessage());
+        }
+    }
+
+    private Map<String, Object> obtenerStockData(Long cajaId) {
+        try {
+            String carpeta = appConfig.getPathFiles() + "/stock_inicial/";
+            File dir = new File(carpeta);
+
+            if (!dir.exists() || !dir.isDirectory()) {
+                return new HashMap<>();
+            }
+
+            File[] archivos = dir.listFiles((d, name) -> name.startsWith("caja_" + cajaId + "_") && name.endsWith(".json"));
+
+            if (archivos == null || archivos.length == 0) {
+                return new HashMap<>();
+            }
+
+            // Obtener el archivo más reciente
+            File archivoMasReciente = archivos[0];
+            for (File f : archivos) {
+                if (f.lastModified() > archivoMasReciente.lastModified()) {
+                    archivoMasReciente = f;
+                }
+            }
+
+            return objectMapper.readValue(archivoMasReciente, Map.class);
+
+        } catch (Exception e) {
+            return new HashMap<>();
+        }
+    }
+
+    private Map<String, Object> construirRespuestaCompleta(CajasEntity caja,
+                                                           Optional<CierreCajasEnity> cierreOpt,
+                                                           Map<String, Object> stockData) {
+        Map<String, Object> response = new LinkedHashMap<>();
+
+        // Información básica de la caja
+        response.put("id", caja.getId());
+        response.put("nombre", caja.getNombre());
+        response.put("estado", caja.getEstado());
+        response.put("turno", caja.getTurno());
+        response.put("montoInicial", caja.getMontoInicial());
+        response.put("sucursal", caja.getSucursal().getNombre());
+        response.put("usuarioApertura", caja.getUsuarioApertura().getUsername());
+        response.put("fechaApertura", caja.getFechaApertura());
+
+        if (caja.getUsuarioCierre() != null) {
+            response.put("usuarioCierre", caja.getUsuarioCierre().getUsername());
+        }
+        if (caja.getFechaCierre() != null) {
+            response.put("fechaCierre", caja.getFechaCierre());
+        }
+
+        // Información de cierre
+        if (cierreOpt.isPresent()) {
+            CierreCajasEnity cierre = cierreOpt.get();
+            Map<String, Object> cierreMap = new LinkedHashMap<>();
+            cierreMap.put("efectivoContado", cierre.getEfectivoContado());
+            cierreMap.put("tarjetaContado", cierre.getTarjetaContado());
+            cierreMap.put("qrContado", cierre.getQrContado());
+            cierreMap.put("totalVentas", cierre.getTotalVentas());
+            cierreMap.put("totalGastos", cierre.getTotalGastos());
+            cierreMap.put("diferencia", cierre.getDiferencia());
+            cierreMap.put("observaciones", cierre.getObservaciones());
+
+            // Detalles del cierre
+            List<Map<String, Object>> detalles = cierre.getDetalles().stream()
+                    .map(detalle -> {
+                        Map<String, Object> detalleMap = new LinkedHashMap<>();
+                        detalleMap.put("metodoPago", detalle.getMetodoPago().getDescripcion());
+                        detalleMap.put("montoFacturado", detalle.getMontoFacturado());
+                        detalleMap.put("montoSinFactura", detalle.getMontoSinFactura());
+                        detalleMap.put("montoContado", detalle.getMontoContado());
+                        return detalleMap;
+                    })
+                    .collect(Collectors.toList());
+
+            cierreMap.put("detalles", detalles);
+            response.put("cierre", cierreMap);
+        }
+
+        // Información de productos y stock del archivo JSON
+        if (!stockData.isEmpty()) {
+            // Productos (stock inicial)
+            if (stockData.containsKey("productos")) {
+                response.put("productos", stockData.get("productos"));
+            }
+
+            // Stock final
+            if (stockData.containsKey("stock_final")) {
+                response.put("stock_final", stockData.get("stock_final"));
+            }
+
+            // Información adicional del archivo si existe
+            if (stockData.containsKey("cajaId")) {
+                response.put("cajaIdArchivo", stockData.get("cajaId"));
+            }
+            if (stockData.containsKey("fecha")) {
+                response.put("fechaStockInicial", stockData.get("fecha"));
+            }
+        }
+
+        return response;
+    }
 }

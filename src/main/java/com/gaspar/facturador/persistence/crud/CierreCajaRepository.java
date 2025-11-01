@@ -12,5 +12,7 @@ import java.util.Optional;
 
 public interface CierreCajaRepository extends JpaRepository<CierreCajasEnity, Long> {
     Optional<CierreCajasEnity> findByCaja(CajasEntity caja);
+    Optional<CierreCajasEnity> findByCaja_Id(Long cajaId);
+
 
 }

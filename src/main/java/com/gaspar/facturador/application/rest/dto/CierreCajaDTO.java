@@ -12,6 +12,7 @@ import java.util.Map;
 @Builder
 public class CierreCajaDTO {
     private Long cajaId;
+    private Integer puntoVenta;
     private Long usuarioId;
     private BigDecimal efectivoFinal;
     private BigDecimal billeteraMovilFinal;
