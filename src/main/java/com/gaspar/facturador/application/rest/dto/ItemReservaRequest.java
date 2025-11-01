@@ -13,8 +13,6 @@ public class ItemReservaRequest {
     @NotNull
     private Integer idItem;
 
-
-
     public void setCantidad(@NotNull BigDecimal cantidad) {
         this.cantidad = cantidad;
     }

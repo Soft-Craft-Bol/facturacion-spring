@@ -37,7 +37,13 @@ public class ClienteRepository implements IClienteRepository {
     };
 
     @Override
-    public Optional<ClienteEntity> findByNumeroDocumento(Long numeroDocumento) {
-        return clienteCrudRepository.findByNumeroDocumento(numeroDocumento);
+    public List<ClienteEntity> findByNombreRazonSocialLike(String nombre) {
+        return clienteCrudRepository.findByNombreRazonSocialContainingIgnoreCase(nombre);
     }
+    @Override
+    public List<ClienteEntity> findByNumeroDocumentoLike(String prefijoDocumento) {
+        return clienteCrudRepository.findByNumeroDocumentoStartingWith(prefijoDocumento);
+    }
+
+
 }

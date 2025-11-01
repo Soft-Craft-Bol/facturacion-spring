@@ -2,6 +2,7 @@ package com.gaspar.facturador.domain.service;
 // SucursalInsumoService
 
 import com.gaspar.facturador.application.request.SucursalInsumoRequest;
+import com.gaspar.facturador.application.request.SucursalInsumosMasivoRequest;
 import com.gaspar.facturador.persistence.SucursalRepository;
 import com.gaspar.facturador.persistence.crud.InsumoCrudRepository;
 import com.gaspar.facturador.persistence.crud.SucursalInsumoCrudRepository;
@@ -14,7 +15,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -51,8 +54,8 @@ public class SucursalInsumoService {
     }
 
     @Transactional
-    public void updateStockInsumo(Long sucursalId, Long insumoId, BigDecimal cantidad) throws ChangeSetPersister.NotFoundException {
-        SucursalInsumoEntity sucursalInsumo = sucursalInsumoRepository.findBySucursalIdAndInsumoId(Math.toIntExact(sucursalId), insumoId)
+    public void updateStockInsumo(Integer sucursalId, Long insumoId, BigDecimal cantidad) throws ChangeSetPersister.NotFoundException {
+        SucursalInsumoEntity sucursalInsumo = sucursalInsumoRepository.findBySucursalIdAndInsumoId(sucursalId, insumoId)
                 .orElseThrow(() -> new ChangeSetPersister.NotFoundException());
 
         BigDecimal nuevaCantidad = sucursalInsumo.getCantidad().add(cantidad);
@@ -61,6 +64,53 @@ public class SucursalInsumoService {
         }
 
         sucursalInsumo.setCantidad(nuevaCantidad);
+        sucursalInsumoRepository.save(sucursalInsumo);
+    }
+
+    @Transactional
+    public void addInsumosMasivoToSucursal(SucursalInsumosMasivoRequest request) throws ChangeSetPersister.NotFoundException {
+        // Verificar si la sucursal existe
+        SucursalEntity sucursal = sucursalRepository.findById(Math.toIntExact(request.getSucursalId()))
+                .orElseThrow(() -> new ChangeSetPersister.NotFoundException());
+
+        List<SucursalInsumoEntity> insumosToSave = new ArrayList<>();
+        Date fechaIngreso = new Date();
+
+        for (SucursalInsumosMasivoRequest.InsumoAsignacionRequest insumoRequest : request.getInsumos()) {
+            // Verificar si el insumo existe
+            InsumoEntity insumo = insumoRepository.findById(insumoRequest.getInsumoId())
+                    .orElseThrow(() -> new ChangeSetPersister.NotFoundException());
+
+            // Verificar si ya existe la relación
+            if (sucursalInsumoRepository.existsBySucursalIdAndInsumoId(request.getSucursalId(), insumo.getId())) {
+                continue; // Saltar insumos ya existentes, o puedes lanzar excepción si prefieres
+            }
+
+            // Crear la relación
+            SucursalInsumoEntity sucursalInsumo = SucursalInsumoEntity.builder()
+                    .sucursal(sucursal)
+                    .insumo(insumo)
+                    .cantidad(insumoRequest.getCantidad() != null ? insumoRequest.getCantidad() : BigDecimal.ZERO)
+                    .stockMinimo(insumoRequest.getStockMinimo())
+                    .fechaIngreso(fechaIngreso)
+                    .fechaVencimiento(insumoRequest.getFechaVencimiento())
+                    .build();
+
+            insumosToSave.add(sucursalInsumo);
+        }
+
+        // Guardar todos los insumos en lote
+        if (!insumosToSave.isEmpty()) {
+            sucursalInsumoRepository.saveAll(insumosToSave);
+        }
+    }
+
+    @Transactional
+    public void updateStockMinimo(Integer sucursalId, Long insumoId, BigDecimal stockMinimo) throws ChangeSetPersister.NotFoundException {
+        SucursalInsumoEntity sucursalInsumo = sucursalInsumoRepository.findBySucursalIdAndInsumoId(sucursalId, insumoId)
+                .orElseThrow(() -> new ChangeSetPersister.NotFoundException());
+
+        sucursalInsumo.setStockMinimo(stockMinimo);
         sucursalInsumoRepository.save(sucursalInsumo);
     }
 }

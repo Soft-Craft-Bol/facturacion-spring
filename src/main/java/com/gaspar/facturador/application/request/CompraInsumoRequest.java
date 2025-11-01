@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Data;
 import java.math.BigDecimal;
+import java.sql.Date;
 
 @Data
 public class CompraInsumoRequest {
@@ -25,4 +26,6 @@ public class CompraInsumoRequest {
 
     private String numeroFactura;
     private String notas;
+
+    private Date fechaVencimiento;
 }

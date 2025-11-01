@@ -1,5 +1,6 @@
 package com.gaspar.facturador.persistence.crud;
 
+import com.gaspar.facturador.persistence.entity.CajasEntity;
 import com.gaspar.facturador.persistence.entity.CierreCajasEnity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -10,20 +11,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface CierreCajaRepository extends JpaRepository<CierreCajasEnity, Long> {
+    Optional<CierreCajasEnity> findByCaja(CajasEntity caja);
+    Optional<CierreCajasEnity> findByCaja_Id(Long cajaId);
 
-    // Método para encontrar cierre abierto por caja
-    Optional<CierreCajasEnity> findByCajaIdAndFechaCierreIsNull(Long cajaId);
 
-    // Método para verificar existencia de cierre abierto
-    boolean existsByCajaIdAndFechaCierreIsNull(Long cajaId);
-
-    // Otros métodos existentes...
-    List<CierreCajasEnity> findByCajaIdOrderByFechaCierreDesc(Long cajaId);
-
-    @Query("SELECT c FROM CierreCajasEnity c WHERE c.caja.id = :cajaId " +
-            "AND c.fechaCierre BETWEEN :fechaInicio AND :fechaFin")
-    List<CierreCajasEnity> findByCajaAndFecha(
-            @Param("cajaId") Long cajaId,
-            @Param("fechaInicio") LocalDateTime fechaInicio,
-            @Param("fechaFin") LocalDateTime fechaFin);
 }

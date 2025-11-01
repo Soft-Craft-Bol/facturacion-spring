@@ -1,6 +1,7 @@
 package com.gaspar.facturador.application.rest.controller;
 
 import com.gaspar.facturador.application.response.*;
+import com.gaspar.facturador.application.rest.dto.ProductoSucursalDto;
 import com.gaspar.facturador.application.rest.util.SucursalItemUtility;
 import com.gaspar.facturador.domain.service.ItemService;
 import com.gaspar.facturador.persistence.crud.ItemCrudRepository;
@@ -11,6 +12,7 @@ import com.gaspar.facturador.persistence.entity.PromocionEntity;
 import com.gaspar.facturador.persistence.entity.SucursalEntity;
 import com.gaspar.facturador.persistence.entity.SucursalItemEntity;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -78,6 +80,7 @@ public class SucursalItemController {
         sucursalDTO.setItems(itemDTOs);
         return ResponseEntity.ok(sucursalDTO);
     }
+
     //insertar un item con cantidad a una sucursal a una sucursal
     @PostMapping("/sucursal/{sucursalId}/item/{itemId}")
     public ResponseEntity<SucursalItemEntity> setInitialQuantity(@PathVariable Integer sucursalId, @PathVariable Integer itemId, @RequestParam Integer cantidad) {
@@ -112,7 +115,11 @@ public class SucursalItemController {
     }
 
     @PutMapping("/sucursal/{sucursalId}/item/{itemId}/increase")
-    public ResponseEntity<SucursalItemEntity> increaseQuantity(@PathVariable Integer sucursalId, @PathVariable Integer itemId, @RequestParam Integer cantidad) {
+    public ResponseEntity<SucursalItemResponse> increaseQuantity(
+            @PathVariable Integer sucursalId,
+            @PathVariable Integer itemId,
+            @RequestParam Integer cantidad) {
+
         Optional<SucursalItemEntity> sucursalItemOptional = sucursalItemCrudRepository.findBySucursal_IdAndItem_Id(sucursalId, itemId);
 
         if (!sucursalItemOptional.isPresent()) {
@@ -122,7 +129,8 @@ public class SucursalItemController {
         SucursalItemEntity sucursalItem = sucursalItemOptional.get();
         sucursalItem.setCantidad(sucursalItem.getCantidad() + cantidad);
         SucursalItemEntity updatedSucursalItem = sucursalItemCrudRepository.save(sucursalItem);
-        return ResponseEntity.ok(updatedSucursalItem);
+
+        return ResponseEntity.ok(new SucursalItemResponse(updatedSucursalItem));
     }
 
     @PutMapping("/sucursal/{sucursalId}/item/{itemId}/decrease")
@@ -182,6 +190,7 @@ public class SucursalItemController {
             @RequestParam(required = false) String codigo,
             @RequestParam(required = false) Boolean conDescuento,
             @RequestParam(required = false) Integer sucursalId,
+            @RequestParam(required = false) Integer categoriaId,
             @RequestParam(required = false) String sortBy,
             @RequestParam(required = false) String sortDirection) {
 
@@ -193,9 +202,65 @@ public class SucursalItemController {
 
         // Llamada al servicio con todos los parámetros
         Page<ItemWithSucursalesDTO> itemsPage = itemService.findItemsWithSucursales(
-                search, codigo, conDescuento, sucursalId, pageable);
+                search, codigo, conDescuento, sucursalId, categoriaId, pageable);
 
         return ResponseEntity.ok(itemsPage);
+    }
+
+    @GetMapping("/con-recetas")
+    public ResponseEntity<Page<ProductoConRecetaResponse>> listarProductosConRecetaInfo(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Boolean tieneReceta,
+            Pageable pageable) {
+
+        Page<ProductoConRecetaResponse> productos = itemService.listarProductosConRecetaInfo(search, tieneReceta, pageable);
+        return ResponseEntity.ok(productos);
+    }
+
+    @GetMapping("/by-punto-venta/{puntoVentaId}")
+    public ResponseEntity<ProductosPaginadosResponse> getProductosByPuntoVentaId(
+            @PathVariable Integer puntoVentaId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Integer codigoProductoSin,
+            @RequestParam(required = false) Boolean conDescuento,
+            @RequestParam(required = false) Boolean sinStock,
+            @RequestParam(required = false) List<Integer> categoriaIds,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "cantidad,desc") String sort) {
+
+        // Procesar el parámetro de ordenamiento
+        String[] sortParams = sort.split(",");
+        String sortField = sortParams[0];
+        String sortDirection = sortParams.length > 1 ? sortParams[1] : "desc";
+
+        // Mapear campos del DTO a campos de la entidad
+        Map<String, String> fieldMapping = new HashMap<>();
+        fieldMapping.put("cantidadDisponible", "cantidad");
+        fieldMapping.put("precioConDescuento", "item.precioUnitario");
+        fieldMapping.put("precioUnitario", "item.precioUnitario");
+        fieldMapping.put("descripcion", "item.descripcion");
+        fieldMapping.put("codigo", "item.codigo");
+        fieldMapping.put("tieneDescuento", "item.promocionItems");
+        fieldMapping.put("categoria", "item.categoria.nombre"); // Mapeo para ordenar por categoría
+
+        String entityField = fieldMapping.getOrDefault(sortField, sortField);
+        Sort.Direction direction = Sort.Direction.fromString(sortDirection);
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, entityField));
+
+        Page<ProductoSucursalDto> productosPage = itemService.getProductosByPuntoVentaId(
+                puntoVentaId, search, codigoProductoSin, conDescuento, sinStock, categoriaIds, pageable); // Agregar categoriaId
+
+        ProductosPaginadosResponse response = new ProductosPaginadosResponse();
+        response.setProductos(productosPage.getContent());
+        response.setPaginaActual(productosPage.getNumber());
+        response.setTotalPaginas(productosPage.getTotalPages());
+        response.setTotalElementos(productosPage.getTotalElements());
+
+        return ResponseEntity.ok(response);
     }
 
 }

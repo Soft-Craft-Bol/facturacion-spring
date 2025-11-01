@@ -8,6 +8,8 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -16,47 +18,42 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Table(name = "cierre_cajas")
 public class CierreCajasEnity {
-
     @Id
-    @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "fecha_apertura")
-    private LocalDateTime fechaApertura;
+    @OneToOne
+    @JoinColumn(name = "caja_id", nullable = false)
+    private CajasEntity caja;
 
-    @Column(name = "fecha_cierre")
-    private LocalDateTime fechaCierre;
-
-    @Column(name = "monto_inicial")
-    private BigDecimal montoInicial;
-
-    @Column(name = "monto_final")
-    private BigDecimal totalVentas;
-
-    @Column(name = "total_gastos")
+    // Gastos
+    @Column(precision = 10, scale = 2)
     private BigDecimal totalGastos;
 
-    @Column(name = "total_esperados")
-    private BigDecimal totalEsperados;
+    // Conteo final
+    @Column(precision = 10, scale = 2)
+    private BigDecimal efectivoContado;
 
-    @Column(name = "total_contados")
-    private BigDecimal totalContados;
+    @Column(precision = 10, scale = 2)
+    private BigDecimal tarjetaContado;
 
-    @Column(name = "diferencia")
+    @Column(precision = 10, scale = 2)
+    private BigDecimal qrContado;
+
+    // Calculados
+    @Column(precision = 10, scale = 2)
+    private BigDecimal totalVentas;
+
+    @Column(precision = 10, scale = 2)
     private BigDecimal diferencia;
-
-    @Column(name = "total_efectivo")
-    private BigDecimal totalEfectivo;
-
-    @Column(name = "total_tarjeta")
-    private BigDecimal totalTarjeta;
-
-    @Column(name = "total_qr")
-    private BigDecimal totalQr;
 
     private String observaciones;
 
-    @ManyToOne
-    @JoinColumn(name = "caja_id", nullable = false)
-    private CajasEntity caja;
+    @OneToMany(mappedBy = "cierreCaja", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CierreCajaDetalleEntity> detalles = new ArrayList<>();
+
+    public void agregarDetalle(CierreCajaDetalleEntity detalle) {
+        detalle.setCierreCaja(this);
+        this.detalles.add(detalle);
+    }
 }

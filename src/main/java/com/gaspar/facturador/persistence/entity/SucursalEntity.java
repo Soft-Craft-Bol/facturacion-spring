@@ -1,6 +1,8 @@
 package com.gaspar.facturador.persistence.entity;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import jakarta.persistence.*;
@@ -14,6 +16,8 @@ import java.util.Set;
 
 @Getter
 @Setter
+@AllArgsConstructor
+@NoArgsConstructor
 @Entity
 @Table(name = "sucursal")
 public class SucursalEntity {
@@ -56,4 +60,7 @@ public class SucursalEntity {
     @Column(precision = 11, scale = 8)
     private BigDecimal longitud;
 
+    public SucursalEntity(Integer idSucursal){
+        this.id = idSucursal;
+    }
 }

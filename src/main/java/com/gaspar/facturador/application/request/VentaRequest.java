@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 
@@ -38,8 +39,11 @@ public class VentaRequest {
     @NotNull(message = "Nombre de usuario obligatorio")
     private String username;
 
-    @NotNull(message = "El método de pago es obligatorio")
-    private String metodoPago;
+    private Integer codigoMetodoPago; // Nuevo campo para el método de pago
+    private Long numeroTarjeta; // Opcional, para pagos con tarjeta
 
     private String cafc;
+    private BigDecimal montoRecibido;
+    private BigDecimal montoDevuelto;
+    private Long cajasId;
 }

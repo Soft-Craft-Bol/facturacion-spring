@@ -1,18 +1,22 @@
 package com.gaspar.facturador.persistence.entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.gaspar.facturador.persistence.entity.enums.GastoEnum;
 import com.gaspar.facturador.persistence.entity.enums.TipoInsumo;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.math.BigDecimal;
-import java.sql.Date;
 import java.util.List;
 
 @Entity
 @Data
 @Table(name = "insumos")
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class InsumoEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,6 +28,8 @@ public class InsumoEntity {
     private TipoInsumo tipo;
 
     private BigDecimal precioActual;
+
+    private BigDecimal cantidad;
 
     private String unidades;
 
@@ -37,4 +43,7 @@ public class InsumoEntity {
     @OneToMany(mappedBy = "insumo")
     private List<CompraInsumoEntity> compras;
 
+    public InsumoEntity(Long insumoId) {
+        this.id = insumoId;
+    }
 }

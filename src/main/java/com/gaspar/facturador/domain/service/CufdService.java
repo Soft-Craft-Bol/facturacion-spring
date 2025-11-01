@@ -35,11 +35,11 @@ public class CufdService {
     private final ICufdRepository cufdRepository;
 
     public CufdService(
-        AppConfig appConfig,
-        ServicioFacturacionCodigos servicioFacturacionCodigos,
-        IPuntoVentaRepository puntoVentaRepository,
-        ICuisRepository cuisRepository,
-        ICufdRepository cufdRepository
+            AppConfig appConfig,
+            ServicioFacturacionCodigos servicioFacturacionCodigos,
+            IPuntoVentaRepository puntoVentaRepository,
+            ICuisRepository cuisRepository,
+            ICufdRepository cufdRepository
     ) {
         this.appConfig = appConfig;
         this.servicioFacturacionCodigos = servicioFacturacionCodigos;
@@ -48,7 +48,7 @@ public class CufdService {
         this.cufdRepository = cufdRepository;
     }
 
-    public void obtenerCufd(Integer idPuntoVenta) throws RemoteException {
+    public RespuestaCufd obtenerCufd(Integer idPuntoVenta) throws RemoteException {
 
         Optional<PuntoVentaEntity> puntoVenta = this.puntoVentaRepository.findById(idPuntoVenta);
         if (puntoVenta.isEmpty()) throw new ProcessException("Punto venta no encontrado");
@@ -73,7 +73,7 @@ public class CufdService {
 
         RespuestaCufd respuestaCufd = this.servicioFacturacionCodigos.cufd(solicitudCufd);
 
-        if(!respuestaCufd.isTransaccion() && respuestaCufd.getMensajesList() != null) {
+        if (!respuestaCufd.isTransaccion() && respuestaCufd.getMensajesList() != null) {
             String mensajes = "";
             for (MensajeServicio mensajeServicio : respuestaCufd.getMensajesList()) {
                 mensajes += mensajeServicio.getDescripcion() + ". ";
@@ -82,10 +82,8 @@ public class CufdService {
         }
 
         this.cufdRepository.save(respuestaCufd, puntoVenta.get());
+        return respuestaCufd;
     }
-
-
-
 
     public List<CufdEventoDTO> obtenerCufdsAnteriores(Integer idPuntoVenta) {
         Optional<PuntoVentaEntity> puntoVenta = this.puntoVentaRepository.findById(idPuntoVenta);

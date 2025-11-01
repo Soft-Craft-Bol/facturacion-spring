@@ -32,4 +32,6 @@ public class ReservaItemEntity {
     @NotNull
     @Column(nullable = false)
     private BigDecimal cantidad;
+
+    private boolean stockSuficiente;
 }

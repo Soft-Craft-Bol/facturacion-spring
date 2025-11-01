@@ -19,4 +19,6 @@ public class UserDTO {
     private Long telefono;
     private String photo;
     private Set<String> roles = new HashSet<>();
+    private Set<PuntoVentaDTO> puntosVenta = new HashSet<>();
+    private Set<HorarioDTO> horarios = new HashSet<>();
 }

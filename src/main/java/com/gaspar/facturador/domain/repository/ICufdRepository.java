@@ -4,6 +4,7 @@ import bo.gob.impuestos.siat.api.facturacion.codigos.RespuestaCufd;
 import com.gaspar.facturador.persistence.entity.CufdEntity;
 import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,4 +18,7 @@ public interface ICufdRepository {
 
     List<CufdEntity> findAnteriores(PuntoVentaEntity puntoVenta);
 
+    boolean existsByCodigoStartingWithAndFechaVigenciaAfter(String nombreDir, LocalDateTime now);
+
+    Optional<String> findCodigoControlByCufd(String cufd);
 }

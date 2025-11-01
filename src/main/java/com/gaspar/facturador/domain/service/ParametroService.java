@@ -25,7 +25,7 @@ public class ParametroService {
     }
 
     public void guardarParametros(SolicitudSincronizacion solicitudSincronizacion) throws RemoteException {
-        parametroRepository.deleteAll();
+       parametroRepository.deleteAll();
         for (ParametricaEnum parametro : ParametricaEnum.values()) {
             this.obtenerParametros(solicitudSincronizacion, parametro);
         }

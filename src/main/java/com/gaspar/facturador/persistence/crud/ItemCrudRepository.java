@@ -11,11 +11,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface ItemCrudRepository extends JpaRepository<ItemEntity, Integer>, JpaSpecificationExecutor<ItemEntity> {
-    @EntityGraph(attributePaths = {"sucursalItems.sucursal", "promocionItems"})
+    @EntityGraph(attributePaths = {"sucursalItems.sucursal", "promocionItems", "recetas"})
     @Query("SELECT i FROM ItemEntity i WHERE LOWER(i.descripcion) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
     Page<ItemEntity> findItemsWithSucursales(@Param("searchTerm") String searchTerm, Pageable pageable);
 
@@ -26,4 +27,9 @@ public interface ItemCrudRepository extends JpaRepository<ItemEntity, Integer>, 
     Optional<ItemEntity> findByCodigo(String codigo);
     // Mantén el método original para compatibilidad
     Page<ItemEntity> findByDescripcionContainingIgnoreCase(String descripcion, Pageable pageable);
+
+    @Query("SELECT i FROM ItemEntity i WHERE i.categoria.id = :categoriaId")
+    List<ItemEntity> findByCategoriaId(@Param("categoriaId") Integer categoriaId);
+
+    Optional<ItemEntity> findByDescripcionIgnoreCase(String descripcion);
 }

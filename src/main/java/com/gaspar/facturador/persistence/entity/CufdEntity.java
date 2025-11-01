@@ -23,6 +23,7 @@ public class CufdEntity {
     private LocalDateTime fechaInicio;
     private LocalDateTime fechaVigencia;
     private Boolean vigente;
+    private String direccion;
 
     @ManyToOne
     @JoinColumn(name = "id_punto_venta", nullable = false)

@@ -1,9 +1,14 @@
 package com.gaspar.facturador.application.rest.controller;
 
+import com.gaspar.facturador.application.request.UpdateUserRequest;
 import com.gaspar.facturador.domain.service.UserDetailServiceImpl;
 import com.gaspar.facturador.persistence.dto.UserDTO;
 import com.gaspar.facturador.persistence.entity.UserEntity;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -17,8 +22,15 @@ public class UserController {
     private UserDetailServiceImpl userDetailService;
 
     @GetMapping
-    public ResponseEntity<List<UserDTO>> getAllUsers() {
-        List<UserDTO> users = userDetailService.getAllUsers();
+    public ResponseEntity<Page<UserDTO>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sort,
+            @RequestParam(defaultValue = "asc") String direction) {
+
+        Sort.Direction sortDirection = Sort.Direction.fromString(direction);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sort));
+        Page<UserDTO> users = userDetailService.getAllUsers(pageable);
         return ResponseEntity.ok(users);
     }
 
@@ -27,23 +39,21 @@ public class UserController {
         userDetailService.deleteById(id);
         return ResponseEntity.noContent().build();
     }
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody UserDTO userDTO) {
-        try {
-            UserDTO updatedUser = userDetailService.updateUser(id, userDTO);
-            return ResponseEntity.ok(updatedUser);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Internal Server Error: " + e.getMessage());
-        }
-    }
+
 
     //Obtener usuarios por id
     @GetMapping("/{id}")
     public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
         UserDTO user = userDetailService.getUserById(id);
         return ResponseEntity.ok(user);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<UserDTO> updateUser(
+            @PathVariable Long id,
+            @RequestBody UpdateUserRequest updateRequest) {
+        UserDTO updatedUser = userDetailService.updateUser(id, updateRequest);
+        return ResponseEntity.ok(updatedUser);
     }
 
     @GetMapping("/vendedores")

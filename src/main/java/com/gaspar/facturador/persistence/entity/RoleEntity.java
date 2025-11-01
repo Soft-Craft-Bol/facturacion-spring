@@ -25,6 +25,10 @@ public class RoleEntity {
     @Enumerated(EnumType.STRING)
     private RoleEnum roleEnum;
 
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private boolean active = true;
+
+
     @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinTable(
             name = "roles_permissions",

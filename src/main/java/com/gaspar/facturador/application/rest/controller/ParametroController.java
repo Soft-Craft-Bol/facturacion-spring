@@ -1,5 +1,6 @@
 package com.gaspar.facturador.application.rest.controller;
 
+import com.gaspar.facturador.domain.service.EventoSignificativoService;
 import com.gaspar.facturador.persistence.ParametroRepository;
 import com.gaspar.facturador.persistence.entity.ParametroEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,9 +15,11 @@ import java.util.List;
 public class ParametroController {
 
     private final ParametroRepository parametroRepository;
+    private final EventoSignificativoService eventoSignificativoService;
 
-    public ParametroController(ParametroRepository parametroRepository){
+    public ParametroController(ParametroRepository parametroRepository, EventoSignificativoService eventoSignificativoService){
         this.parametroRepository=parametroRepository;
+        this.eventoSignificativoService = eventoSignificativoService;
     }
 
     @GetMapping("/documentos-identidad")
@@ -45,6 +48,36 @@ public class ParametroController {
     }
     @GetMapping("/tipo-moneda")
     public List<ParametroEntity> getTipoMoneda() {
-        return parametroRepository.getTipoMoneda();
+        List<String> codigosClasificador = Arrays.asList(
+                "1",   // BOLIVIANO
+                "46",  // DÓLAR ESTADOUNIDENSE
+                "109", // NUEVO SOL PERUANO
+                "23",  // REAL BRASILEÑO
+                "33",  // PESO CHILENO
+                "9",   // PESO ARGENTINO
+                "149", // BOLÍVAR FUERTE
+                "108"  // GUARANÍ PARAGUAYO
+        );
+        return parametroRepository.getTipoMoneda(codigosClasificador);
+    }
+
+    @GetMapping("/tipo-emision")
+    public List<ParametroEntity> getTipoEmision() {
+        return parametroRepository.getTipoEmision();
+    }
+
+    @GetMapping("/motivo-anulacion")
+    public List<ParametroEntity> getMotivosAnulacion() {
+        return parametroRepository.getMotivosAnulacion();
+    }
+
+    @GetMapping("/verificar-comunicacion")
+    public String verificarComunicacion() {
+        try {
+            eventoSignificativoService.verificarComunicacionSIAT();
+            return "Comunicación con SIAT exitosa.";
+        } catch (Exception e) {
+            return "Error al comunicar con SIAT: " + e.getMessage();
+        }
     }
 }

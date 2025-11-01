@@ -1,79 +1,120 @@
 package com.gaspar.facturador.utils;
 
+import com.gaspar.facturador.config.AppConfig;
+import com.gaspar.facturador.persistence.entity.PuntoVentaEntity;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
+import org.springframework.stereotype.Component;
+
 import java.io.*;
-import java.nio.file.*;
-import java.util.zip.*;
-import org.apache.commons.compress.archivers.tar.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.zip.GZIPOutputStream;
 
+@Component
 public class FacturaCompressor {
-    private static final String FACTURAS_DIR = "D:/CursosDeSpring/facturador/facturas/paquetes";
-    private static final String OUTPUT_FILE = "D:/CursosDeSpring/facturador/facturas/paquetes/facturas_paquete.tar.gz";
 
-    // Variable para almacenar el conteo de archivos XML
-    private static int cantidadArchivosXML = 0;
+    private final AppConfig appConfig;
+    private int cantidadArchivosXML = 0;
 
-    public static byte[] comprimirPaqueteFacturas() throws IOException {
-        File facturasDir = new File(FACTURAS_DIR);
-        if (!facturasDir.exists() || !facturasDir.isDirectory()) {
-            throw new IOException("El directorio de facturas no existe");
-        }
-
-        // Contar archivos XML antes de procesarlos
-        cantidadArchivosXML = contarArchivosXML(facturasDir);
-
-        // Si no hay archivos XML, lanzar excepción
-        if (cantidadArchivosXML == 0) {
-            throw new IOException("No se encontraron archivos XML para comprimir");
-        }
-
-        File tarFile = new File(FACTURAS_DIR, "facturas_paquete.tar");
-        File gzipFile = new File(OUTPUT_FILE);
-
-        // Crear el archivo TAR
-        try (FileOutputStream fos = new FileOutputStream(tarFile);
-             TarArchiveOutputStream tarOut = new TarArchiveOutputStream(fos)) {
-
-            // Agregar archivos XML al TAR
-            for (File file : facturasDir.listFiles((dir, name) -> name.endsWith(".xml"))) {
-                addToTar(tarOut, file);
-            }
-        }
-
-        // Comprimir el TAR a GZIP
-        try (FileInputStream fis = new FileInputStream(tarFile);
-             FileOutputStream fos = new FileOutputStream(gzipFile);
-             GZIPOutputStream gzipOut = new GZIPOutputStream(fos)) {
-            byte[] buffer = new byte[1024];
-            int bytesRead;
-            while ((bytesRead = fis.read(buffer)) != -1) {
-                gzipOut.write(buffer, 0, bytesRead);
-            }
-        }
-
-        // Leer el archivo comprimido en un array de bytes
-        byte[] compressedData = Files.readAllBytes(gzipFile.toPath());
-
-        // Eliminar archivos temporales
-        tarFile.delete();
-        return compressedData;
+    public FacturaCompressor(AppConfig appConfig) {
+        this.appConfig = appConfig;
     }
 
-    // Método para contar archivos XML en el directorio
-    private static int contarArchivosXML(File directorio) {
+    public byte[] comprimirPaquetePorCodigoControl(String codigoControl, PuntoVentaEntity puntoVenta, boolean esContingencia) throws IOException {
+        // Determinar la ruta base según el tipo de emisión
+        String tipoEmision = esContingencia ? "contingencia" : "emision_normal";
+        String sucursalDirName = "sucursal_" + puntoVenta.getNombre().replace(" ", "_").toLowerCase();
+
+        String facturasDirPath = appConfig.getPathFiles() + "/facturas/" + tipoEmision + "/" + sucursalDirName + "/" + codigoControl;
+        File cufdDir = new File(facturasDirPath);
+
+        if (!cufdDir.exists() || !cufdDir.isDirectory()) {
+            throw new IOException("El directorio de facturas no existe: " + facturasDirPath);
+        }
+
+        // Contar archivos XML
+        cantidadArchivosXML = contarArchivosXML(cufdDir);
+
+        if (cantidadArchivosXML == 0) {
+            throw new IOException("No se encontraron archivos XML para comprimir en el directorio: " + codigoControl);
+        }
+
+        // Crear directorio para paquetes si no existe
+        String paquetesDirPath = appConfig.getPathFiles() + "/facturas/paquetes/";
+        Files.createDirectories(Paths.get(paquetesDirPath));
+
+        String outputFilePath = paquetesDirPath + "paquete_" + codigoControl + ".tar.gz";
+
+        // Crear archivo TAR.GZ
+        try (FileOutputStream fos = new FileOutputStream(outputFilePath);
+             GzipCompressorOutputStream gzipOut = new GzipCompressorOutputStream(fos);
+             TarArchiveOutputStream tarOut = new TarArchiveOutputStream(gzipOut)) {
+
+            tarOut.setLongFileMode(TarArchiveOutputStream.LONGFILE_POSIX);
+
+            // Agregar todos los archivos XML al TAR
+            for (File file : cufdDir.listFiles((dir, name) -> name.endsWith(".xml"))) {
+                addToTar(tarOut, file, file.getName());
+            }
+        }
+
+        // Leer el archivo comprimido como byte array
+        return Files.readAllBytes(Paths.get(outputFilePath));
+    }
+
+    private int contarArchivosXML(File directorio) {
         File[] archivosXML = directorio.listFiles((dir, name) -> name.endsWith(".xml"));
         return archivosXML != null ? archivosXML.length : 0;
     }
 
-    private static void addToTar(TarArchiveOutputStream tarOut, File file) throws IOException {
-        TarArchiveEntry entry = new TarArchiveEntry(file, file.getName());
+    private void addToTar(TarArchiveOutputStream tarOut, File file, String entryName) throws IOException {
+        TarArchiveEntry entry = new TarArchiveEntry(file, entryName);
         entry.setSize(file.length());
         tarOut.putArchiveEntry(entry);
-        Files.copy(file.toPath(), tarOut);
+
+        try (FileInputStream fis = new FileInputStream(file)) {
+            byte[] buffer = new byte[1024];
+            int length;
+            while ((length = fis.read(buffer)) != -1) {
+                tarOut.write(buffer, 0, length);
+            }
+        }
+
         tarOut.closeArchiveEntry();
     }
 
-    // Método para obtener la cantidad de archivos XML procesados
-    public static int getCantidadArchivosXML() {
-        return cantidadArchivosXML;
+    public int getCantidadArchivosXML() {return cantidadArchivosXML;}
+
+    public boolean eliminarDirectorioCompletoPorCodigoControl(String codigoControl, PuntoVentaEntity puntoVenta, boolean esContingencia) {
+        try {
+            String tipoEmision = esContingencia ? "contingencia" : "emision_normal";
+            String sucursalDirName = "sucursal_" + puntoVenta.getNombre().replace(" ", "_").toLowerCase();
+
+            String directorioFacturasPath = appConfig.getPathFiles() + "/facturas/" + tipoEmision + "/" + sucursalDirName + "/" + codigoControl;
+            File directorioFacturas = new File(directorioFacturasPath);
+
+            if (directorioFacturas.exists() && directorioFacturas.isDirectory()) {
+                // Primero eliminar todos los archivos
+                File[] archivos = directorioFacturas.listFiles();
+                if (archivos != null) {
+                    for (File file : archivos) {
+                        if (!file.delete()) {
+                            System.err.println("No se pudo eliminar: " + file.getName());
+                        }
+                    }
+                }
+
+                // Luego eliminar el directorio vacío
+                return directorioFacturas.delete();
+            }
+
+            return false;
+        } catch (Exception e) {
+            System.err.println("Error al eliminar directorio completo: " + e.getMessage());
+            return false;
+        }
     }
 }

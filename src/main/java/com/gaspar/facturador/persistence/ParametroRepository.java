@@ -44,8 +44,17 @@ public class ParametroRepository implements IParametroRepository {
         return parametroCrudRepository.findUnidadesMedida(codigosClasificador);
     }
 
-    public List<ParametroEntity> getTipoMoneda(){
-        return parametroCrudRepository.getTipoMoneda();
+    public List<ParametroEntity> getTipoMoneda(List<String> codigosClasificador){
+        return parametroCrudRepository.findTipoMoneda(codigosClasificador);
+    }
+
+
+    public List<ParametroEntity> getTipoEmision(){
+        return parametroCrudRepository.getTipoEmision();
+    }
+
+    public List<ParametroEntity> getMotivosAnulacion(){
+        return parametroCrudRepository.getMotivosAnulacion();
     }
 
 }

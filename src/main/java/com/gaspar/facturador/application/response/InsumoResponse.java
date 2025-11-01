@@ -13,6 +13,7 @@ public class InsumoResponse {
     private String nombre;
     private TipoInsumo tipo;
     private BigDecimal precioActual;
+    private BigDecimal cantidad;
     private String unidades;
     private String imagen;
     private Boolean activo;

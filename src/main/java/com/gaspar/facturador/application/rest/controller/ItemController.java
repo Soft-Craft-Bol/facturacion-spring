@@ -1,7 +1,12 @@
 package com.gaspar.facturador.application.rest.controller;
 
+import com.gaspar.facturador.application.response.ItemResponse;
 import com.gaspar.facturador.domain.repository.IItemRepository;
+import com.gaspar.facturador.persistence.crud.CategoriaCrudRepository;
+import com.gaspar.facturador.persistence.crud.ItemCrudRepository;
+import com.gaspar.facturador.persistence.entity.CategoriaEntity;
 import com.gaspar.facturador.persistence.entity.ItemEntity;
+import com.gaspar.facturador.persistence.mapper.ItemMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +22,10 @@ import java. math. BigDecimal;
 public class ItemController {
     @Autowired
     private IItemRepository itemRepository;
+    @Autowired
+    private CategoriaCrudRepository categoriaRepository;
+    @Autowired
+    private ItemMapper itemMapper;
 
     public ItemController(IItemRepository itemRepository){
         this.itemRepository=itemRepository;
@@ -26,15 +35,25 @@ public class ItemController {
         List<ItemEntity> items = (List<ItemEntity>) itemRepository.findAll();
         return new ResponseEntity<>(items, HttpStatus.OK);
     }
+    @GetMapping("/por-categoria/{categoriaId}")
+    public ResponseEntity<List<ItemResponse>> getItemsByCategoria(@PathVariable Integer categoriaId) {
+        List<ItemEntity> items = itemRepository.findByCategoriaId(categoriaId);
+        List<ItemResponse> responses = items.stream()
+                .map(itemMapper::toResponse)
+                .collect(Collectors.toList());
+        return new ResponseEntity<>(responses, HttpStatus.OK);
+    }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ItemEntity> getItemById(@PathVariable Integer id) {
-        Optional<ItemEntity> item = itemRepository.findById(id);
-        return item.map(value -> new ResponseEntity<>(value, HttpStatus.OK))
-                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    public ResponseEntity<ItemResponse> getItemById(@PathVariable Integer id) {
+        return itemRepository.findById(id)
+                .map(itemMapper::toResponse)
+                .map(response -> new ResponseEntity<>(response, HttpStatus.OK))
+                .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
     @PostMapping
     public ResponseEntity<ItemEntity> createItem(@RequestBody ItemEntity item) {
+        item.setId(null);
         ItemEntity createdItem = itemRepository.save(item);
         return new ResponseEntity<>(createdItem, HttpStatus.CREATED);
     }
@@ -50,7 +69,6 @@ public class ItemController {
             updatedItem.setPrecioUnitario(itemDetails.getPrecioUnitario());
             updatedItem.setCodigoProductoSin(itemDetails.getCodigoProductoSin());
             updatedItem.setImagen(itemDetails.getImagen());
-            updatedItem.setCantidad(itemDetails.getCantidad());
             itemRepository.save(updatedItem);
             return new ResponseEntity<>(updatedItem, HttpStatus.OK);
         } else {
@@ -80,7 +98,7 @@ public class ItemController {
         Optional<ItemEntity> itemOptional = itemRepository.findById(id);
         if (itemOptional.isPresent()) {
             ItemEntity item = itemOptional.get();
-            item.setCantidad(item.getCantidad().add(cantidad));
+            //item.setCantidad(item.getCantidad().add(cantidad));
             itemRepository.save(item);
             return new ResponseEntity<>(item, HttpStatus.OK);
         } else {
@@ -88,5 +106,21 @@ public class ItemController {
         }
     }
 
+    @PutMapping("/{id}/categoria")
+    public ResponseEntity<ItemEntity> assignCategoriaToItem(
+            @PathVariable Integer id,
+            @RequestParam Integer categoriaId) {
+
+        Optional<ItemEntity> itemOpt = itemRepository.findById(id);
+        Optional<CategoriaEntity> categoriaOpt = categoriaRepository.findById(categoriaId);
+
+        if (itemOpt.isPresent() && categoriaOpt.isPresent()) {
+            ItemEntity item = itemOpt.get();
+            item.setCategoria(categoriaOpt.get());
+            itemRepository.save(item);
+            return new ResponseEntity<>(item, HttpStatus.OK);
+        }
+        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    }
 
 }
