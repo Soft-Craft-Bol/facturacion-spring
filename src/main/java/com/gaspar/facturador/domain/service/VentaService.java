@@ -147,7 +147,13 @@ public class VentaService {
         }
 
         venta.setDetalles(detalles);
-        venta.setMonto(montoTotal);
+
+// USAR EL TOTAL AJUSTADO EN LUGAR DEL MONTO CALCULADO
+        if (request.getTotalAjustado() != null) {
+            venta.setMonto(request.getTotalAjustado());
+        } else {
+            venta.setMonto(montoTotal); // Fallback al cálculo normal
+        }
 
         // --- PAGOS ---
         if (request.getMetodosPago() != null && !request.getMetodosPago().isEmpty()) {
@@ -170,10 +176,16 @@ public class VentaService {
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             venta.setMontoRecibido(totalPagado);
-            venta.setMontoDevuelto(totalPagado.subtract(montoTotal).max(BigDecimal.ZERO));
+
+            // Usar totalAjustado para el cálculo de devuelto
+            BigDecimal montoVenta = request.getTotalAjustado() != null ? request.getTotalAjustado() : montoTotal;
+            venta.setMontoDevuelto(totalPagado.subtract(montoVenta).max(BigDecimal.ZERO));
         } else {
             venta.setMontoRecibido(request.getMontoRecibido());
-            venta.setMontoDevuelto(request.getMontoDevuelto());
+
+            // Usar totalAjustado para el cálculo de devuelto
+            BigDecimal montoVenta = request.getTotalAjustado() != null ? request.getTotalAjustado() : montoTotal;
+            venta.setMontoDevuelto(request.getMontoRecibido().subtract(montoVenta).max(BigDecimal.ZERO));
         }
 
         // --- FACTURA ---
@@ -189,18 +201,20 @@ public class VentaService {
                 throw new IllegalArgumentException("El cliente no tiene crédito habilitado");
             }
 
+            // Usar totalAjustado para validar crédito
+            BigDecimal montoVenta = request.getTotalAjustado() != null ? request.getTotalAjustado() : montoTotal;
             BigDecimal creditoDisponible = cliente.getCredito().getCreditoDisponible();
-            if (creditoDisponible.compareTo(montoTotal) < 0) {
+            if (creditoDisponible.compareTo(montoVenta) < 0) {
                 throw new IllegalArgumentException("El cliente no tiene suficiente crédito disponible");
             }
 
-            cliente.getCredito().setCreditoDisponible(creditoDisponible.subtract(montoTotal));
+            cliente.getCredito().setCreditoDisponible(creditoDisponible.subtract(montoVenta));
 
             CuentaPorCobrarEntity cxc = new CuentaPorCobrarEntity();
             cxc.setVenta(venta);
             cxc.setCliente(cliente);
-            cxc.setMontoTotal(montoTotal);
-            cxc.setSaldoPendiente(montoTotal);
+            cxc.setMontoTotal(montoVenta); // <- Usar montoVenta (que incluye totalAjustado)
+            cxc.setSaldoPendiente(montoVenta); // <- Usar montoVenta
             cxc.setFechaEmision(new Date());
             cxc.setDiasCredito(request.getDiasCredito());
 

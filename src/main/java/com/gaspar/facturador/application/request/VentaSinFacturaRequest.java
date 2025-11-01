@@ -1,5 +1,6 @@
 package com.gaspar.facturador.application.request;
 
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -43,4 +44,10 @@ public class VentaSinFacturaRequest {
     private Boolean esPagoPosterior = false;
     private Integer plazoPagoPosterior;
     private String condicionesPagoPosterior;
+
+    @NotNull(message = "El total ajustado es obligatorio")
+    @DecimalMin(value = "0.0", message = "El total ajustado no puede ser negativo")
+    private BigDecimal totalAjustado;
+
+    private BigDecimal diferenciaRedondeo;
 }
