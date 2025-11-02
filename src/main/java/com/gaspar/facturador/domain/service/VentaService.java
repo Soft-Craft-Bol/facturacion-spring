@@ -277,6 +277,10 @@ public class VentaService {
         dto.setDetalles(venta.getDetalles().stream().map(detalle -> {
             VentaHoyDTO.VentaDetalleDTO detalleDTO = new VentaHoyDTO.VentaDetalleDTO();
             detalleDTO.setDescripcion(detalle.getDescripcionProducto());
+            detalleDTO.setCantidad(detalle.getCantidad());
+            detalleDTO.setPrecioUnitario(detalle.getPrecioUnitario());
+            detalleDTO.setMontoDescuento(detalle.getMontoDescuento());
+
 
             // Calcular precio con descuento
             BigDecimal precioConDescuento = detalle.getPrecioUnitario();

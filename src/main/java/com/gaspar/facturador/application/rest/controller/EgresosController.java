@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -57,7 +58,7 @@ public class EgresosController {
                 .orElseThrow(() -> new RuntimeException("Caja no encontrada"));
 
         EgresosEntity egreso = new EgresosEntity();
-        egreso.setFechaDePago(request.getFechaDePago());
+        egreso.setFechaDePago(LocalDate.now());
         egreso.setDescripcion(request.getDescripcion());
         egreso.setGastoEnum(request.getGastoEnum());
         egreso.setMonto(request.getMonto());
@@ -85,7 +86,6 @@ public class EgresosController {
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
-
 
     @PutMapping("/{id}")
     public ResponseEntity<EgresosEntity> updateEgreso(@PathVariable Long id, @RequestBody EgresosEntity egresoDetails) {
