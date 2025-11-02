@@ -8,7 +8,6 @@ import java.time.LocalDate;
 
 @Data
 public class EgresoRequestDTO {
-    private LocalDate fechaDePago;
     private String descripcion;
     private GastoEnum gastoEnum;
     private double monto;
